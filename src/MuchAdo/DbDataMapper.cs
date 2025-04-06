@@ -18,13 +18,21 @@ public class DbDataMapper
 	public static DbDataMapper Default { get; } = new();
 
 	/// <summary>
+	/// Creates a new data mapper.
+	/// </summary>
+	public DbDataMapper(DbDataMapperSettings? settings = null)
+	{
+		Settings = settings ?? new();
+	}
+
+	/// <summary>
 	/// Gets a type mapper for the specified type.
 	/// </summary>
 	public DbTypeMapper<T> GetTypeMapper<T>()
 	{
 		DbTypeMapper? mapper;
-		while (!s_typeMappers.TryGetValue(typeof(T), out mapper))
-			s_typeMappers.TryAdd(typeof(T), CreateTypeMapper<T>());
+		while (!m_typeMappers.TryGetValue(typeof(T), out mapper))
+			m_typeMappers.TryAdd(typeof(T), CreateTypeMapper<T>());
 		return (DbTypeMapper<T>) mapper;
 	}
 
@@ -34,10 +42,12 @@ public class DbDataMapper
 	public DbTypeMapper GetTypeMapper(Type type)
 	{
 		DbTypeMapper? mapper;
-		while (!s_typeMappers.TryGetValue(type, out mapper))
-			s_typeMappers.TryAdd(type, (DbTypeMapper) s_createTypeMapper.MakeGenericMethod(type).Invoke(this, [])!);
+		while (!m_typeMappers.TryGetValue(type, out mapper))
+			m_typeMappers.TryAdd(type, (DbTypeMapper) s_createTypeMapper.MakeGenericMethod(type).Invoke(this, [])!);
 		return mapper;
 	}
+
+	protected DbDataMapperSettings Settings { get; set; }
 
 	protected virtual DbTypeMapper<T>? TryCreateTypeMapper<T>()
 	{
@@ -84,7 +94,12 @@ public class DbDataMapper
 			return (DbTypeMapper<T>) (object) new ObjectMapper();
 
 		if (typeof(T).IsEnum)
-			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(EnumMapper<>).MakeGenericType(typeof(T)), [])!);
+		{
+			if (Settings.AllowStringToEnum)
+				return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(FlexibleEnumMapper<>).MakeGenericType(typeof(T)), [])!);
+
+			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NumericEnumMapper<,>).MakeGenericType(typeof(T), Enum.GetUnderlyingType(typeof(T))), [this])!);
+		}
 
 		if (typeof(T) == typeof(Dictionary<string, object?>))
 			return (DbTypeMapper<T>) (object) new DictionaryMapper<Dictionary<string, object?>>();
@@ -128,6 +143,7 @@ public class DbDataMapper
 	internal static readonly ParameterExpression IndexParam = Expression.Parameter(typeof(int), "index");
 	internal static readonly ParameterExpression StateParam = Expression.Parameter(typeof(DbConnectorRecordState), "state");
 
-	private static readonly ConcurrentDictionary<Type, DbTypeMapper> s_typeMappers = new();
 	private static readonly MethodInfo s_createTypeMapper = typeof(DbDataMapper).GetMethod(nameof(CreateTypeMapper), BindingFlags.NonPublic | BindingFlags.Instance, null, [], null)!;
+
+	private readonly ConcurrentDictionary<Type, DbTypeMapper> m_typeMappers = new();
 }

@@ -478,24 +478,43 @@ internal sealed class DbConnectorTests
 		Invoking(() => connector2.Command("insert into Items (Name) values ('querty');").WithTimeout(TimeSpan.FromSeconds(1)).Execute()).Should().Throw<SqliteException>();
 	}
 
-	[Test]
-	public void EnumQueryTests()
+	[TestCase(true)]
+	[TestCase(false)]
+	public void EnumQueryTests(bool flexible)
 	{
-		using var connector = CreateConnector();
+		using var connector = CreateConnector(new DbDataMapperSettings { AllowStringToEnum = flexible });
 		connector.Command("create table Items (ItemId integer primary key, Name text null, Number integer null);").Execute();
 		connector.Command("insert into Items (Name, Number) values ('Ordinal', 4), ('ordinal', null), (null, 4), ('fail', null);").Execute();
-		connector.Command("select Name, Number from Items order by ItemId limit 1;")
-			.QuerySingle<(StringComparison, StringComparison)>()
-			.Should().Be((StringComparison.Ordinal, StringComparison.Ordinal));
-		connector.Command("select Name, Number from Items order by ItemId limit 1 offset 1;")
-			.QuerySingle<(StringComparison, StringComparison?)>()
-			.Should().Be((StringComparison.Ordinal, null));
-		connector.Command("select Name, Number from Items order by ItemId limit 1 offset 2;")
-			.QuerySingle<(StringComparison?, StringComparison)>()
-			.Should().Be((null, StringComparison.Ordinal));
-		Invoking(() => connector.Command("select Name, Number from Items order by ItemId limit 1 offset 3;")
-				.QuerySingle<(StringComparison?, StringComparison?)>())
-			.Should().Throw<InvalidOperationException>();
+
+		connector.Command("select Number from Items order by ItemId limit 1;")
+			.QuerySingle<StringComparison>()
+			.Should().Be(StringComparison.Ordinal);
+		connector.Command("select Number from Items order by ItemId limit 1 offset 1;")
+			.QuerySingle<StringComparison?>()
+			.Should().Be(null);
+
+		if (flexible)
+		{
+			connector.Command("select Name, Number from Items order by ItemId limit 1;")
+				.QuerySingle<(StringComparison, StringComparison)>()
+				.Should().Be((StringComparison.Ordinal, StringComparison.Ordinal));
+			connector.Command("select Name, Number from Items order by ItemId limit 1 offset 1;")
+				.QuerySingle<(StringComparison, StringComparison?)>()
+				.Should().Be((StringComparison.Ordinal, null));
+			connector.Command("select Name, Number from Items order by ItemId limit 1 offset 2;")
+				.QuerySingle<(StringComparison?, StringComparison)>()
+				.Should().Be((null, StringComparison.Ordinal));
+			Invoking(() => connector.Command("select Name, Number from Items order by ItemId limit 1 offset 3;")
+					.QuerySingle<(StringComparison?, StringComparison?)>())
+				.Should().Throw<InvalidOperationException>();
+		}
+		else
+		{
+			// SQLite reads strings as zero
+			connector.Command("select Name from Items order by ItemId limit 1;")
+				.QuerySingle<StringComparison>()
+				.Should().Be(default);
+		}
 	}
 
 	[Test]
@@ -544,7 +563,9 @@ internal sealed class DbConnectorTests
 		throw new InvalidOperationException();
 	}
 
-	private static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
+	private static DbConnector CreateConnector(DbDataMapperSettings? dataMapperSettings = null) =>
+		new(new SqliteConnection("Data Source=:memory:"),
+			dataMapperSettings is null ? null : new DbConnectorSettings { DataMapper = new DbDataMapper(dataMapperSettings) });
 
 	private static string ToUpper(DbConnectorRecord x) => x.Get<string>().ToUpperInvariant();
 }

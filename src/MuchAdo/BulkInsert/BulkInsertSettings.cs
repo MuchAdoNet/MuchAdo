@@ -10,12 +10,12 @@ public sealed class BulkInsertSettings
 	/// </summary>
 	/// <remarks>If neither <see cref="MaxParametersPerBatch"/> nor <see cref="MaxRowsPerBatch"/> are specified,
 	/// the maximum number of parameters is 999.</remarks>
-	public int? MaxParametersPerBatch { get; set; }
+	public int? MaxParametersPerBatch { get; init; }
 
 	/// <summary>
 	/// Specifies the maximum number of rows to insert per batch.
 	/// </summary>
 	/// <remarks>If neither <see cref="MaxParametersPerBatch"/> nor <see cref="MaxRowsPerBatch"/> are specified,
 	/// the maximum number of parameters is 999.</remarks>
-	public int? MaxRowsPerBatch { get; set; }
+	public int? MaxRowsPerBatch { get; init; }
 }

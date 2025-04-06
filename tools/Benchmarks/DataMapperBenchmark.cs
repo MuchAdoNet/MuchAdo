@@ -53,7 +53,12 @@ public class DataMapperBenchmark : IDisposable
 	[Benchmark]
 	public (long? AnInteger, double AReal) NullableInt64AndDouble() => m_connector.Command("select AnInteger, ifnull(AReal, 0.0) from DataMapperBenchmark;").Enumerate<(long?, double)>().Last();
 
+	[Benchmark]
+	public MyTuple MyTuples() => m_connector.Command("select AnInteger, ifnull(AReal, 0.0) from DataMapperBenchmark;").Enumerate<MyTuple>().Last();
+
 	public void Dispose() => m_connector.Dispose();
+
+	public readonly record struct MyTuple(long? AnInteger, double AReal);
 
 	private readonly DbConnector m_connector;
 }

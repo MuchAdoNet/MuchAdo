@@ -12,5 +12,5 @@ public class DbConnectorPoolSettings
 	/// in the pool when disposed. Since the advantage of a connector pool is keeping database
 	/// connections open, avoid using <see cref="DbConnector.CloseConnection" /> or
 	/// <see cref="DbConnector.CloseConnectionAsync" />.</remarks>
-	public Func<DbConnector>? CreateConnector { get; set; }
+	public Func<DbConnector>? CreateConnector { get; init; }
 }

@@ -2,7 +2,7 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class EnumMapper<T> : NonNullableValueMapper<T>
+internal sealed class FlexibleEnumMapper<T> : NonNullableValueMapper<T>
 	where T : struct
 {
 	public override T MapNotNullField(IDataRecord record, int index)
