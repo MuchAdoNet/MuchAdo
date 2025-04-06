@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net472;net9.0</TargetFrameworks>
+    <NoWarn>$(NoWarn);CA1849;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net472' ">
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <RuntimeIdentifier Condition=" $([MSBuild]::IsOSPlatform('Windows')) ">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition=" $([MSBuild]::IsOSPlatform('OSX')) ">osx-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition=" $([MSBuild]::IsOSPlatform('Linux')) ">linux-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.Data.SQLite" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
+    <PackageReference Include="MySqlConnector" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" />
+    <PackageReference Include="System.Private.Uri" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MuchAdo\MuchAdo.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net472' ">
+    <!--<Reference Include="Microsoft.CSharp" />-->
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+  </ItemGroup>
+
+</Project>
