@@ -49,7 +49,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 					throw new InvalidOperationException($"Cached commands must always be executed with the same parameters (missing '{transformedName}').");
 			}
 
-			providerMethods.SetParameterValue(dbParameter, value is IDataParameter ddp ? ddp.Value : value);
+			providerMethods.SetParameterValue(dbParameter, value);
 			return 1;
 		}
 

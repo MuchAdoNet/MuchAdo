@@ -218,7 +218,12 @@ public class DbProviderMethods
 	/// </summary>
 	public virtual void SetParameterValue<T>(IDataParameter parameter, T value)
 	{
-		parameter.Value = value is null ? DBNull.Value : value;
+		parameter.Value = value switch
+		{
+			null => DBNull.Value,
+			IDataParameter ddp => ddp.Value,
+			_ => value,
+		};
 	}
 
 	/// <summary>
