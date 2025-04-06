@@ -5,7 +5,7 @@ namespace MuchAdo;
 /// <summary>
 /// Converts the fields of a data record.
 /// </summary>
-public sealed class DbRecord
+public sealed class DbConnectorRecord
 {
 	/// <summary>
 	/// Converts the record to the specified type.
@@ -58,7 +58,7 @@ public sealed class DbRecord
 	}
 #endif
 
-	internal DbRecord(IDataRecord record, DbDataMapper mapper, DbRecordState? state)
+	internal DbConnectorRecord(IDataRecord record, DbDataMapper mapper, DbConnectorRecordState? state)
 	{
 		m_record = record;
 		m_mapper = mapper;
@@ -67,5 +67,5 @@ public sealed class DbRecord
 
 	private readonly IDataRecord m_record;
 	private readonly DbDataMapper m_mapper;
-	private readonly DbRecordState? m_state;
+	private readonly DbConnectorRecordState? m_state;
 }

@@ -3,7 +3,7 @@ namespace MuchAdo;
 /// <summary>
 /// Saves type mapping state for a record.
 /// </summary>
-public sealed class DbRecordState
+public sealed class DbConnectorRecordState
 {
 	/// <summary>
 	/// Gets the state for the specified mapper, index, and count; returns null if none.

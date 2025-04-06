@@ -546,5 +546,5 @@ internal sealed class DbConnectorTests
 
 	private static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 
-	private static string ToUpper(DbRecord x) => x.Get<string>().ToUpperInvariant();
+	private static string ToUpper(DbConnectorRecord x) => x.Get<string>().ToUpperInvariant();
 }

@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace MuchAdo;
+namespace MuchAdo.Parameters;
 
 internal sealed class RenamedDbParameters(DbParameters source, Func<string, string> named) : DbParameters
 {

@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace MuchAdo;
+namespace MuchAdo.Parameters;
 
 internal sealed class DtoDbParameters<T>(T dto) : DbParameters
 {

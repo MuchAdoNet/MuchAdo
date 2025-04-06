@@ -8,7 +8,7 @@ internal static class DbDtoInfo
 	public static DbDtoInfo<T> GetInfo<T>() => DbDtoInfo<T>.Instance;
 }
 
-[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Both types have the same name.")]
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 internal sealed class DbDtoInfo<T>
 {
 	internal static readonly DbDtoInfo<T> Instance = new();

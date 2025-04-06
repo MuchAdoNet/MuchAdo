@@ -31,13 +31,13 @@ public abstract class DbTypeMapper<T> : DbTypeMapper
 	/// <summary>
 	/// Maps the data record values to an instance of the specified type.
 	/// </summary>
-	public T Map(IDataRecord record, DbRecordState? state) =>
+	public T Map(IDataRecord record, DbConnectorRecordState? state) =>
 		MapCore(record, index: 0, count: (record ?? throw new ArgumentNullException(nameof(record))).FieldCount, state);
 
 	/// <summary>
 	/// Maps the data record value to an instance of the specified type.
 	/// </summary>
-	public T Map(IDataRecord record, int index, DbRecordState? state)
+	public T Map(IDataRecord record, int index, DbConnectorRecordState? state)
 	{
 		var fieldCount = (record ?? throw new ArgumentNullException(nameof(record))).FieldCount;
 		if (index < 0 || index >= fieldCount)
@@ -48,7 +48,7 @@ public abstract class DbTypeMapper<T> : DbTypeMapper
 	/// <summary>
 	/// Maps the data record values to an instance of the specified type.
 	/// </summary>
-	public T Map(IDataRecord record, int index, int count, DbRecordState? state)
+	public T Map(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
 		var fieldCount = (record ?? throw new ArgumentNullException(nameof(record))).FieldCount;
 		if (index < 0 || count < 0 || index > fieldCount - count)
@@ -59,5 +59,11 @@ public abstract class DbTypeMapper<T> : DbTypeMapper
 	/// <summary>
 	/// Maps the data record values to an instance of the specified type.
 	/// </summary>
-	protected abstract T MapCore(IDataRecord record, int index, int count, DbRecordState? state);
+	protected abstract T MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state);
+
+	internal InvalidOperationException BadFieldCount(int count) => new($"{Type.FullName} must be read from {FieldCount} fields but is being read from {count} fields.");
+
+	internal InvalidOperationException NotNullable() => new($"{Type.FullName} cannot be read from a null field.");
+
+	internal InvalidOperationException BadCast(Type? type, Exception exception) => new($"Failed to cast {type?.FullName} to {Type.FullName}.", exception);
 }

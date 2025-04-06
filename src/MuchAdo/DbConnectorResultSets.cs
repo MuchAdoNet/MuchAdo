@@ -18,8 +18,8 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads a result set, converting each record to the specified type with the specified delegate.
 	/// </summary>
-	/// <seealso cref="ReadAsync{T}(Func{DbRecord, T}, CancellationToken)" />
-	public IReadOnlyList<T> Read<T>(Func<DbRecord, T> map) =>
+	/// <seealso cref="ReadAsync{T}(Func{DbConnectorRecord, T}, CancellationToken)" />
+	public IReadOnlyList<T> Read<T>(Func<DbConnectorRecord, T> map) =>
 		DoRead(map ?? throw new ArgumentNullException(nameof(map)));
 
 	/// <summary>
@@ -32,8 +32,8 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads a result set, converting each record to the specified type with the specified delegate.
 	/// </summary>
-	/// <seealso cref="Read{T}(Func{DbRecord, T})" />
-	public ValueTask<IReadOnlyList<T>> ReadAsync<T>(Func<DbRecord, T> map, CancellationToken cancellationToken = default) =>
+	/// <seealso cref="Read{T}(Func{DbConnectorRecord, T})" />
+	public ValueTask<IReadOnlyList<T>> ReadAsync<T>(Func<DbConnectorRecord, T> map, CancellationToken cancellationToken = default) =>
 		DoReadAsync(map ?? throw new ArgumentNullException(nameof(map)), cancellationToken);
 
 	/// <summary>
@@ -46,8 +46,8 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads a result set, reading one record at a time and converting it to the specified type with the specified delegate.
 	/// </summary>
-	/// <seealso cref="EnumerateAsync{T}(Func{DbRecord, T}, CancellationToken)" />
-	public IEnumerable<T> Enumerate<T>(Func<DbRecord, T> map) =>
+	/// <seealso cref="EnumerateAsync{T}(Func{DbConnectorRecord, T}, CancellationToken)" />
+	public IEnumerable<T> Enumerate<T>(Func<DbConnectorRecord, T> map) =>
 		DoEnumerate(map ?? throw new ArgumentNullException(nameof(map)));
 
 	/// <summary>
@@ -60,8 +60,8 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads a result set, reading one record at a time and converting it to the specified type with the specified delegate.
 	/// </summary>
-	/// <seealso cref="Enumerate{T}(Func{DbRecord, T})" />
-	public IAsyncEnumerable<T> EnumerateAsync<T>(Func<DbRecord, T> map, CancellationToken cancellationToken = default) =>
+	/// <seealso cref="Enumerate{T}(Func{DbConnectorRecord, T})" />
+	public IAsyncEnumerable<T> EnumerateAsync<T>(Func<DbConnectorRecord, T> map, CancellationToken cancellationToken = default) =>
 		DoEnumerateAsync(map ?? throw new ArgumentNullException(nameof(map)), cancellationToken);
 
 	/// <summary>
@@ -92,50 +92,50 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 		m_mapper = mapper;
 	}
 
-	private IReadOnlyList<T> DoRead<T>(Func<DbRecord, T>? map)
+	private IReadOnlyList<T> DoRead<T>(Func<DbConnectorRecord, T>? map)
 	{
 		if (m_next && !m_reader.NextResult())
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
 		var list = new List<T>();
-		var record = new DbRecord(m_reader, m_mapper, new DbRecordState());
+		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
 		while (m_reader.Read())
 			list.Add(map is not null ? map(record) : record.Get<T>());
 		return list;
 	}
 
-	private async ValueTask<IReadOnlyList<T>> DoReadAsync<T>(Func<DbRecord, T>? map, CancellationToken cancellationToken)
+	private async ValueTask<IReadOnlyList<T>> DoReadAsync<T>(Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
 		if (m_next && !await m_methods.NextResultAsync(m_reader, cancellationToken).ConfigureAwait(false))
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
 		var list = new List<T>();
-		var record = new DbRecord(m_reader, m_mapper, new DbRecordState());
+		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
 		while (await m_methods.ReadAsync(m_reader, cancellationToken).ConfigureAwait(false))
 			list.Add(map is not null ? map(record) : record.Get<T>());
 		return list;
 	}
 
-	private IEnumerable<T> DoEnumerate<T>(Func<DbRecord, T>? map)
+	private IEnumerable<T> DoEnumerate<T>(Func<DbConnectorRecord, T>? map)
 	{
 		if (m_next && !m_reader.NextResult())
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
-		var record = new DbRecord(m_reader, m_mapper, new DbRecordState());
+		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
 		while (m_reader.Read())
 			yield return map is not null ? map(record) : record.Get<T>();
 	}
 
-	private async IAsyncEnumerable<T> DoEnumerateAsync<T>(Func<DbRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
+	private async IAsyncEnumerable<T> DoEnumerateAsync<T>(Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		if (m_next && !await m_methods.NextResultAsync(m_reader, cancellationToken).ConfigureAwait(false))
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
-		var record = new DbRecord(m_reader, m_mapper, new DbRecordState());
+		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
 		while (await m_methods.ReadAsync(m_reader, cancellationToken).ConfigureAwait(false))
 			yield return map is not null ? map(record) : record.Get<T>();
 	}

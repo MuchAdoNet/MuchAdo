@@ -586,7 +586,7 @@ internal sealed class DbDataMapperTests
 		return connection;
 	}
 
-	private static DbRecord WrapRecord(IDataRecord record) => new(record, DbDataMapper.Default, new DbRecordState());
+	private static DbConnectorRecord WrapRecord(IDataRecord record) => new(record, DbDataMapper.Default, new DbConnectorRecordState());
 
 	private sealed class ItemDto
 	{
