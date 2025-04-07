@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net472' ">
-    <!--<Reference Include="Microsoft.CSharp" />-->
+    <PackageReference Update="Npgsql" VersionOverride="8.0.7" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>
 
