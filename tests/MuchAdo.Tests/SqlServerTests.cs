@@ -13,7 +13,7 @@ internal sealed class SqlServerTests
 	[Test]
 	public void PrepareCacheTests()
 	{
-		var tableName = Sql.Name(nameof(PrepareCacheTests));
+		var tableName = Sql.Name(nameof(PrepareCacheTests) + c_suffix);
 
 		using var connector = CreateConnector();
 		connector.Command(Sql.Format($"drop table if exists {tableName};")).Execute();
@@ -35,5 +35,11 @@ internal sealed class SqlServerTests
 	private static DbConnector CreateConnector() => new(
 		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.SqlServer });
+
+#if NET9_0
+	private const string c_suffix = "_net9";
+#else
+	private const string c_suffix = "_net472";
+#endif
 }
 #endif

@@ -13,7 +13,7 @@ internal sealed class MySqlTests
 	[Test]
 	public void PrepareCacheTests()
 	{
-		var tableName = Sql.Name(nameof(PrepareCacheTests));
+		var tableName = Sql.Name(nameof(PrepareCacheTests) + c_suffix);
 
 		using var connector = CreateConnector();
 		connector.Command(Sql.Format($"drop table if exists {tableName};")).Execute();
@@ -30,7 +30,7 @@ internal sealed class MySqlTests
 	[Test]
 	public void SprocInOutTest()
 	{
-		var sprocName = nameof(SprocInOutTest);
+		var sprocName = nameof(SprocInOutTest) + c_suffix;
 
 		using var connector = CreateConnector();
 		connector.Command(Sql.Format($"drop procedure if exists {Sql.Name(sprocName)};")).Execute();
@@ -44,7 +44,7 @@ internal sealed class MySqlTests
 	[Test]
 	public void SprocInTest()
 	{
-		var sprocName = nameof(SprocInTest);
+		var sprocName = nameof(SprocInTest) + c_suffix;
 
 		using var connector = CreateConnector();
 		connector.Command(Sql.Format($"drop procedure if exists {Sql.Name(sprocName)};")).Execute();
@@ -56,5 +56,11 @@ internal sealed class MySqlTests
 	private static DbConnector CreateConnector() => new(
 		new MySqlConnection("Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.MySql });
+
+#if NET9_0
+	private const string c_suffix = "_net9";
+#else
+	private const string c_suffix = "_net472";
+#endif
 }
 #endif

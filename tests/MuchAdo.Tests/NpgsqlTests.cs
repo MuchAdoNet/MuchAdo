@@ -12,7 +12,7 @@ internal sealed class NpgsqlTests
 	[Test]
 	public void PrepareCacheTests()
 	{
-		var tableName = Sql.Name(nameof(PrepareCacheTests));
+		var tableName = Sql.Name(nameof(PrepareCacheTests) + c_suffix);
 
 		using var connector = CreateConnector();
 		connector.Command(Sql.Format($"drop table if exists {tableName};")).Execute();
@@ -31,5 +31,11 @@ internal sealed class NpgsqlTests
 	private static DbConnector CreateConnector() => new(
 		new NpgsqlConnection("host=localhost;user id=root;password=test;database=test"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.Postgres });
+
+#if NET9_0
+	private const string c_suffix = "_net9";
+#else
+	private const string c_suffix = "_net472";
+#endif
 }
 #endif
