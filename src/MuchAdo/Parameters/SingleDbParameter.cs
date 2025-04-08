@@ -15,7 +15,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 		}
 	}
 
-	internal override void ApplyCore(IDbCommand command, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName)
+	internal override void ApplyCore(DbConnector connector, Func<string, bool>? filterName, Func<string, string>? transformName)
 	{
 		if (filterName is null || filterName(name))
 		{
@@ -23,16 +23,17 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 			if (value is IDataParameter dbParameter)
 				dbParameter.ParameterName = transformedName;
 			else
-				dbParameter = providerMethods.CreateParameter(command, transformedName, value);
+				dbParameter = connector.CreateParameterCore(transformedName, value);
 
-			command.Parameters.Add(dbParameter);
+			connector.ActiveCommand.Parameters.Add(dbParameter);
 		}
 	}
 
-	internal override int ReapplyCore(IDbCommand command, int startIndex, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName)
+	internal override int ReapplyCore(DbConnector connector, int startIndex, Func<string, bool>? filterName, Func<string, string>? transformName)
 	{
 		if (filterName is null || filterName(name))
 		{
+			var command = connector.ActiveCommand;
 			var transformedName = transformName is null ? name : transformName(name);
 			var dbParameter = command.Parameters[startIndex] as IDataParameter;
 			if (dbParameter is null || dbParameter.ParameterName != transformedName)
@@ -49,7 +50,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 					throw new InvalidOperationException($"Cached commands must always be executed with the same parameters (missing '{transformedName}').");
 			}
 
-			providerMethods.SetParameterValue(dbParameter, value);
+			connector.SetParameterValueCore(dbParameter, value);
 			return 1;
 		}
 

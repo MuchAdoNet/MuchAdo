@@ -52,8 +52,8 @@ public sealed class DbConnectorCommand
 	/// <seealso cref="ExecuteAsync" />
 	public int Execute()
 	{
-		using var command = Create();
-		return command.ExecuteNonQuery();
+		using var commandScope = CreateCommand();
+		return Connector.ExecuteNonQueryCore();
 	}
 
 	/// <summary>
@@ -62,9 +62,8 @@ public sealed class DbConnectorCommand
 	/// <seealso cref="Execute" />
 	public async ValueTask<int> ExecuteAsync(CancellationToken cancellationToken = default)
 	{
-		var command = await CreateAsync(cancellationToken).ConfigureAwait(false);
-		await using var commandScope = new AsyncScope(command).ConfigureAwait(false);
-		return await Connector.ProviderMethods.ExecuteNonQueryAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false);
+		await using var commandScope = (await CreateCommandAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		return await Connector.ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
 	}
 
 	/// <summary>
@@ -261,8 +260,9 @@ public sealed class DbConnectorCommand
 	/// <seealso cref="QueryMultipleAsync" />
 	public DbConnectorResultSets QueryMultiple()
 	{
-		var command = Create();
-		return new DbConnectorResultSets(command, command.ExecuteReader(), Connector.ProviderMethods, Connector.DataMapper);
+		CreateCommand();
+		Connector.SetActiveReader(Connector.ExecuteReaderCore());
+		return new DbConnectorResultSets(Connector);
 	}
 
 	/// <summary>
@@ -271,10 +271,9 @@ public sealed class DbConnectorCommand
 	/// <seealso cref="QueryMultiple" />
 	public async ValueTask<DbConnectorResultSets> QueryMultipleAsync(CancellationToken cancellationToken = default)
 	{
-		var methods = Connector.ProviderMethods;
-		var mapper = Connector.DataMapper;
-		var command = await CreateAsync(cancellationToken).ConfigureAwait(false);
-		return new DbConnectorResultSets(command, await methods.ExecuteReaderAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false), methods, mapper);
+		await CreateCommandAsync(cancellationToken).ConfigureAwait(false);
+		Connector.SetActiveReader(await Connector.ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
+		return new DbConnectorResultSets(Connector);
 	}
 
 	/// <summary>
@@ -337,34 +336,6 @@ public sealed class DbConnectorCommand
 		return this;
 	}
 
-	/// <summary>
-	/// Creates an <see cref="IDbCommand" /> from the text and parameters.
-	/// </summary>
-	/// <seealso cref="CreateAsync" />
-	public IDbCommand Create()
-	{
-		Validate();
-		var connection = Connector.GetOpenConnection();
-		var command = DoCreate(connection, out var needsPrepare);
-		if (needsPrepare)
-			command.Prepare();
-		return command;
-	}
-
-	/// <summary>
-	/// Creates an <see cref="IDbCommand" /> from the text and parameters.
-	/// </summary>
-	/// <seealso cref="Create" />
-	public async ValueTask<IDbCommand> CreateAsync(CancellationToken cancellationToken = default)
-	{
-		Validate();
-		var connection = await Connector.GetOpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-		var command = DoCreate(connection, out var needsPrepare);
-		if (needsPrepare)
-			await Connector.ProviderMethods.PrepareCommandAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false);
-		return command;
-	}
-
 	internal DbConnectorCommand(DbConnector connector, string text, CommandType commandType)
 	{
 		Connector = connector;
@@ -379,7 +350,27 @@ public sealed class DbConnectorCommand
 			throw new InvalidOperationException("Use DbConnector to create commands.");
 	}
 
-	private IDbCommand DoCreate(IDbConnection connection, out bool needsPrepare)
+	private DbCommandDisposer CreateCommand()
+	{
+		Validate();
+		Connector.OpenConnection();
+		DoCreateCommand(out var needsPrepare);
+		if (needsPrepare)
+			Connector.PrepareCommandCore();
+		return new DbCommandDisposer(Connector);
+	}
+
+	private async ValueTask<DbCommandDisposer> CreateCommandAsync(CancellationToken cancellationToken = default)
+	{
+		Validate();
+		await Connector.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+		DoCreateCommand(out var needsPrepare);
+		if (needsPrepare)
+			await Connector.PrepareCommandCoreAsync(cancellationToken).ConfigureAwait(false);
+		return new DbCommandDisposer(Connector);
+	}
+
+	private void DoCreateCommand(out bool needsPrepare)
 	{
 		var commandText = Text;
 		var commandType = CommandType;
@@ -440,9 +431,10 @@ public sealed class DbConnectorCommand
 		}
 
 		IDbCommand? command;
-		var transaction = Connector.CurrentTransaction;
+		var transaction = Connector.Transaction;
 
 		var wasCached = false;
+		var isCached = false;
 		var cache = IsCached ? Connector.CommandCache : null;
 		if (cache is not null)
 		{
@@ -452,21 +444,24 @@ public sealed class DbConnectorCommand
 			}
 			else
 			{
-				command = new CachedCommand(CreateNewCommand());
+				command = CreateNewCommand();
 				cache.AddCommand(commandText, command);
 			}
+			isCached = true;
 		}
 		else
 		{
 			command = CreateNewCommand();
 		}
 
+		Connector.SetActiveCommand(command, isCached);
+
 		if (wasCached)
 		{
 			command.Transaction = transaction;
 
 			var oldParameterCount = command.Parameters.Count;
-			var newParameterCount = parameters.Reapply(command, startIndex: 0, Connector.ProviderMethods);
+			var newParameterCount = parameters.Reapply(Connector, startIndex: 0);
 			if (oldParameterCount != newParameterCount)
 				throw new InvalidOperationException($"Cached commands must always be executed with the same number of parameters (was {oldParameterCount}, now {newParameterCount}).");
 
@@ -474,16 +469,15 @@ public sealed class DbConnectorCommand
 		}
 		else
 		{
-			parameters.Apply(command, Connector.ProviderMethods);
+			parameters.Apply(Connector);
 
 			needsPrepare = IsPrepared;
 		}
 
-		return command;
-
 		IDbCommand CreateNewCommand()
 		{
-			var newCommand = connection.CreateCommand();
+			var newCommand = Connector.CreateCommandCore();
+
 			newCommand.CommandText = commandText;
 
 			if (commandType != CommandType.Text)
@@ -501,62 +495,61 @@ public sealed class DbConnectorCommand
 
 	private IReadOnlyList<T> DoQuery<T>(Func<DbConnectorRecord, T>? map)
 	{
-		using var command = Create();
-		using var reader = command.ExecuteReader();
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, new DbConnectorRecordState());
+		using var commandScope = CreateCommand();
+		Connector.SetActiveReader(Connector.ExecuteReaderCore());
+		using var readerScope = new DbReaderDisposer(Connector);
+		var record = new DbConnectorRecord(Connector, new DbConnectorRecordState());
 
 		var list = new List<T>();
 
 		do
 		{
-			while (reader.Read())
+			while (Connector.ReadReaderCore())
 				list.Add(map is not null ? map(record) : record.Get<T>());
 		}
-		while (reader.NextResult());
+		while (Connector.NextReaderResultCore());
 
 		return list;
 	}
 
 	private async ValueTask<IReadOnlyList<T>> DoQueryAsync<T>(Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
-		var methods = Connector.ProviderMethods;
-
-		var command = await CreateAsync(cancellationToken).ConfigureAwait(false);
-		await using var commandScope = new AsyncScope(command).ConfigureAwait(false);
-		var reader = await methods.ExecuteReaderAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false);
-		await using var readerScope = new AsyncScope(reader).ConfigureAwait(false);
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, new DbConnectorRecordState());
+		await using var commandScope = (await CreateCommandAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		Connector.SetActiveReader(await Connector.ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
+		await using var readerScope = new DbReaderDisposer(Connector).ConfigureAwait(false);
+		var record = new DbConnectorRecord(Connector, new DbConnectorRecordState());
 
 		var list = new List<T>();
 
 		do
 		{
-			while (await methods.ReadAsync(reader, cancellationToken).ConfigureAwait(false))
+			while (await Connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 				list.Add(map is not null ? map(record) : record.Get<T>());
 		}
-		while (await methods.NextResultAsync(reader, cancellationToken).ConfigureAwait(false));
+		while (await Connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 
 		return list;
 	}
 
 	private T DoQueryFirst<T>(Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
 	{
-		using var command = Create();
-		using var reader = single ? command.ExecuteReader() : command.ExecuteReader(CommandBehavior.SingleRow);
+		using var commandScope = CreateCommand();
+		Connector.SetActiveReader(single ? Connector.ExecuteReaderCore() : Connector.ExecuteReaderCore(CommandBehavior.SingleRow));
+		using var readerScope = new DbReaderDisposer(Connector);
 
-		while (!reader.Read())
+		while (!Connector.ReadReaderCore())
 		{
-			if (!reader.NextResult())
+			if (!Connector.NextReaderResultCore())
 				return orDefault ? default(T)! : throw new InvalidOperationException("No records were found; use 'OrDefault' to permit this.");
 		}
 
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, state: null);
+		var record = new DbConnectorRecord(Connector, state: null);
 		var value = map is not null ? map(record) : record.Get<T>();
 
-		if (single && reader.Read())
+		if (single && Connector.ReadReaderCore())
 			throw CreateTooManyRecordsException();
 
-		if (single && reader.NextResult())
+		if (single && Connector.NextReaderResultCore())
 			throw CreateTooManyRecordsException();
 
 		return value;
@@ -564,26 +557,23 @@ public sealed class DbConnectorCommand
 
 	private async ValueTask<T> DoQueryFirstAsync<T>(Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
 	{
-		var methods = Connector.ProviderMethods;
+		await using var commandScope = (await CreateCommandAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		Connector.SetActiveReader(single ? await Connector.ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false) : await Connector.ExecuteReaderCoreAsync(CommandBehavior.SingleRow, cancellationToken).ConfigureAwait(false));
+		await using var readerScope = new DbReaderDisposer(Connector).ConfigureAwait(false);
 
-		var command = await CreateAsync(cancellationToken).ConfigureAwait(false);
-		await using var commandScope = new AsyncScope(command).ConfigureAwait(false);
-		var reader = single ? await methods.ExecuteReaderAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false) : await methods.ExecuteReaderAsync(CachedCommand.Unwrap(command), CommandBehavior.SingleRow, cancellationToken).ConfigureAwait(false);
-		await using var readerScope = new AsyncScope(reader).ConfigureAwait(false);
-
-		while (!await methods.ReadAsync(reader, cancellationToken).ConfigureAwait(false))
+		while (!await Connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 		{
-			if (!await methods.NextResultAsync(reader, cancellationToken).ConfigureAwait(false))
+			if (!await Connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false))
 				return orDefault ? default(T)! : throw CreateNoRecordsException();
 		}
 
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, state: null);
+		var record = new DbConnectorRecord(Connector, state: null);
 		var value = map is not null ? map(record) : record.Get<T>();
 
-		if (single && await methods.ReadAsync(reader, cancellationToken).ConfigureAwait(false))
+		if (single && await Connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 			throw CreateTooManyRecordsException();
 
-		if (single && await methods.NextResultAsync(reader, cancellationToken).ConfigureAwait(false))
+		if (single && await Connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false))
 			throw CreateTooManyRecordsException();
 
 		return value;
@@ -595,34 +585,32 @@ public sealed class DbConnectorCommand
 
 	private IEnumerable<T> DoEnumerate<T>(Func<DbConnectorRecord, T>? map)
 	{
-		using var command = Create();
-		using var reader = command.ExecuteReader();
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, new DbConnectorRecordState());
+		using var commandScope = CreateCommand();
+		Connector.SetActiveReader(Connector.ExecuteReaderCore());
+		using var readerScope = new DbReaderDisposer(Connector);
+		var record = new DbConnectorRecord(Connector, new DbConnectorRecordState());
 
 		do
 		{
-			while (reader.Read())
+			while (Connector.ReadReaderCore())
 				yield return map is not null ? map(record) : record.Get<T>();
 		}
-		while (reader.NextResult());
+		while (Connector.NextReaderResultCore());
 	}
 
 	private async IAsyncEnumerable<T> DoEnumerateAsync<T>(Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
-		var methods = Connector.ProviderMethods;
-
-		var command = await CreateAsync(cancellationToken).ConfigureAwait(false);
-		await using var commandScope = new AsyncScope(command).ConfigureAwait(false);
-		var reader = await methods.ExecuteReaderAsync(CachedCommand.Unwrap(command), cancellationToken).ConfigureAwait(false);
-		await using var readerScope = new AsyncScope(reader).ConfigureAwait(false);
-		var record = new DbConnectorRecord(reader, Connector.DataMapper, new DbConnectorRecordState());
+		await using var commandScope = (await CreateCommandAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		Connector.SetActiveReader(await Connector.ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
+		await using var readerScope = new DbReaderDisposer(Connector).ConfigureAwait(false);
+		var record = new DbConnectorRecord(Connector, new DbConnectorRecordState());
 
 		do
 		{
-			while (await methods.ReadAsync(reader, cancellationToken).ConfigureAwait(false))
+			while (await Connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 				yield return map is not null ? map(record) : record.Get<T>();
 		}
-		while (await methods.NextResultAsync(reader, cancellationToken).ConfigureAwait(false));
+		while (await Connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 	}
 
 	private readonly DbParametersList m_parameters;

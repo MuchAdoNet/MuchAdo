@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace MuchAdo.Parameters;
 
 internal sealed class RenamedDbParameters(DbParameters source, Func<string, string> named) : DbParameters
@@ -10,11 +8,11 @@ internal sealed class RenamedDbParameters(DbParameters source, Func<string, stri
 	internal override IEnumerable<(string Name, object? Value)> EnumerateCore(Func<string, bool>? filterName, Func<string, string>? transformName) =>
 		source.EnumerateCore(FilterName(filterName), TransformName(transformName));
 
-	internal override void ApplyCore(IDbCommand command, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName) =>
-		source.ApplyCore(command, providerMethods, FilterName(filterName), TransformName(transformName));
+	internal override void ApplyCore(DbConnector connector, Func<string, bool>? filterName, Func<string, string>? transformName) =>
+		source.ApplyCore(connector, FilterName(filterName), TransformName(transformName));
 
-	internal override int ReapplyCore(IDbCommand command, int startIndex, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName) =>
-		source.ReapplyCore(command, startIndex, providerMethods, FilterName(filterName), TransformName(transformName));
+	internal override int ReapplyCore(DbConnector connector, int startIndex, Func<string, bool>? filterName, Func<string, string>? transformName) =>
+		source.ReapplyCore(connector, startIndex, FilterName(filterName), TransformName(transformName));
 
 	private Func<string, bool>? FilterName(Func<string, bool>? filterName) =>
 		filterName is null ? null : x => filterName(named(x));

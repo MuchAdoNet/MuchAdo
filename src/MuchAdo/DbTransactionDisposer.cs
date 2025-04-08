@@ -1,7 +1,7 @@
 namespace MuchAdo;
 
 /// <summary>
-/// Disposes the transaction when disposed.
+/// Disposes the current transaction when disposed.
 /// </summary>
 public readonly struct DbTransactionDisposer(DbConnector? connector) : IDisposable, IAsyncDisposable
 {

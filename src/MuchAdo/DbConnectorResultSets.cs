@@ -1,4 +1,3 @@
-using System.Data;
 using System.Runtime.CompilerServices;
 
 namespace MuchAdo;
@@ -70,8 +69,8 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <seealso cref="DisposeAsync" />
 	public void Dispose()
 	{
-		m_reader.Dispose();
-		m_command.Dispose();
+		m_connector.DisposeActiveReader();
+		m_connector.DisposeActiveCommand();
 	}
 
 	/// <summary>
@@ -80,71 +79,65 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 	/// <seealso cref="Dispose" />
 	public async ValueTask DisposeAsync()
 	{
-		await m_methods.DisposeReaderAsync(m_reader).ConfigureAwait(false);
-		await m_methods.DisposeCommandAsync(m_command).ConfigureAwait(false);
+		await m_connector.DisposeActiveReaderAsync().ConfigureAwait(false);
+		await m_connector.DisposeActiveCommandAsync().ConfigureAwait(false);
 	}
 
-	internal DbConnectorResultSets(IDbCommand command, IDataReader reader, DbProviderMethods methods, DbDataMapper mapper)
+	internal DbConnectorResultSets(DbConnector connector)
 	{
-		m_command = command;
-		m_reader = reader;
-		m_methods = methods;
-		m_mapper = mapper;
+		m_connector = connector;
 	}
 
 	private IReadOnlyList<T> DoRead<T>(Func<DbConnectorRecord, T>? map)
 	{
-		if (m_next && !m_reader.NextResult())
+		if (m_next && !m_connector.NextReaderResultCore())
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
 		var list = new List<T>();
-		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
-		while (m_reader.Read())
+		var record = new DbConnectorRecord(m_connector, new DbConnectorRecordState());
+		while (m_connector.ReadReaderCore())
 			list.Add(map is not null ? map(record) : record.Get<T>());
 		return list;
 	}
 
 	private async ValueTask<IReadOnlyList<T>> DoReadAsync<T>(Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
-		if (m_next && !await m_methods.NextResultAsync(m_reader, cancellationToken).ConfigureAwait(false))
+		if (m_next && !await m_connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false))
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
 		var list = new List<T>();
-		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
-		while (await m_methods.ReadAsync(m_reader, cancellationToken).ConfigureAwait(false))
+		var record = new DbConnectorRecord(m_connector, new DbConnectorRecordState());
+		while (await m_connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 			list.Add(map is not null ? map(record) : record.Get<T>());
 		return list;
 	}
 
 	private IEnumerable<T> DoEnumerate<T>(Func<DbConnectorRecord, T>? map)
 	{
-		if (m_next && !m_reader.NextResult())
+		if (m_next && !m_connector.NextReaderResultCore())
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
-		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
-		while (m_reader.Read())
+		var record = new DbConnectorRecord(m_connector, new DbConnectorRecordState());
+		while (m_connector.ReadReaderCore())
 			yield return map is not null ? map(record) : record.Get<T>();
 	}
 
 	private async IAsyncEnumerable<T> DoEnumerateAsync<T>(Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
-		if (m_next && !await m_methods.NextResultAsync(m_reader, cancellationToken).ConfigureAwait(false))
+		if (m_next && !await m_connector.NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false))
 			throw CreateNoMoreResultsException();
 		m_next = true;
 
-		var record = new DbConnectorRecord(m_reader, m_mapper, new DbConnectorRecordState());
-		while (await m_methods.ReadAsync(m_reader, cancellationToken).ConfigureAwait(false))
+		var record = new DbConnectorRecord(m_connector, new DbConnectorRecordState());
+		while (await m_connector.ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 			yield return map is not null ? map(record) : record.Get<T>();
 	}
 
 	private static InvalidOperationException CreateNoMoreResultsException() => new("No more results.");
 
-	private readonly IDbCommand m_command;
-	private readonly IDataReader m_reader;
-	private readonly DbProviderMethods m_methods;
-	private readonly DbDataMapper m_mapper;
+	private readonly DbConnector m_connector;
 	private bool m_next;
 }

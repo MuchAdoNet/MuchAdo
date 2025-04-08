@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace MuchAdo;
 
 /// <summary>
@@ -39,19 +37,19 @@ public sealed class DbParametersList : DbParameters
 	internal override IEnumerable<(string Name, object? Value)> EnumerateCore(Func<string, bool>? filterName, Func<string, string>? transformName) =>
 		m_parametersList.SelectMany(x => x.EnumerateCore(filterName, transformName));
 
-	internal override void ApplyCore(IDbCommand command, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName)
+	internal override void ApplyCore(DbConnector connector, Func<string, bool>? filterName, Func<string, string>? transformName)
 	{
 		m_isReadOnly = true;
 		foreach (var parameters in m_parametersList)
-			parameters.ApplyCore(command, providerMethods, filterName, transformName);
+			parameters.ApplyCore(connector, filterName, transformName);
 	}
 
-	internal override int ReapplyCore(IDbCommand command, int startIndex, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName)
+	internal override int ReapplyCore(DbConnector connector, int startIndex, Func<string, bool>? filterName, Func<string, string>? transformName)
 	{
 		m_isReadOnly = true;
 		var parameterCount = 0;
 		foreach (var parameters in m_parametersList)
-			parameterCount += parameters.ReapplyCore(command, startIndex + parameterCount, providerMethods, filterName, transformName);
+			parameterCount += parameters.ReapplyCore(connector, startIndex + parameterCount, filterName, transformName);
 		return parameterCount;
 	}
 

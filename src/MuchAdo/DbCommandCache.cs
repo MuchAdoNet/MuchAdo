@@ -3,9 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace MuchAdo;
 
-/// <summary>
-/// A cache of <see cref="IDbCommand" /> by command text.
-/// </summary>
 internal sealed class DbCommandCache
 {
 	public bool TryGetCommand(string text, [MaybeNullWhen(false)] out IDbCommand command) => m_dictionary.TryGetValue(text, out command);

@@ -448,7 +448,11 @@ internal sealed class DbConnectorTests
 	[Test]
 	public void TimeoutUnitTests()
 	{
-		var command = CreateConnector().Command("values (0);");
+		var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
+		connector.Command("insert into Items (Name) values ('xyzzy'), ('abccb');").Execute();
+
+		var command = connector.Command("select Name from Items;");
 
 		command.Timeout.Should().Be(null);
 
@@ -457,13 +461,16 @@ internal sealed class DbConnectorTests
 
 		var oneMinuteCommand = command.WithTimeout(TimeSpan.FromMinutes(1));
 		oneMinuteCommand.Timeout.Should().Be(TimeSpan.FromMinutes(1));
-		oneMinuteCommand.Create().CommandTimeout.Should().Be(60);
+		foreach (var name in oneMinuteCommand.Enumerate<string>())
+			connector.ActiveCommand.CommandTimeout.Should().Be(60);
 		var halfSecondCommand = command.WithTimeout(TimeSpan.FromMilliseconds(500));
 		halfSecondCommand.Timeout.Should().Be(TimeSpan.FromMilliseconds(500));
-		halfSecondCommand.Create().CommandTimeout.Should().Be(1);
+		foreach (var name in halfSecondCommand.Enumerate<string>())
+			connector.ActiveCommand.CommandTimeout.Should().Be(1);
 		var noTimeoutCommand = command.WithTimeout(Timeout.InfiniteTimeSpan);
 		noTimeoutCommand.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
-		noTimeoutCommand.Create().CommandTimeout.Should().Be(0);
+		foreach (var name in noTimeoutCommand.Enumerate<string>())
+			connector.ActiveCommand.CommandTimeout.Should().Be(0);
 	}
 
 	[Test]

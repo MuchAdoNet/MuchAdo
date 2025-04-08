@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Data.Sqlite;
 using NUnit.Framework;
 using static FluentAssertions.FluentActions;
 
@@ -85,20 +84,9 @@ internal sealed class DbParametersTests
 		parameters.Count.Should().Be(1);
 		parameters.Enumerate().Should().Equal(("three", 3));
 
-		using var connection = new SqliteConnection("Data Source=:memory:");
-		using var command = connection.CreateCommand();
-		parameters.Apply(command, DbProviderMethods.Default);
-		command.Parameters.Count.Should().Be(1);
-		command.Parameters[0].ParameterName.Should().Be("three");
-		command.Parameters[0].Value.Should().Be(3);
-
 		parameters = DbParameters.FromDto(new { one = 10, Two = 20, three = 30 }).Where(x => x[0] == 't').Renamed(x => x.ToUpperInvariant()).Where(x => x[0] == 'T').Renamed(x => x.ToLowerInvariant());
 		parameters.Count.Should().Be(1);
 		parameters.Enumerate().Should().Equal(("three", 30));
-
-		parameters.Reapply(command, 0, DbProviderMethods.Default);
-		command.Parameters[0].ParameterName.Should().Be("three");
-		command.Parameters[0].Value.Should().Be(30);
 	}
 
 	[Test]

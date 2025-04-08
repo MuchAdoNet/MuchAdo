@@ -1,4 +1,3 @@
-using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using MuchAdo.Parameters;
 
@@ -80,19 +79,19 @@ public abstract class DbParameters
 		return new RenamedDbParameters(this, transform);
 	}
 
-	internal void Apply(IDbCommand command, DbProviderMethods providerMethods) =>
-		ApplyCore(command, providerMethods, filterName: null, transformName: null);
+	internal void Apply(DbConnector connector) =>
+		ApplyCore(connector, filterName: null, transformName: null);
 
-	internal int Reapply(IDbCommand command, int startIndex, DbProviderMethods providerMethods) =>
-		ReapplyCore(command, startIndex, providerMethods, filterName: null, transformName: null);
+	internal int Reapply(DbConnector connector, int startIndex) =>
+		ReapplyCore(connector, startIndex, filterName: null, transformName: null);
 
 	internal abstract int CountCore(Func<string, bool>? filterName, Func<string, string>? transformName);
 
 	internal abstract IEnumerable<(string Name, object? Value)> EnumerateCore(Func<string, bool>? filterName, Func<string, string>? transformName);
 
-	internal abstract void ApplyCore(IDbCommand command, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName);
+	internal abstract void ApplyCore(DbConnector connector, Func<string, bool>? filterName, Func<string, string>? transformName);
 
-	internal abstract int ReapplyCore(IDbCommand command, int startIndex, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName);
+	internal abstract int ReapplyCore(DbConnector connector, int startIndex, Func<string, bool>? filterName, Func<string, string>? transformName);
 
 	private sealed class EmptyDbParameters : DbParameters
 	{
@@ -100,10 +99,10 @@ public abstract class DbParameters
 
 		internal override IEnumerable<(string Name, object? Value)> EnumerateCore(Func<string, bool>? filterName, Func<string, string>? transformName) => [];
 
-		internal override void ApplyCore(IDbCommand command, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName)
+		internal override void ApplyCore(DbConnector connector, Func<string, bool>? filterName, Func<string, string>? transformName)
 		{
 		}
 
-		internal override int ReapplyCore(IDbCommand command, int startIndex, DbProviderMethods providerMethods, Func<string, bool>? filterName, Func<string, string>? transformName) => 0;
+		internal override int ReapplyCore(DbConnector connector, int startIndex, Func<string, bool>? filterName, Func<string, string>? transformName) => 0;
 	}
 }
