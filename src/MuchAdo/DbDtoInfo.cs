@@ -3,11 +3,6 @@ using System.Reflection;
 
 namespace MuchAdo;
 
-internal static class DbDtoInfo
-{
-	public static DbDtoInfo<T> GetInfo<T>() => DbDtoInfo<T>.Instance;
-}
-
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 internal sealed class DbDtoInfo<T>
 {
@@ -114,4 +109,10 @@ internal sealed class DbDtoInfo<T>
 	}
 
 	private readonly Lazy<Creator?[]> m_lazyCreators;
+}
+
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
+internal static class DbDtoInfo
+{
+	public static DbDtoInfo<T> GetInfo<T>() => DbDtoInfo<T>.Instance;
 }

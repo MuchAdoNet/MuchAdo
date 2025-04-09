@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
-using System.Text.RegularExpressions;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace MuchAdo.SqlFormatting;
 
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 public sealed class ColumnNamesSql<T> : Sql
 {
 	public ColumnNamesSql<T> From(string tableName) =>
@@ -34,18 +36,18 @@ public sealed class ColumnNamesSql<T> : Sql
 		var text = string.Join(", ",
 			filteredProperties.Select(x => tablePrefix + syntax.QuoteName(
 				x.ColumnName ??
-				(useSnakeCase ? s_snakeCaseCache.GetOrAdd(x.Name, ToSnakeCase) : x.Name))));
+				(useSnakeCase ? ColumnNamesSql.SnakeCaseCache.GetOrAdd(x.Name, JsonNamingPolicy.SnakeCaseLower.ConvertName) : x.Name))));
 		if (text.Length == 0)
 			throw new InvalidOperationException($"The specified type has no remaining columns: {typeof(T).FullName}");
 		return text;
 	}
 
-	private static string ToSnakeCase(string value) => string.Join("_", s_word.Matches(value).Cast<Match>().Select(x => x.Value.ToLowerInvariant()));
-
-	private static readonly Regex s_word = new Regex("[A-Z]([A-Z]*(?![a-z])|[a-z]*)|[a-z]+|[0-9]+", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture);
-
-	private static readonly ConcurrentDictionary<string, string> s_snakeCaseCache = new();
-
 	private readonly string m_tableName;
 	private readonly Func<string, bool>? m_filterName;
+}
+
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
+internal static class ColumnNamesSql
+{
+	internal static ConcurrentDictionary<string, string> SnakeCaseCache { get; } = new();
 }

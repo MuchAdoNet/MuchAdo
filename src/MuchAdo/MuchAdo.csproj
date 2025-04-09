@@ -10,11 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <!--<PackageReference Include="IndexRange" />-->
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
-    <!--<PackageReference Include="System.Runtime.CompilerServices.Unsafe" />-->
     <PackageReference Include="System.Memory" />
     <PackageReference Include="System.Threading.Tasks.Extensions" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <ItemGroup>
