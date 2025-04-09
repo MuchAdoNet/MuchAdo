@@ -88,7 +88,7 @@ public sealed class DbConnectorResultSets : IDisposable, IAsyncDisposable
 		m_connector = connector;
 	}
 
-	private IReadOnlyList<T> DoRead<T>(Func<DbConnectorRecord, T>? map)
+	private List<T> DoRead<T>(Func<DbConnectorRecord, T>? map)
 	{
 		if (m_next && !m_connector.NextReaderResultCore())
 			throw CreateNoMoreResultsException();

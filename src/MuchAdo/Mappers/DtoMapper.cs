@@ -139,7 +139,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 
 	private static string NormalizeFieldName(string text) => text.ReplaceOrdinal("_", "");
 
-	private readonly IReadOnlyDictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>? m_propertiesByNormalizedFieldName;
+	private readonly Dictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>? m_propertiesByNormalizedFieldName;
 
 	private readonly ConcurrentDictionary<DtoMapper.FieldNameSet, Func<IDataRecord, int, DbConnectorRecordState?, T>> m_funcsByFieldNameSet = new();
 }

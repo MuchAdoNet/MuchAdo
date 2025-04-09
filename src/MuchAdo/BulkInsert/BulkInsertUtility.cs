@@ -57,9 +57,9 @@ public static class BulkInsertUtility
 		for (var index = 1; index < tupleParts.Length; index += 2)
 		{
 			var name = tupleParts[index];
-			tupleParameters[name] = tupleParameters.TryGetValue(name, out var indices) ? indices.Append(index).ToArray() : [index];
+			tupleParameters[name] = tupleParameters.TryGetValue(name, out var indices) ? [.. indices, index] : [index];
 			name = name.Substring(1);
-			tupleParameters[name] = tupleParameters.TryGetValue(name, out indices) ? indices.Append(index).ToArray() : [index];
+			tupleParameters[name] = tupleParameters.TryGetValue(name, out indices) ? [.. indices, index] : [index];
 		}
 
 		var maxParametersPerBatch = settings?.MaxParametersPerBatch ?? (settings?.MaxRowsPerBatch is null ? c_defaultMaxParametersPerBatch : int.MaxValue);

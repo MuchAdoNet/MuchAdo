@@ -31,7 +31,7 @@ internal sealed class DbDtoInfo<T>
 		Properties = properties;
 
 		m_lazyCreators = new Lazy<Creator?[]>(
-			() => GetCreators().OrderBy(x => x?.Parameters.Length ?? 0).ToArray());
+			() => [.. GetCreators().OrderBy(x => x?.Parameters.Length ?? 0)]);
 
 		static bool IsPublicNonStaticProperty(PropertyInfo info) => info.GetMethod is { IsPublic: true, IsStatic: false };
 

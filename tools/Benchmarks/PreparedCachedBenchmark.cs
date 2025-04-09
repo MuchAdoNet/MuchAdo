@@ -106,7 +106,7 @@ public abstract class PreparedCachedBenchmark : IDisposable
 
 	public void Dispose() => m_connector.Dispose();
 
-	private DbParameters Params(int i) => new DbParametersList(Enumerable.Range(0, m_paramCount).Select(x => DbParameters.Create($"Value{x}", (object?) Param(i + x))));
+	private DbParametersList Params(int i) => new(Enumerable.Range(0, m_paramCount).Select(x => DbParameters.Create($"Value{x}", (object?) Param(i + x))));
 
 	private object Param(int x) => m_createParameter is null ? x : m_createParameter(x);
 
