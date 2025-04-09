@@ -190,7 +190,7 @@ public abstract class Sql
 				.Where(x => x.RawSql.Length != 0)
 				.Select(x => x.NeedsParens ? $"({x.RawSql})" : x.RawSql)
 				.ToList();
-			return string.Join(context.Syntax.LowerCaseKeywords ? lowercase : uppercase, rawSqls);
+			return string.Join(context.Syntax.LowercaseKeywords ? lowercase : uppercase, rawSqls);
 		}
 	}
 
@@ -225,7 +225,7 @@ public abstract class Sql
 		internal override string Render(SqlContext context)
 		{
 			var rawSql = sql.Render(context);
-			return rawSql.Length == 0 ? "" : (context.Syntax.LowerCaseKeywords ? lowercase : uppercase) + rawSql;
+			return rawSql.Length == 0 ? "" : (context.Syntax.LowercaseKeywords ? lowercase : uppercase) + rawSql;
 		}
 	}
 

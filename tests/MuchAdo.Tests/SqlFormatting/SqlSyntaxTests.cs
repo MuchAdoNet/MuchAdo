@@ -408,7 +408,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("one,two,three", "one and two and three", true)]
 	public void And(string values, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.And(values.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(Sql.Raw)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);
@@ -420,7 +420,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("one,two,three", "one or two or three", true)]
 	public void Or(string values, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.Or(values.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(Sql.Raw)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);
@@ -439,7 +439,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("true", "where true", true)]
 	public void Where(string condition, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.Where(Sql.Raw(condition)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);
@@ -450,7 +450,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("x asc;y desc", "order by x asc, y desc", true)]
 	public void OrderBy(string columns, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.OrderBy(columns.Split([';'], StringSplitOptions.RemoveEmptyEntries).Select(Sql.Raw)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);
@@ -461,7 +461,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("x;y", "group by x, y", true)]
 	public void GroupBy(string columns, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.GroupBy(columns.Split([';'], StringSplitOptions.RemoveEmptyEntries).Select(Sql.Raw)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);
@@ -472,7 +472,7 @@ internal sealed class SqlSyntaxTests
 	[TestCase("x < 1", "having x < 1", true)]
 	public void Having(string condition, string sql, bool lowercase = false)
 	{
-		var syntax = lowercase ? SqlSyntax.Default.WithLowerCaseKeywords() : SqlSyntax.Default;
+		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = syntax.Render(Sql.Having(Sql.Raw(condition)));
 		text.Should().Be(sql);
 		parameters.Count.Should().Be(0);

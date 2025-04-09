@@ -62,12 +62,12 @@ public sealed class SqlSyntax
 	/// <summary>
 	/// True if lowercase should be used when generating SQL keywords.
 	/// </summary>
-	public bool LowerCaseKeywords { get; private init; }
+	public bool LowercaseKeywords { get; private init; }
 
 	/// <summary>
 	/// Creates a new syntax with the specified lowercase keywords setting.
 	/// </summary>
-	public SqlSyntax WithLowerCaseKeywords(bool value = true) => new(this) { LowerCaseKeywords = value };
+	public SqlSyntax WithLowercaseKeywords(bool value = true) => new(this) { LowercaseKeywords = value };
 
 	/// <summary>
 	/// The start character used to indicate a parameter.
@@ -133,7 +133,7 @@ public sealed class SqlSyntax
 		IdentifierQuoting = SqlIdentifierQuoting.Throw;
 		ParameterStart = '@';
 		SnakeCaseColumnNames = false;
-		LowerCaseKeywords = false;
+		LowercaseKeywords = false;
 		UnnamedParameterPrefix = "ado";
 	}
 
@@ -141,7 +141,7 @@ public sealed class SqlSyntax
 	{
 		IdentifierQuoting = source.IdentifierQuoting;
 		SnakeCaseColumnNames = source.SnakeCaseColumnNames;
-		LowerCaseKeywords = source.LowerCaseKeywords;
+		LowercaseKeywords = source.LowercaseKeywords;
 		ParameterStart = source.ParameterStart;
 		UnnamedParameterPrefix = source.UnnamedParameterPrefix;
 	}
