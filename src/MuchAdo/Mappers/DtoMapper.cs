@@ -1,9 +1,29 @@
 using System.Collections.Concurrent;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 
 namespace MuchAdo.Mappers;
 
+internal static class DtoMapper
+{
+	internal static readonly ParameterExpression RecordParam = Expression.Parameter(typeof(IDataRecord), "record");
+	internal static readonly ParameterExpression IndexParam = Expression.Parameter(typeof(int), "index");
+	internal static readonly ParameterExpression StateParam = Expression.Parameter(typeof(DbConnectorRecordState), "state");
+
+	internal sealed class FieldNameSet(IReadOnlyList<string> names) : IEquatable<FieldNameSet>
+	{
+		public IReadOnlyList<string> Names { get; } = names;
+
+		public bool Equals(FieldNameSet? other) => other is not null && Names.SequenceEqual(other.Names, StringComparer.OrdinalIgnoreCase);
+
+		public override bool Equals(object? obj) => obj is FieldNameSet other && Equals(other);
+
+		public override int GetHashCode() => Names.Aggregate(0, (hash, name) => PortableUtility.CombineHashCodes(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(name)));
+	}
+}
+
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 internal sealed class DtoMapper<T> : DbTypeMapper<T>
 {
 	public DtoMapper(DbDataMapper mapper)
@@ -28,7 +48,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 			var fieldNames = new string[count];
 			for (var i = 0; i < count; i++)
 				fieldNames[i] = record.GetName(index + i);
-			func = m_funcsByFieldNameSet.GetOrAdd(new FieldNameSet(fieldNames), CreateFunc);
+			func = m_funcsByFieldNameSet.GetOrAdd(new DtoMapper.FieldNameSet(fieldNames), CreateFunc);
 			state?.Set(this, index, count, func);
 		}
 
@@ -45,7 +65,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 		return true;
 	}
 
-	private Func<IDataRecord, int, DbConnectorRecordState?, T> CreateFunc(FieldNameSet fieldNameSet)
+	private Func<IDataRecord, int, DbConnectorRecordState?, T> CreateFunc(DtoMapper.FieldNameSet fieldNameSet)
 	{
 		foreach (var creator in DbDtoInfo.GetInfo<T>().Creators)
 		{
@@ -66,10 +86,10 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 						Expression.Call(
 							Expression.Constant(property.Mapper),
 							property.Mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
-							DbDataMapper.RecordParam,
-							Expression.Add(DbDataMapper.IndexParam, Expression.Constant(index)),
+							DtoMapper.RecordParam,
+							Expression.Add(DtoMapper.IndexParam, Expression.Constant(index)),
 							Expression.Constant(1),
-							DbDataMapper.StateParam);
+							DtoMapper.StateParam);
 				}
 				else
 				{
@@ -85,10 +105,10 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 							Expression.Call(
 								Expression.Constant(property.Mapper),
 								property.Mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
-								DbDataMapper.RecordParam,
-								Expression.Add(DbDataMapper.IndexParam, Expression.Constant(index)),
+								DtoMapper.RecordParam,
+								Expression.Add(DtoMapper.IndexParam, Expression.Constant(index)),
 								Expression.Constant(1),
-								DbDataMapper.StateParam)));
+								DtoMapper.StateParam)));
 				}
 			}
 			if (!canCreate)
@@ -111,7 +131,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 				? Expression.MemberInit(newExpression, memberBindings)
 				: (Expression) newExpression;
 			return (Func<IDataRecord, int, DbConnectorRecordState?, T>)
-				Expression.Lambda(initExpression, DbDataMapper.RecordParam, DbDataMapper.IndexParam, DbDataMapper.StateParam).Compile();
+				Expression.Lambda(initExpression, DtoMapper.RecordParam, DtoMapper.IndexParam, DtoMapper.StateParam).Compile();
 		}
 
 		throw new InvalidOperationException($"DTO {typeof(T).FullName} could not be created from fields: {string.Join(", ", fieldNameSet.Names)}");
@@ -121,16 +141,5 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 
 	private readonly IReadOnlyDictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>? m_propertiesByNormalizedFieldName;
 
-	private sealed class FieldNameSet(IReadOnlyList<string> names) : IEquatable<FieldNameSet>
-	{
-		public IReadOnlyList<string> Names { get; } = names;
-
-		public bool Equals(FieldNameSet? other) => other is not null && Names.SequenceEqual(other.Names, StringComparer.OrdinalIgnoreCase);
-
-		public override bool Equals(object? obj) => obj is FieldNameSet other && Equals(other);
-
-		public override int GetHashCode() => Names.Aggregate(0, (hash, name) => PortableUtility.CombineHashCodes(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(name)));
-	}
-
-	private readonly ConcurrentDictionary<FieldNameSet, Func<IDataRecord, int, DbConnectorRecordState?, T>> m_funcsByFieldNameSet = new();
+	private readonly ConcurrentDictionary<DtoMapper.FieldNameSet, Func<IDataRecord, int, DbConnectorRecordState?, T>> m_funcsByFieldNameSet = new();
 }

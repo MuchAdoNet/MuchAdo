@@ -1,9 +1,9 @@
 namespace MuchAdo;
 
 /// <summary>
-/// Settings when creating a <see cref="DbDataMapper"/>.
+/// Settings when creating a <see cref="DefaultDbTypeMapperFactory"/>.
 /// </summary>
-public class DbDataMapperSettings
+public class DefaultDbTypeMapperSettings
 {
 	/// <summary>
 	/// True to allow strings to be mapped to enums.

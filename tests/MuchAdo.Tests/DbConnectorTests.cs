@@ -489,7 +489,7 @@ internal sealed class DbConnectorTests
 	[TestCase(false)]
 	public void EnumQueryTests(bool flexible)
 	{
-		using var connector = CreateConnector(new DbDataMapperSettings { AllowStringToEnum = flexible });
+		using var connector = CreateConnector(new DefaultDbTypeMapperSettings { AllowStringToEnum = flexible });
 		connector.Command("create table Items (ItemId integer primary key, Name text null, Number integer null);").Execute();
 		connector.Command("insert into Items (Name, Number) values ('Ordinal', 4), ('ordinal', null), (null, 4), ('fail', null);").Execute();
 
@@ -570,9 +570,9 @@ internal sealed class DbConnectorTests
 		throw new InvalidOperationException();
 	}
 
-	private static DbConnector CreateConnector(DbDataMapperSettings? dataMapperSettings = null) =>
+	private static DbConnector CreateConnector(DefaultDbTypeMapperSettings? defaultTypeMapperSettings = null) =>
 		new(new SqliteConnection("Data Source=:memory:"),
-			dataMapperSettings is null ? null : new DbConnectorSettings { DataMapper = new DbDataMapper(dataMapperSettings) });
+			defaultTypeMapperSettings is null ? null : new DbConnectorSettings { DataMapper = new DbDataMapper(new DefaultDbTypeMapperFactory(defaultTypeMapperSettings)) });
 
 	private static string ToUpper(DbConnectorRecord x) => x.Get<string>().ToUpperInvariant();
 }

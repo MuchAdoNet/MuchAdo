@@ -51,7 +51,7 @@ internal sealed class SqlSyntaxTests
 	[Test]
 	public void NamedParamSql()
 	{
-		var (text, parameters) = Render(Sql.Param("abccb", "xyzzy"));
+		var (text, parameters) = Render(Sql.NamedParam("abccb", "xyzzy"));
 		text.Should().Be("@abccb");
 		parameters.Enumerate().Should().Equal(("abccb", "xyzzy"));
 	}
@@ -60,7 +60,7 @@ internal sealed class SqlSyntaxTests
 	public void ParamOfSql()
 	{
 		Invoking(() => Render(Sql.Param(Sql.Raw("xyzzy")))).Should().Throw<ArgumentException>();
-		Invoking(() => Render(Sql.Param("abccb", Sql.Raw("xyzzy")))).Should().Throw<ArgumentException>();
+		Invoking(() => Render(Sql.NamedParam("abccb", Sql.Raw("xyzzy")))).Should().Throw<ArgumentException>();
 	}
 
 	[Test]

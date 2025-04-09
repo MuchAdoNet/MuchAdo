@@ -120,7 +120,7 @@ public abstract class Sql
 	/// <summary>
 	/// Creates SQL for a named parameter with the specified value.
 	/// </summary>
-	public static Sql Param<T>(string name, T value)
+	public static Sql NamedParam<T>(string name, T value)
 	{
 		if (value is Sql)
 			throw new ArgumentException("Parameters should not be created from Sql instances.", nameof(value));
