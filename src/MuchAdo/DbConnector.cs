@@ -311,10 +311,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	public void AttachDisposable(object disposable)
 	{
-		if (!m_disposable.IsDefault)
+		if (m_disposable is not null)
 			throw new InvalidOperationException("A disposable is already attached.");
 
-		m_disposable = new AsyncScope(disposable);
+		m_disposable = disposable;
 	}
 
 	/// <summary>
@@ -338,6 +338,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (!m_noDisposeConnection)
 			m_connection.Dispose();
 		DisposeConnectionCore();
+		DisposeDisposable();
 		m_isDisposed = true;
 	}
 
@@ -362,7 +363,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			await DisposeCachedCommandsAsync().ConfigureAwait(false);
 			if (!m_noDisposeConnection)
 				await DisposeConnectionCoreAsync().ConfigureAwait(false);
-			await m_disposable.DisposeAsync().ConfigureAwait(false);
+			await DisposeDisposableAsync().ConfigureAwait(false);
 			m_isDisposed = true;
 		}
 	}
@@ -1124,6 +1125,25 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw new InvalidOperationException("No transaction available; call BeginTransaction first.");
 	}
 
+	public void DisposeDisposable()
+	{
+		if (m_disposable is IDisposable disposable)
+			disposable.Dispose();
+		else if (m_disposable is IAsyncDisposable asyncDisposable)
+			asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+	}
+
+	public ValueTask DisposeDisposableAsync()
+	{
+		if (m_disposable is IAsyncDisposable asyncDisposable)
+			return asyncDisposable.DisposeAsync();
+
+		if (m_disposable is IDisposable disposable)
+			disposable.Dispose();
+
+		return default;
+	}
+
 	private static InvalidOperationException CreateNoRecordsException() => new("No records were found; use 'OrDefault' to permit this.");
 
 	private static InvalidOperationException CreateTooManyRecordsException() => new("Additional records were found; use 'First' to permit this.");
@@ -1138,7 +1158,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private IDbCommand? m_activeCommand;
 	private IDataReader? m_activeReader;
 	private DbCommandCache? m_commandCache;
-	private AsyncScope m_disposable;
+	private object? m_disposable;
 	private bool m_isConnectionOpen;
 	private bool m_isDisposed;
 	private bool m_noDisposeTransaction;
