@@ -629,12 +629,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads the next record.
 	/// </summary>
-	protected internal virtual bool ReadReaderCore() => ActiveReader.Read();
+	protected virtual bool ReadReaderCore() => ActiveReader.Read();
 
 	/// <summary>
 	/// Reads the next record asynchronously.
 	/// </summary>
-	protected internal virtual ValueTask<bool> ReadReaderCoreAsync(CancellationToken cancellationToken)
+	protected virtual ValueTask<bool> ReadReaderCoreAsync(CancellationToken cancellationToken)
 	{
 		if (ActiveReader is DbDataReader dbReader)
 			return new ValueTask<bool>(dbReader.ReadAsync(cancellationToken));
@@ -645,12 +645,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Reads the next result.
 	/// </summary>
-	protected internal virtual bool NextReaderResultCore() => ActiveReader.NextResult();
+	protected virtual bool NextReaderResultCore() => ActiveReader.NextResult();
 
 	/// <summary>
 	/// Reads the next result asynchronously.
 	/// </summary>
-	protected internal virtual ValueTask<bool> NextReaderResultCoreAsync(CancellationToken cancellationToken)
+	protected virtual ValueTask<bool> NextReaderResultCoreAsync(CancellationToken cancellationToken)
 	{
 		if (ActiveReader is DbDataReader dbReader)
 			return new ValueTask<bool>(dbReader.NextResultAsync(cancellationToken));
@@ -682,7 +682,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Creates a parameter with the specified name and value.
 	/// </summary>
-	protected internal virtual IDataParameter CreateParameterCore<T>(string name, T value)
+	protected virtual IDataParameter CreateParameterCore<T>(string name, T value)
 	{
 		var parameter = ActiveCommand.CreateParameter();
 		parameter.ParameterName = name;
@@ -693,7 +693,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Updates the parameter value of a parameter.
 	/// </summary>
-	protected internal virtual void SetParameterValueCore<T>(IDataParameter parameter, T value)
+	protected virtual void SetParameterValueCore<T>(IDataParameter parameter, T value)
 	{
 		parameter.Value = value switch
 		{
@@ -708,6 +708,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal DbCommandCache CommandCache => m_commandCache ??= new();
 
 	internal DbConnectorPool? ConnectorPool { get; set; }
+
+	internal IDataParameter CreateParameter<T>(string name, T value) => CreateParameterCore<T>(name, value);
+
+	internal void SetParameterValue<T>(IDataParameter parameter, T value) => SetParameterValueCore(parameter, value);
 
 	internal int ExecuteCommand(DbConnectorCommand connectorCommand)
 	{

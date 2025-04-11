@@ -23,7 +23,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 			if (value is IDataParameter dbParameter)
 				dbParameter.ParameterName = transformedName;
 			else
-				dbParameter = connector.CreateParameterCore(transformedName, value);
+				dbParameter = connector.CreateParameter(transformedName, value);
 
 			connector.ActiveCommand.Parameters.Add(dbParameter);
 		}
@@ -50,7 +50,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 					throw new InvalidOperationException($"Cached commands must always be executed with the same parameters (missing '{transformedName}').");
 			}
 
-			connector.SetParameterValueCore(dbParameter, value);
+			connector.SetParameterValue(dbParameter, value);
 			return 1;
 		}
 
