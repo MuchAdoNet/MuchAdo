@@ -25,7 +25,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 			else
 				dbParameter = connector.CreateParameter(transformedName, value);
 
-			connector.ActiveCommand.Parameters.Add(dbParameter);
+			connector.ActiveCommand!.Parameters.Add(dbParameter);
 		}
 	}
 
@@ -33,7 +33,7 @@ internal sealed class SingleDbParameter<T>(string name, T value) : DbParameters
 	{
 		if (filterName is null || filterName(name))
 		{
-			var command = connector.ActiveCommand;
+			var command = connector.ActiveCommand!;
 			var transformedName = transformName is null ? name : transformName(name);
 			var dbParameter = command.Parameters[startIndex] as IDataParameter;
 			if (dbParameter is null || dbParameter.ParameterName != transformedName)

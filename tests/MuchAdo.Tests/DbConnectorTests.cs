@@ -462,15 +462,15 @@ internal sealed class DbConnectorTests
 		var oneMinuteCommand = command.WithTimeout(TimeSpan.FromMinutes(1));
 		oneMinuteCommand.Timeout.Should().Be(TimeSpan.FromMinutes(1));
 		foreach (var name in oneMinuteCommand.Enumerate<string>())
-			connector.ActiveCommand.CommandTimeout.Should().Be(60);
+			connector.ActiveCommand!.CommandTimeout.Should().Be(60);
 		var halfSecondCommand = command.WithTimeout(TimeSpan.FromMilliseconds(500));
 		halfSecondCommand.Timeout.Should().Be(TimeSpan.FromMilliseconds(500));
 		foreach (var name in halfSecondCommand.Enumerate<string>())
-			connector.ActiveCommand.CommandTimeout.Should().Be(1);
+			connector.ActiveCommand!.CommandTimeout.Should().Be(1);
 		var noTimeoutCommand = command.WithTimeout(Timeout.InfiniteTimeSpan);
 		noTimeoutCommand.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
 		foreach (var name in noTimeoutCommand.Enumerate<string>())
-			connector.ActiveCommand.CommandTimeout.Should().Be(0);
+			connector.ActiveCommand!.CommandTimeout.Should().Be(0);
 	}
 
 	[Test]

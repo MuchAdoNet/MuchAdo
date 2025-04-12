@@ -44,6 +44,16 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	public IDbTransaction? Transaction => m_transaction;
 
 	/// <summary>
+	/// The active command, if any.
+	/// </summary>
+	public IDbCommand? ActiveCommand => m_activeCommand;
+
+	/// <summary>
+	/// The active reader, if any.
+	/// </summary>
+	public IDataReader? ActiveReader => m_activeReader;
+
+	/// <summary>
 	/// The SQL syntax used when formatting SQL.
 	/// </summary>
 	public SqlSyntax SqlSyntax { get; }
@@ -368,10 +378,6 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		}
 	}
 
-	protected internal IDbCommand ActiveCommand => m_activeCommand ?? throw new InvalidOperationException("No active command available.");
-
-	protected internal IDataReader ActiveReader => m_activeReader ?? throw new InvalidOperationException("No active reader available.");
-
 	/// <summary>
 	/// Opens the connection.
 	/// </summary>
@@ -533,30 +539,30 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes a non-query command.
 	/// </summary>
-	protected virtual int ExecuteNonQueryCore() => ActiveCommand.ExecuteNonQuery();
+	protected virtual int ExecuteNonQueryCore() => ActiveCommand!.ExecuteNonQuery();
 
 	/// <summary>
 	/// Executes a non-query command asynchronously.
 	/// </summary>
 	protected virtual ValueTask<int> ExecuteNonQueryCoreAsync(CancellationToken cancellationToken)
 	{
-		if (ActiveCommand is DbCommand dbCommand)
+		if (ActiveCommand! is DbCommand dbCommand)
 			return new ValueTask<int>(dbCommand.ExecuteNonQueryAsync(cancellationToken));
 
-		return new ValueTask<int>(ActiveCommand.ExecuteNonQuery());
+		return new ValueTask<int>(ActiveCommand!.ExecuteNonQuery());
 	}
 
 	/// <summary>
 	/// Executes a command query.
 	/// </summary>
-	protected virtual IDataReader ExecuteReaderCore() => ActiveCommand.ExecuteReader();
+	protected virtual IDataReader ExecuteReaderCore() => ActiveCommand!.ExecuteReader();
 
 	/// <summary>
 	/// Executes a command query asynchronously.
 	/// </summary>
 	protected virtual ValueTask<IDataReader> ExecuteReaderCoreAsync(CancellationToken cancellationToken)
 	{
-		if (ActiveCommand is DbCommand dbCommand)
+		if (ActiveCommand! is DbCommand dbCommand)
 		{
 			static async ValueTask<IDataReader> DoAsync(DbCommand c, CancellationToken ct) =>
 				await c.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -564,20 +570,20 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return DoAsync(dbCommand, cancellationToken);
 		}
 
-		return new ValueTask<IDataReader>(ActiveCommand.ExecuteReader());
+		return new ValueTask<IDataReader>(ActiveCommand!.ExecuteReader());
 	}
 
 	/// <summary>
 	/// Executes a command query.
 	/// </summary>
-	protected virtual IDataReader ExecuteReaderCore(CommandBehavior commandBehavior) => ActiveCommand.ExecuteReader(commandBehavior);
+	protected virtual IDataReader ExecuteReaderCore(CommandBehavior commandBehavior) => ActiveCommand!.ExecuteReader(commandBehavior);
 
 	/// <summary>
 	/// Executes a command query asynchronously.
 	/// </summary>
 	protected virtual ValueTask<IDataReader> ExecuteReaderCoreAsync(CommandBehavior commandBehavior, CancellationToken cancellationToken)
 	{
-		if (ActiveCommand is DbCommand dbCommand)
+		if (ActiveCommand! is DbCommand dbCommand)
 		{
 			static async ValueTask<IDataReader> DoAsync(DbCommand c, CommandBehavior cb, CancellationToken ct) =>
 				await c.ExecuteReaderAsync(cb, ct).ConfigureAwait(false);
@@ -585,13 +591,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return DoAsync(dbCommand, commandBehavior, cancellationToken);
 		}
 
-		return new ValueTask<IDataReader>(ActiveCommand.ExecuteReader(commandBehavior));
+		return new ValueTask<IDataReader>(ActiveCommand!.ExecuteReader(commandBehavior));
 	}
 
 	/// <summary>
 	/// Prepares a command.
 	/// </summary>
-	protected virtual void PrepareCommandCore() => ActiveCommand.Prepare();
+	protected virtual void PrepareCommandCore() => ActiveCommand!.Prepare();
 
 	/// <summary>
 	/// Prepares a command asynchronously.
@@ -599,18 +605,18 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	protected virtual ValueTask PrepareCommandCoreAsync(CancellationToken cancellationToken)
 	{
 #if !NETSTANDARD2_0
-		if (ActiveCommand is DbCommand dbCommand)
+		if (ActiveCommand! is DbCommand dbCommand)
 			return new ValueTask(dbCommand.PrepareAsync(cancellationToken));
 #endif
 
-		ActiveCommand.Prepare();
+		ActiveCommand!.Prepare();
 		return default;
 	}
 
 	/// <summary>
 	/// Disposes a command.
 	/// </summary>
-	protected virtual void DisposeCommandCore() => ActiveCommand.Dispose();
+	protected virtual void DisposeCommandCore() => ActiveCommand!.Dispose();
 
 	/// <summary>
 	/// Disposes a command asynchronously.
@@ -618,50 +624,50 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	protected virtual ValueTask DisposeCommandCoreAsync()
 	{
 #if !NETSTANDARD2_0
-		if (ActiveCommand is DbCommand dbCommand)
+		if (ActiveCommand! is DbCommand dbCommand)
 			return dbCommand.DisposeAsync();
 #endif
 
-		ActiveCommand.Dispose();
+		ActiveCommand!.Dispose();
 		return default;
 	}
 
 	/// <summary>
 	/// Reads the next record.
 	/// </summary>
-	protected virtual bool ReadReaderCore() => ActiveReader.Read();
+	protected virtual bool ReadReaderCore() => ActiveReader!.Read();
 
 	/// <summary>
 	/// Reads the next record asynchronously.
 	/// </summary>
 	protected virtual ValueTask<bool> ReadReaderCoreAsync(CancellationToken cancellationToken)
 	{
-		if (ActiveReader is DbDataReader dbReader)
+		if (ActiveReader! is DbDataReader dbReader)
 			return new ValueTask<bool>(dbReader.ReadAsync(cancellationToken));
 
-		return new ValueTask<bool>(ActiveReader.Read());
+		return new ValueTask<bool>(ActiveReader!.Read());
 	}
 
 	/// <summary>
 	/// Reads the next result.
 	/// </summary>
-	protected virtual bool NextReaderResultCore() => ActiveReader.NextResult();
+	protected virtual bool NextReaderResultCore() => ActiveReader!.NextResult();
 
 	/// <summary>
 	/// Reads the next result asynchronously.
 	/// </summary>
 	protected virtual ValueTask<bool> NextReaderResultCoreAsync(CancellationToken cancellationToken)
 	{
-		if (ActiveReader is DbDataReader dbReader)
+		if (ActiveReader! is DbDataReader dbReader)
 			return new ValueTask<bool>(dbReader.NextResultAsync(cancellationToken));
 
-		return new ValueTask<bool>(ActiveReader.NextResult());
+		return new ValueTask<bool>(ActiveReader!.NextResult());
 	}
 
 	/// <summary>
 	/// Disposes a reader.
 	/// </summary>
-	protected virtual void DisposeReaderCore() => ActiveReader.Dispose();
+	protected virtual void DisposeReaderCore() => ActiveReader!.Dispose();
 
 	/// <summary>
 	/// Disposes a reader asynchronously.
@@ -669,11 +675,11 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	protected virtual ValueTask DisposeReaderCoreAsync()
 	{
 #if !NETSTANDARD2_0
-		if (ActiveReader is DbDataReader dbReader)
+		if (ActiveReader! is DbDataReader dbReader)
 			return dbReader.DisposeAsync();
 #endif
 
-		ActiveReader.Dispose();
+		ActiveReader!.Dispose();
 		return default;
 	}
 
@@ -684,7 +690,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual IDataParameter CreateParameterCore<T>(string name, T value)
 	{
-		var parameter = ActiveCommand.CreateParameter();
+		var parameter = ActiveCommand!.CreateParameter();
 		parameter.ParameterName = name;
 		parameter.Value = value is null ? DBNull.Value : value;
 		return parameter;
