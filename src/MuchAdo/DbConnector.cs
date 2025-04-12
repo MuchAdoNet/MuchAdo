@@ -1,9 +1,7 @@
-using System.Collections;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using MuchAdo.SqlFormatting;
 
 namespace MuchAdo;
@@ -1015,59 +1013,6 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		var commandType = connectorCommand.CommandType;
 		var timeout = connectorCommand.Timeout;
 		var parameters = connectorCommand.Parameters;
-
-		if (commandText.ContainsOrdinal("..."))
-		{
-			var nameValuePairs = parameters.Enumerate().ToList();
-			var index = 0;
-			while (index < nameValuePairs.Count)
-			{
-				// look for @name... in SQL for collection parameters
-				var (name, value) = nameValuePairs[index];
-				if (!string.IsNullOrEmpty(name) && value is not string && value is not byte[] && value is IEnumerable list)
-				{
-					var itemCount = -1;
-					var replacements = new List<(string Name, object? Value)>();
-
-					string Replacement(Match match)
-					{
-						if (itemCount == -1)
-						{
-							itemCount = 0;
-
-							foreach (var item in list)
-							{
-								replacements.Add(($"{name}_{itemCount}", item));
-								itemCount++;
-							}
-
-							if (itemCount == 0)
-								throw new InvalidOperationException($"Collection parameter '{name}' must not be empty.");
-						}
-
-						return string.Join(",", Enumerable.Range(0, itemCount).Select(x => $"{match.Groups[1]}_{x}"));
-					}
-
-					commandText = Regex.Replace(commandText, $@"([?@:]{Regex.Escape(name)})\.\.\.",
-						Replacement, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-					// if special syntax wasn't found, leave the parameter alone, for databases that support collections directly
-					if (itemCount != -1)
-					{
-						parameters = DbParameters.Create(nameValuePairs.Take(index).Concat(replacements).Concat(nameValuePairs.Skip(index + 1)));
-						index += replacements.Count;
-					}
-					else
-					{
-						index += 1;
-					}
-				}
-				else
-				{
-					index += 1;
-				}
-			}
-		}
 
 		IDbCommand? command;
 		var transaction = connectorCommand.Connector.Transaction;

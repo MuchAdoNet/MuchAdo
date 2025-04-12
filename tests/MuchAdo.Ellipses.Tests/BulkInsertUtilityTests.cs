@@ -1,13 +1,33 @@
 using FluentAssertions;
-using MuchAdo.BulkInsert;
+using Microsoft.Data.Sqlite;
 using NUnit.Framework;
 using static FluentAssertions.FluentActions;
 
-namespace MuchAdo.Tests.BulkInsert;
+namespace MuchAdo.Ellipses.Tests;
 
 [TestFixture]
 internal sealed class BulkInsertUtilityTests
 {
+	[Test]
+	public void BulkInsertTests()
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
+		connector.Command("insert into Items (Name) values (@name)...;")
+			.BulkInsert(Enumerable.Range(1, 100).Select(x => DbParameters.Create("name", $"item{x}")));
+		connector.Command("select count(*) from Items;").QuerySingle<long>().Should().Be(100);
+	}
+
+	[Test]
+	public async Task BulkInsertAsyncTests()
+	{
+		await using var connector = CreateConnector();
+		await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync();
+		await connector.Command("insert into Items (Name) values (@name)...;")
+			.BulkInsertAsync(Enumerable.Range(1, 100).Select(x => DbParameters.Create("name", $"item{x}")));
+		(await connector.Command("select count(*) from Items;").QuerySingleAsync<long>()).Should().Be(100);
+	}
+
 	[Test]
 	public void EmptySql_Throws()
 	{
@@ -226,4 +246,6 @@ internal sealed class BulkInsertUtilityTests
 			(Name: "b_0", Value: 4),
 			(Name: "a_2", Value: 3));
 	}
+
+	private static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 }

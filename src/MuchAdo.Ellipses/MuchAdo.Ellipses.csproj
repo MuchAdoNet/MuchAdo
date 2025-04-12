@@ -1,20 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
-    <Description>A fluent, powerful, efficient library for querying with MySqlConnector.</Description>
-    <PackageTags>ado.net sql database orm micro-orm mysql</PackageTags>
+    <Description>MuchAdo extension methods that expand ellipses in SQL.</Description>
+    <PackageTags>ado.net sql database orm micro-orm ellipses</PackageTags>
     <IsPackable>true</IsPackable>
     <EnablePackageValidation>true</EnablePackageValidation>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySqlConnector" />
+    <ProjectReference Include="..\MuchAdo\MuchAdo.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MuchAdo\MuchAdo.csproj" />
+    <InternalsVisibleTo Include="MuchAdo.Ellipses.Tests" />
   </ItemGroup>
 
   <ItemGroup>

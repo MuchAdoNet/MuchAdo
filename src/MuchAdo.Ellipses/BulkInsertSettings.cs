@@ -1,4 +1,4 @@
-namespace MuchAdo.BulkInsert;
+namespace MuchAdo.Ellipses;
 
 /// <summary>
 /// Settings for bulk insert.

@@ -2,7 +2,7 @@ using System.Text;
 using BenchmarkDotNet.Attributes;
 using Microsoft.Data.Sqlite;
 using MuchAdo;
-using MuchAdo.BulkInsert;
+using MuchAdo.Ellipses;
 
 namespace Benchmarks;
 

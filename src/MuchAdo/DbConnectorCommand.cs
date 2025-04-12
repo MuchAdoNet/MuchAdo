@@ -8,19 +8,19 @@ namespace MuchAdo;
 public sealed class DbConnectorCommand
 {
 	/// <summary>
+	/// The <see cref="CommandType"/> of the command.
+	/// </summary>
+	public CommandType CommandType { get; }
+
+	/// <summary>
 	/// The text of the command.
 	/// </summary>
-	public string Text { get; }
+	public string Text => m_text;
 
 	/// <summary>
 	/// The parameters of the command.
 	/// </summary>
 	public DbParameters Parameters => m_parameters;
-
-	/// <summary>
-	/// The <see cref="CommandType"/> of the command.
-	/// </summary>
-	public CommandType CommandType { get; }
 
 	/// <summary>
 	/// The timeout of the command.
@@ -317,13 +317,24 @@ public sealed class DbConnectorCommand
 		return this;
 	}
 
+	/// <summary>
+	/// Sets the command text and parameters.
+	/// </summary>
+	public DbConnectorCommand Transform(string text, DbParameters parameters)
+	{
+		m_text = text;
+		m_parameters = new(parameters);
+		return this;
+	}
+
 	internal DbConnectorCommand(DbConnector connector, string text, CommandType commandType)
 	{
 		Connector = connector;
-		Text = text;
 		CommandType = commandType;
+		m_text = text;
 		m_parameters = new DbParametersList();
 	}
 
-	private readonly DbParametersList m_parameters;
+	private string m_text;
+	private DbParametersList m_parameters;
 }

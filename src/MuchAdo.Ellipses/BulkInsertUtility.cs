@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace MuchAdo.BulkInsert;
+namespace MuchAdo.Ellipses;
 
 /// <summary>
 /// Methods for performing bulk inserts.

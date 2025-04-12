@@ -1,12 +1,12 @@
 using System.Data;
 using BenchmarkDotNet.Attributes;
-using MuchAdo;
-using MuchAdo.BulkInsert;
-using MuchAdo.SqlFormatting;
 #if SQLSERVER
 using Microsoft.Data.SqlClient;
 #endif
 using Microsoft.Data.Sqlite;
+using MuchAdo;
+using MuchAdo.Ellipses;
+using MuchAdo.SqlFormatting;
 #if MYSQL
 using MySqlConnector;
 #endif
