@@ -56,6 +56,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	public SqlSyntax SqlSyntax { get; }
 
+	public event EventHandler<CommandExecutingEventArgs>? CommandExecuting;
+
 	/// <summary>
 	/// Returns the database connection, opened if necessary.
 	/// </summary>
@@ -707,6 +709,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		};
 	}
 
+	protected virtual void OnCommandExecuting(DbConnectorCommand connectorCommand) =>
+		CommandExecuting?.Invoke(this, new CommandExecutingEventArgs(connectorCommand));
+
 	internal DbDataMapper DataMapper { get; }
 
 	internal DbCommandCache CommandCache => m_commandCache ??= new();
@@ -719,18 +724,21 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal int ExecuteCommand(DbConnectorCommand connectorCommand)
 	{
+		OnCommandExecuting(connectorCommand);
 		using var commandScope = CreateCommand(connectorCommand);
 		return ExecuteNonQueryCore();
 	}
 
 	internal async ValueTask<int> ExecuteCommandAsync(DbConnectorCommand connectorCommand, CancellationToken cancellationToken)
 	{
+		OnCommandExecuting(connectorCommand);
 		await using var commandScope = (await CreateCommandAsync(connectorCommand, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		return await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
 	}
 
 	internal DbConnectorResultSets QueryMultiple(DbConnectorCommand connectorCommand)
 	{
+		OnCommandExecuting(connectorCommand);
 		m_hasReadFirstResultSet = false;
 		CreateCommand(connectorCommand);
 		SetActiveReader(ExecuteReaderCore());
@@ -739,6 +747,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async ValueTask<DbConnectorResultSets> QueryMultipleAsync(DbConnectorCommand connectorCommand, CancellationToken cancellationToken = default)
 	{
+		OnCommandExecuting(connectorCommand);
 		m_hasReadFirstResultSet = false;
 		await CreateCommandAsync(connectorCommand, cancellationToken).ConfigureAwait(false);
 		SetActiveReader(await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
@@ -747,6 +756,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal IReadOnlyList<T> Query<T>(DbConnectorCommand connectorCommand, Func<DbConnectorRecord, T>? map)
 	{
+		OnCommandExecuting(connectorCommand);
 		using var commandScope = CreateCommand(connectorCommand);
 		SetActiveReader(ExecuteReaderCore());
 		using var readerScope = new DbReaderDisposer(this);
@@ -766,6 +776,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async ValueTask<IReadOnlyList<T>> QueryAsync<T>(DbConnectorCommand connectorCommand, Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
+		OnCommandExecuting(connectorCommand);
 		await using var commandScope = (await CreateCommandAsync(connectorCommand, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		SetActiveReader(await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
 		await using var readerScope = new DbReaderDisposer(this).ConfigureAwait(false);
@@ -785,6 +796,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal T QueryFirst<T>(DbConnectorCommand connectorCommand, Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
 	{
+		OnCommandExecuting(connectorCommand);
 		using var commandScope = CreateCommand(connectorCommand);
 		SetActiveReader(single ? ExecuteReaderCore() : ExecuteReaderCore(CommandBehavior.SingleRow));
 		using var readerScope = new DbReaderDisposer(this);
@@ -809,6 +821,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async ValueTask<T> QueryFirstAsync<T>(DbConnectorCommand connectorCommand, Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
 	{
+		OnCommandExecuting(connectorCommand);
 		await using var commandScope = (await CreateCommandAsync(connectorCommand, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		SetActiveReader(single ? await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false) : await ExecuteReaderCoreAsync(CommandBehavior.SingleRow, cancellationToken).ConfigureAwait(false));
 		await using var readerScope = new DbReaderDisposer(this).ConfigureAwait(false);
@@ -848,6 +861,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async IAsyncEnumerable<T> EnumerateAsync<T>(DbConnectorCommand connectorCommand, Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
+		OnCommandExecuting(connectorCommand);
 		await using var commandScope = (await CreateCommandAsync(connectorCommand, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		SetActiveReader(await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false));
 		await using var readerScope = new DbReaderDisposer(this).ConfigureAwait(false);
@@ -1132,7 +1146,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw new InvalidOperationException("No transaction available; call BeginTransaction first.");
 	}
 
-	public void DisposeDisposable()
+	private void DisposeDisposable()
 	{
 		if (m_disposable is IDisposable disposable)
 			disposable.Dispose();
@@ -1140,7 +1154,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
 	}
 
-	public ValueTask DisposeDisposableAsync()
+	private ValueTask DisposeDisposableAsync()
 	{
 		if (m_disposable is IAsyncDisposable asyncDisposable)
 			return asyncDisposable.DisposeAsync();

@@ -26,7 +26,6 @@ internal sealed class EllipsesExtensionsTests
 			.WithParameter("names", new[] { "one", "three", "five" })
 			.WithParameter("ignore", new[] { 0 })
 			.WithParameter("after", 2)
-			.ExpandEllipses()
 			.QueryMultiple();
 		resultSets.Read<string>().Should().BeEquivalentTo("one", "three");
 		resultSets.Read<string>().Should().BeEquivalentTo("two");
@@ -39,11 +38,14 @@ internal sealed class EllipsesExtensionsTests
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
 		connector.Command("insert into Items (Name) values ('one'), ('two'), ('three');").Execute().Should().Be(3);
-		Invoking(() => connector.Command("select Name from Items where Name in (@names...);").WithParameter("names", Array.Empty<string>()).ExpandEllipses()
+		Invoking(() => connector.Command("select Name from Items where Name in (@names...);").WithParameter("names", Array.Empty<string>())
 			.Query<string>()).Should().Throw<InvalidOperationException>();
 	}
 
-	private static DbConnector CreateConnector(DefaultDbTypeMapperSettings? defaultTypeMapperSettings = null) =>
-		new(new SqliteConnection("Data Source=:memory:"),
-			defaultTypeMapperSettings is null ? null : new DbConnectorSettings { DataMapper = new DbDataMapper(new DefaultDbTypeMapperFactory(defaultTypeMapperSettings)) });
+	private static DbConnector CreateConnector()
+	{
+		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.CommandExecuting += (_, e) => e.ConnectorCommand.ExpandEllipses();
+		return connector;
+	}
 }
