@@ -165,9 +165,14 @@ public abstract class Sql
 	public static Sql operator +(Sql a, Sql b) => new AddSql(a, b);
 
 	/// <inheritdoc />
-	public override string ToString() => SqlSyntax.Ansi.Render(this).Text;
+	public override string ToString()
+	{
+		var commandBuilder = new DbConnectorCommandBuilder(SqlSyntax.Ansi);
+		Render(commandBuilder);
+		return commandBuilder.Text;
+	}
 
-	internal abstract string Render(SqlContext context);
+	internal abstract void Render(DbConnectorCommandBuilder builder);
 
 	private static JoinSql JoinOrThrow(string separator, IEnumerable<Sql> sqls, string throwMessageIfEmpty) =>
 		new(separator ?? throw new ArgumentNullException(nameof(separator)), AsReadOnlyList(sqls ?? throw new ArgumentNullException(nameof(sqls))), throwMessageIfEmpty);
@@ -176,75 +181,99 @@ public abstract class Sql
 
 	private sealed class AddSql(Sql a, Sql b) : Sql
 	{
-		internal override string Render(SqlContext context) => a.Render(context) + b.Render(context);
+		internal override void Render(DbConnectorCommandBuilder builder)
+		{
+			a.Render(builder);
+			b.Render(builder);
+		}
 	}
 
 	private sealed class BinaryOperatorSql(string lowercase, string uppercase, IReadOnlyList<Sql> sqls) : Sql
 	{
-		private bool HasMultipleSqls => sqls.Count > 1;
-
-		internal override string Render(SqlContext context)
+		internal override void Render(DbConnectorCommandBuilder builder)
 		{
-			var rawSqls = sqls
-				.Select(x => (RawSql: x.Render(context), NeedsParens: x is BinaryOperatorSql { HasMultipleSqls: true }))
-				.Where(x => x.RawSql.Length != 0)
-				.Select(x => x.NeedsParens ? $"({x.RawSql})" : x.RawSql)
-				.ToList();
-			return string.Join(context.Syntax.LowercaseKeywords ? lowercase : uppercase, rawSqls);
+			if (sqls.Count == 0)
+				return;
+
+			if (sqls.Count == 1)
+			{
+				sqls[0].Render(builder);
+				return;
+			}
+
+			var oldTextLength = builder.TextLength;
+			using var outerScope = builder.Bracket("(", ")");
+
+			foreach (var sql in sqls)
+			{
+				using var innerScope = builder.Prefix(builder.TextLength != oldTextLength ? (builder.Syntax.LowercaseKeywords ? lowercase : uppercase) : "");
+				sql.Render(builder);
+			}
 		}
 	}
 
 	private sealed class ConcatSql(IReadOnlyList<Sql> sqls) : Sql
 	{
-		internal override string Render(SqlContext context) => string.Concat(sqls.Select(x => x.Render(context)));
+		internal override void Render(DbConnectorCommandBuilder builder)
+		{
+			foreach (var sql in sqls)
+				sql.Render(builder);
+		}
 	}
 
 	private sealed class JoinSql(string separator, IReadOnlyList<Sql> sqls, string? throwMessageIfEmpty = null) : Sql
 	{
-		internal override string Render(SqlContext context)
+		internal override void Render(DbConnectorCommandBuilder builder)
 		{
-			var sql = string.Join(separator, sqls.Select(x => x.Render(context)).Where(x => x.Length != 0));
-			if (throwMessageIfEmpty is not null && sql.Length == 0)
+			var oldTextLength = builder.TextLength;
+
+			foreach (var sql in sqls)
+			{
+				using var scope = builder.Prefix(builder.TextLength != oldTextLength ? separator : "");
+				sql.Render(builder);
+			}
+
+			if (throwMessageIfEmpty is not null && builder.TextLength == oldTextLength)
 				throw new InvalidOperationException(throwMessageIfEmpty);
-			return sql;
 		}
 	}
 
 	private sealed class LikeParamStartsWithSql(string prefix) : Sql
 	{
-		internal override string Render(SqlContext context) => context.RenderParameter(key: this, value: context.Syntax.EscapeLikeFragment(prefix) + "%");
+		internal override void Render(DbConnectorCommandBuilder builder) => builder.AppendParameterValue(this, builder.Syntax.EscapeLikeFragment(prefix) + "%");
 	}
 
 	private sealed class NameSql(string identifier) : Sql
 	{
-		internal override string Render(SqlContext context) => context.Syntax.QuoteName(identifier);
+		internal override void Render(DbConnectorCommandBuilder builder) => builder.AppendText(builder.Syntax.QuoteName(identifier));
 	}
 
 	private sealed class OptionalClauseSql(string lowercase, string uppercase, Sql sql) : Sql
 	{
-		internal override string Render(SqlContext context)
+		internal override void Render(DbConnectorCommandBuilder builder)
 		{
-			var rawSql = sql.Render(context);
-			return rawSql.Length == 0 ? "" : (context.Syntax.LowercaseKeywords ? lowercase : uppercase) + rawSql;
+			using var scope = builder.Prefix(builder.Syntax.LowercaseKeywords ? lowercase : uppercase);
+			sql.Render(builder);
 		}
 	}
 
 	private sealed class ParamSql<T>(T value) : Sql
 	{
-		internal override string Render(SqlContext context) => context.RenderParameter(key: this, value: value);
+		internal override void Render(DbConnectorCommandBuilder builder) => builder.AppendParameterValue(this, value);
 	}
 
 	private sealed class NamedParamSql<T>(string name, T value) : Sql
 	{
-		internal override string Render(SqlContext context)
+		internal override void Render(DbConnectorCommandBuilder builder)
 		{
-			context.AddParameters(DbParameters.Create(name, value));
-			return context.Syntax.ParameterStart + name;
+			builder.AppendText(builder.Syntax.ParameterStart);
+			builder.AppendText(name);
+			builder.AddParameters(DbParameters.Create(name, value));
 		}
 	}
 
 	private sealed class RawSql(string text) : Sql
 	{
-		internal override string Render(SqlContext context) => text;
+		internal override void Render(DbConnectorCommandBuilder builder) => builder.AppendText(text);
 	}
 }

@@ -11,7 +11,7 @@ public sealed class ColumnParamsSql<T> : Sql
 		m_filter = filter;
 	}
 
-	internal override string Render(SqlContext context)
+	internal override void Render(DbConnectorCommandBuilder builder)
 	{
 		var properties = DbDtoInfo.GetInfo<T>().Properties;
 		if (properties.Count == 0)
@@ -21,10 +21,16 @@ public sealed class ColumnParamsSql<T> : Sql
 		if (m_filter is not null)
 			filteredProperties = filteredProperties.Where(x => m_filter(x.Name));
 
-		var text = string.Join(", ", filteredProperties.Select(x => context.RenderParameter(key: null, valueSource: m_dto, valueProperty: x)));
-		if (text.Length == 0)
+		var oldTextLength = builder.TextLength;
+
+		foreach (var filteredProperty in filteredProperties)
+		{
+			using var scope = builder.Prefix(builder.TextLength != oldTextLength ? ", " : "");
+			builder.AppendParameterValue(null, m_dto, filteredProperty);
+		}
+
+		if (builder.TextLength == oldTextLength)
 			throw new InvalidOperationException($"The specified type has no remaining columns: {typeof(T).FullName}");
-		return text;
 	}
 
 	private readonly T m_dto;

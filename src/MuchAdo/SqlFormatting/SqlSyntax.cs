@@ -118,16 +118,6 @@ public sealed class SqlSyntax
 		_ => throw new InvalidOperationException("The default SqlSyntax does not support quoted identifiers. Use a SqlSyntax that matches your database."),
 	};
 
-	/// <summary>
-	/// Renders SQL as text and parameters.
-	/// </summary>
-	public (string Text, DbParameters Parameters) Render(Sql sql)
-	{
-		var context = new SqlContext(this);
-		var text = (sql ?? throw new ArgumentNullException(nameof(sql))).Render(context);
-		return (text, context.Parameters);
-	}
-
 	private SqlSyntax()
 	{
 		IdentifierQuoting = SqlIdentifierQuoting.Throw;

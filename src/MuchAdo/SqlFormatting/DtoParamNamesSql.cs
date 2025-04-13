@@ -30,7 +30,7 @@ public sealed class DtoParamNamesSql<T> : Sql
 		m_transformName = transformName;
 	}
 
-	internal override string Render(SqlContext context)
+	internal override void Render(DbConnectorCommandBuilder builder)
 	{
 		var properties = DbDtoInfo.GetInfo<T>().Properties;
 		if (properties.Count == 0)
@@ -40,10 +40,18 @@ public sealed class DtoParamNamesSql<T> : Sql
 		if (m_filterName is not null)
 			filteredProperties = filteredProperties.Where(x => m_filterName(x.Name));
 
-		var text = string.Join(", ", filteredProperties.Select(x => context.Syntax.ParameterStart + GetName(x.Name)));
-		if (text.Length == 0)
+		var oldTextLength = builder.TextLength;
+
+		foreach (var filteredProperty in filteredProperties)
+		{
+			if (builder.TextLength != oldTextLength)
+				builder.AppendText(", ");
+			builder.AppendText(builder.Syntax.ParameterStart);
+			builder.AppendText(GetName(filteredProperty.Name));
+		}
+
+		if (builder.TextLength == oldTextLength)
 			throw new InvalidOperationException($"The specified type has no remaining columns: {typeof(T).FullName}");
-		return text;
 	}
 
 	private string GetName(string name) => m_transformName is not null ? m_transformName(name) : name;

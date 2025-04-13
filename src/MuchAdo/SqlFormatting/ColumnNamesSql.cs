@@ -19,13 +19,13 @@ public sealed class ColumnNamesSql<T> : Sql
 		m_filterName = filterName;
 	}
 
-	internal override string Render(SqlContext context)
+	internal override void Render(DbConnectorCommandBuilder builder)
 	{
 		var properties = DbDtoInfo.GetInfo<T>().Properties;
 		if (properties.Count == 0)
 			throw new InvalidOperationException($"The specified type has no columns: {typeof(T).FullName}");
 
-		var syntax = context.Syntax;
+		var syntax = builder.Syntax;
 		var tablePrefix = m_tableName.Length == 0 ? "" : syntax.QuoteName(m_tableName) + ".";
 		var useSnakeCase = syntax.SnakeCaseColumnNames;
 
@@ -39,7 +39,7 @@ public sealed class ColumnNamesSql<T> : Sql
 				(useSnakeCase ? ColumnNamesSql.SnakeCaseCache.GetOrAdd(x.Name, JsonNamingPolicy.SnakeCaseLower.ConvertName) : x.Name))));
 		if (text.Length == 0)
 			throw new InvalidOperationException($"The specified type has no remaining columns: {typeof(T).FullName}");
-		return text;
+		builder.AppendText(text);
 	}
 
 	private readonly string m_tableName;
