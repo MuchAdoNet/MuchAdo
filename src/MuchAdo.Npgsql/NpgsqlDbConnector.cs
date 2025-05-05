@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using Npgsql;
 
 namespace MuchAdo.Npgsql;
@@ -8,14 +9,16 @@ namespace MuchAdo.Npgsql;
 /// </summary>
 public class NpgsqlDbConnector : DbConnector
 {
-	public NpgsqlDbConnector(NpgsqlConnection connection)
+	public NpgsqlDbConnector(DbConnection connection)
 		: this(connection, NpgsqlDbConnectorSettings.Default)
 	{
 	}
 
-	public NpgsqlDbConnector(NpgsqlConnection connection, NpgsqlDbConnectorSettings settings)
+	public NpgsqlDbConnector(DbConnection connection, NpgsqlDbConnectorSettings settings)
 		: base(connection, settings)
 	{
+		if (connection is not NpgsqlConnection)
+			throw new ArgumentException("The connection must be a NpgsqlConnection.", nameof(connection));
 	}
 
 	public new NpgsqlConnection Connection => (NpgsqlConnection) base.Connection;

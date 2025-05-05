@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using Microsoft.Data.Sqlite;
 
 namespace MuchAdo.Sqlite;
@@ -8,14 +9,16 @@ namespace MuchAdo.Sqlite;
 /// </summary>
 public class SqliteDbConnector : DbConnector
 {
-	public SqliteDbConnector(SqliteConnection connection)
+	public SqliteDbConnector(DbConnection connection)
 		: this(connection, SqliteDbConnectorSettings.Default)
 	{
 	}
 
-	public SqliteDbConnector(SqliteConnection connection, SqliteDbConnectorSettings settings)
+	public SqliteDbConnector(DbConnection connection, SqliteDbConnectorSettings settings)
 		: base(connection, settings)
 	{
+		if (connection is not SqliteConnection)
+			throw new ArgumentException("The connection must be a SqliteConnection.", nameof(connection));
 	}
 
 	public new SqliteConnection Connection => (SqliteConnection) base.Connection;
