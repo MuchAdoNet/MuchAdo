@@ -68,7 +68,7 @@ public readonly struct DbConnectorResultSets : IDisposable, IAsyncDisposable
 	public void Dispose()
 	{
 		m_connector.DisposeActiveReader();
-		m_connector.DisposeActiveCommand();
+		m_connector.DisposeActiveCommandOrBatch();
 	}
 
 	/// <summary>
@@ -78,7 +78,7 @@ public readonly struct DbConnectorResultSets : IDisposable, IAsyncDisposable
 	public async ValueTask DisposeAsync()
 	{
 		await m_connector.DisposeActiveReaderAsync().ConfigureAwait(false);
-		await m_connector.DisposeActiveCommandAsync().ConfigureAwait(false);
+		await m_connector.DisposeActiveCommandOrBatchAsync().ConfigureAwait(false);
 	}
 
 	internal DbConnectorResultSets(DbConnector connector)

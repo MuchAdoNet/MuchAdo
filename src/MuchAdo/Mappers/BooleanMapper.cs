@@ -2,7 +2,7 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class BooleanMapper : NonNullableValueMapper<bool>
+internal sealed class BooleanMapper(DbDataMapper dataMapper) : SingleFieldValueMapper<bool>(dataMapper)
 {
-	public override bool MapNotNullField(IDataRecord record, int index) => record.GetBoolean(index);
+	public override bool MapNotNullField(IDataRecord record, int index, DbConnectorRecordState? state) => record.GetBoolean(index);
 }

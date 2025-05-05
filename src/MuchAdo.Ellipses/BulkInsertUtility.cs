@@ -10,33 +10,45 @@ public static class BulkInsertUtility
 	/// <summary>
 	/// Efficiently inserts multiple rows, in batches as necessary.
 	/// </summary>
-	public static int BulkInsert(this DbConnectorCommand command, IEnumerable<DbParameters> rows, BulkInsertSettings? settings = null)
+	public static int BulkInsert(this DbConnectorCommandBatch commandBatch, IEnumerable<SqlParamSource> rows, BulkInsertSettings? settings = null)
 	{
+		if (commandBatch.CommandCount != 1)
+			throw new ArgumentException("Command batch must contain exactly one command.", nameof(commandBatch));
+
+		var command = commandBatch.LastCommand;
+		var commandText = command.Text ?? command.Sql!.ToString(commandBatch.Connector.SqlSyntax);
+
 		var rowCount = 0;
-		foreach (var (sql, parameters) in GetBulkInsertCommands(command.Text, command.Parameters, rows, settings))
-			rowCount += CreateBatchCommand(command, sql, parameters).Execute();
+		foreach (var (sql, parameters) in GetBulkInsertCommands(commandText, command.Parameters, rows, settings))
+			rowCount += CreateBatchCommand(commandBatch, sql, parameters).Execute();
 		return rowCount;
 	}
 
 	/// <summary>
 	/// Efficiently inserts multiple rows, in batches as necessary.
 	/// </summary>
-	public static Task<int> BulkInsertAsync(this DbConnectorCommand command, IEnumerable<DbParameters> rows, CancellationToken cancellationToken) =>
-		command.BulkInsertAsync(rows, settings: null, cancellationToken);
+	public static Task<int> BulkInsertAsync(this DbConnectorCommandBatch commandBatch, IEnumerable<SqlParamSource> rows, CancellationToken cancellationToken) =>
+		commandBatch.BulkInsertAsync(rows, settings: null, cancellationToken);
 
 	/// <summary>
 	/// Efficiently inserts multiple rows, in batches as necessary.
 	/// </summary>
-	public static async Task<int> BulkInsertAsync(this DbConnectorCommand command, IEnumerable<DbParameters> rows, BulkInsertSettings? settings = null, CancellationToken cancellationToken = default)
+	public static async Task<int> BulkInsertAsync(this DbConnectorCommandBatch commandBatch, IEnumerable<SqlParamSource> rows, BulkInsertSettings? settings = null, CancellationToken cancellationToken = default)
 	{
+		if (commandBatch.CommandCount != 1)
+			throw new ArgumentException("Command batch must contain exactly one command.", nameof(commandBatch));
+
+		var command = commandBatch.LastCommand;
+		var commandText = command.Text ?? command.Sql!.ToString(commandBatch.Connector.SqlSyntax);
+
 		var rowCount = 0;
-		foreach (var (sql, parameters) in GetBulkInsertCommands(command.Text, command.Parameters, rows, settings))
-			rowCount += await CreateBatchCommand(command, sql, parameters).ExecuteAsync(cancellationToken).ConfigureAwait(false);
+		foreach (var (sql, parameters) in GetBulkInsertCommands(commandText, command.Parameters, rows, settings))
+			rowCount += await CreateBatchCommand(commandBatch, sql, parameters).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 		return rowCount;
 	}
 
 	// internal for unit testing
-	internal static IEnumerable<(string Sql, DbParameters Parameters)> GetBulkInsertCommands(string sql, DbParameters commonParameters, IEnumerable<DbParameters> rows, BulkInsertSettings? settings = null)
+	internal static IEnumerable<(string Sql, SqlParamSource Parameters)> GetBulkInsertCommands(string sql, SqlParamSource commonParameters, IEnumerable<SqlParamSource> rows, BulkInsertSettings? settings = null)
 	{
 		if (rows is null)
 			throw new ArgumentNullException(nameof(rows));
@@ -82,14 +94,14 @@ public static class BulkInsertUtility
 			var recordIndex = batchSqls.Count;
 			Array.Copy(tupleParts, rowParts, tupleParts.Length);
 
-			foreach (var (rowParameterName, rowParameterValue) in rowParameters.Enumerate())
+			foreach (var rowParameter in rowParameters.Enumerate())
 			{
-				if (tupleParameters.TryGetValue(rowParameterName, out var indices))
+				if (tupleParameters.TryGetValue(rowParameter.Name, out var indices))
 				{
 					foreach (var index in indices)
 					{
 						rowParts[index] = $"{rowParts[index]}_{recordIndex}";
-						batchParameters[$"{rowParameterName}_{recordIndex}"] = rowParameterValue;
+						batchParameters[$"{rowParameter.Name}_{recordIndex}"] = rowParameter.Value;
 					}
 				}
 			}
@@ -98,25 +110,25 @@ public static class BulkInsertUtility
 
 			if (batchSqls.Count == maxRowsPerBatch || batchParameters.Count + tupleParts.Length / 2 > maxParametersPerBatch)
 			{
-				yield return (GetBatchSql(), DbParameters.Create(batchParameters));
+				yield return (GetBatchSql(), Sql.NamedParams(batchParameters));
 				batchSqls.Clear();
 				batchParameters = null;
 			}
 		}
 
 		if (batchSqls.Count != 0)
-			yield return (GetBatchSql(), DbParameters.Create(batchParameters!));
+			yield return (GetBatchSql(), Sql.NamedParams(batchParameters!));
 	}
 
-	private static DbConnectorCommand CreateBatchCommand(DbConnectorCommand command, string sql, DbParameters parameters)
+	private static DbConnectorCommandBatch CreateBatchCommand(DbConnectorCommandBatch commandBatch, string sql, SqlParamSource parameters)
 	{
-		var batchCommand = command.Connector.Command(sql).WithParameters(parameters);
-		if (command.IsCached)
-			batchCommand = batchCommand.Cache();
-		if (command.IsPrepared)
-			batchCommand = batchCommand.Prepare();
-		if (command.Timeout is not null)
-			batchCommand = batchCommand.WithTimeout(command.Timeout.Value);
+		var batchCommand = commandBatch.Connector.Command(sql, parameters);
+		if (commandBatch.IsCached is { } isCached)
+			batchCommand = batchCommand.Cache(isCached);
+		if (commandBatch.IsPrepared is { } isPrepared)
+			batchCommand = batchCommand.Prepare(isPrepared);
+		if (commandBatch.Timeout is not null)
+			batchCommand = batchCommand.WithTimeout(commandBatch.Timeout.Value);
 		return batchCommand;
 	}
 

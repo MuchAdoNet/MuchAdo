@@ -2,7 +2,7 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class DoubleMapper : NonNullableValueMapper<double>
+internal sealed class DoubleMapper(DbDataMapper dataMapper) : SingleFieldValueMapper<double>(dataMapper)
 {
-	public override double MapNotNullField(IDataRecord record, int index) => record.GetDouble(index);
+	public override double MapNotNullField(IDataRecord record, int index, DbConnectorRecordState? state) => record.GetDouble(index);
 }

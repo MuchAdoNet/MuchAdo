@@ -1,15 +1,38 @@
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-
 namespace MuchAdo;
 
 internal sealed class DbCommandCache
 {
-	public bool TryGetCommand(string text, [MaybeNullWhen(false)] out IDbCommand command) => m_dictionary.TryGetValue(text, out command);
+	public object? TryRemoveCommand(object key) => m_dictionary.Remove(key, out var command) ? command : null;
 
-	public void AddCommand(string text, IDbCommand command) => m_dictionary.Add(text, command);
+	public void AddCommand(object key, object command) => m_dictionary.Add(key, command);
 
-	public IReadOnlyCollection<IDbCommand> GetCommands() => m_dictionary.Values;
+	public IReadOnlyCollection<object> GetCommandCollection() => m_dictionary.Values;
 
-	private readonly Dictionary<string, IDbCommand> m_dictionary = new();
+	private readonly Dictionary<object, object> m_dictionary = new(KeyComparer.Instance);
+
+	private sealed class KeyComparer : IEqualityComparer<object>
+	{
+		public static readonly IEqualityComparer<object> Instance = new KeyComparer();
+
+		bool IEqualityComparer<object>.Equals(object? x, object? y)
+		{
+			if (x is IEnumerable<object> xs && y is IEnumerable<object> ys)
+				return xs.SequenceEqual(ys, Instance);
+
+			return Equals(x, y);
+		}
+
+		int IEqualityComparer<object>.GetHashCode(object obj)
+		{
+			if (obj is IEnumerable<object> items)
+			{
+				var hash = 0;
+				foreach (var item in items)
+					hash = Utility.CombineHashCodes(hash, Instance.GetHashCode(item));
+				return hash;
+			}
+
+			return obj.GetHashCode();
+		}
+	}
 }

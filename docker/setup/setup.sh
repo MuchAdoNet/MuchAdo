@@ -1,4 +1,5 @@
 #!/bin/bash
+sleep 10
 echo 'setup.sh: create mssql test database'
 docker exec muchado-mssql-1 /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P P@ssw0rd -Q "create database test;"
 echo 'setup.sh: create mysql test database'

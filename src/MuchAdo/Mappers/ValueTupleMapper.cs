@@ -3,8 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class ValueTupleMapper<T1>(DbTypeMapper<T1> mapper1)
-	: ValueTupleMapperBase<ValueTuple<T1>>([mapper1])
+internal sealed class ValueTupleMapper<T1>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1)
+	: ValueTupleMapperBase<ValueTuple<T1>>(dataMapper, [mapper1])
 {
 	protected override ValueTuple<T1> MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -15,8 +15,8 @@ internal sealed class ValueTupleMapper<T1>(DbTypeMapper<T1> mapper1)
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2)
-	: ValueTupleMapperBase<(T1, T2)>([mapper1, mapper2])
+internal sealed class ValueTupleMapper<T1, T2>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2)
+	: ValueTupleMapperBase<(T1, T2)>(dataMapper, [mapper1, mapper2])
 {
 	protected override (T1, T2) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -29,8 +29,8 @@ internal sealed class ValueTupleMapper<T1, T2>(DbTypeMapper<T1> mapper1, DbTypeM
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2, T3>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3)
-	: ValueTupleMapperBase<(T1, T2, T3)>([mapper1, mapper2, mapper3])
+internal sealed class ValueTupleMapper<T1, T2, T3>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3)
+	: ValueTupleMapperBase<(T1, T2, T3)>(dataMapper, [mapper1, mapper2, mapper3])
 {
 	protected override (T1, T2, T3) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -44,8 +44,8 @@ internal sealed class ValueTupleMapper<T1, T2, T3>(DbTypeMapper<T1> mapper1, DbT
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2, T3, T4>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4)
-	: ValueTupleMapperBase<(T1, T2, T3, T4)>([mapper1, mapper2, mapper3, mapper4])
+internal sealed class ValueTupleMapper<T1, T2, T3, T4>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4)
+	: ValueTupleMapperBase<(T1, T2, T3, T4)>(dataMapper, [mapper1, mapper2, mapper3, mapper4])
 {
 	protected override (T1, T2, T3, T4) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -60,8 +60,8 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4>(DbTypeMapper<T1> mapper1,
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5)
-	: ValueTupleMapperBase<(T1, T2, T3, T4, T5)>([mapper1, mapper2, mapper3, mapper4, mapper5])
+internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5)
+	: ValueTupleMapperBase<(T1, T2, T3, T4, T5)>(dataMapper, [mapper1, mapper2, mapper3, mapper4, mapper5])
 {
 	protected override (T1, T2, T3, T4, T5) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -77,8 +77,8 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5>(DbTypeMapper<T1> mapp
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5, DbTypeMapper<T6> mapper6)
-	: ValueTupleMapperBase<(T1, T2, T3, T4, T5, T6)>([mapper1, mapper2, mapper3, mapper4, mapper5, mapper6])
+internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5, DbTypeMapper<T6> mapper6)
+	: ValueTupleMapperBase<(T1, T2, T3, T4, T5, T6)>(dataMapper, [mapper1, mapper2, mapper3, mapper4, mapper5, mapper6])
 {
 	protected override (T1, T2, T3, T4, T5, T6) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
@@ -95,8 +95,8 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6>(DbTypeMapper<T1> 
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6, T7>(DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5, DbTypeMapper<T6> mapper6, DbTypeMapper<T7> mapper7)
-	: ValueTupleMapperBase<(T1, T2, T3, T4, T5, T6, T7)>([mapper1, mapper2, mapper3, mapper4, mapper5, mapper6, mapper7])
+internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6, T7>(DbDataMapper dataMapper, DbTypeMapper<T1> mapper1, DbTypeMapper<T2> mapper2, DbTypeMapper<T3> mapper3, DbTypeMapper<T4> mapper4, DbTypeMapper<T5> mapper5, DbTypeMapper<T6> mapper6, DbTypeMapper<T7> mapper7)
+	: ValueTupleMapperBase<(T1, T2, T3, T4, T5, T6, T7)>(dataMapper, [mapper1, mapper2, mapper3, mapper4, mapper5, mapper6, mapper7])
 {
 	protected override (T1, T2, T3, T4, T5, T6, T7) MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{

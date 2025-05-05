@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
-using MuchAdo.SqlFormatting;
 using NUnit.Framework;
+using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.Tests;
 
@@ -18,13 +18,15 @@ internal sealed class SqliteTests
 		connector.CommandFormat($"create table {tableName} (ItemId integer primary key, Name text not null);").Execute();
 
 		var insertSql = Sql.Format($"insert into {tableName} (Name) values (@itemA); insert into {tableName} (Name) values (@itemB);");
-		connector.Command(insertSql).WithParameter("itemA", "one").WithParameter("itemB", "two").Prepare().Cache().Execute().Should().Be(2);
-		connector.Command(insertSql).WithParameter("itemA", "three").WithParameter("itemB", "four").Prepare().Cache().Execute().Should().Be(2);
-		connector.Command(insertSql).WithParameter("itemB", "six").WithParameter("itemA", "five").Prepare().Cache().Execute().Should().Be(2);
+		connector.Command(insertSql, Sql.NamedParam("itemA", "one"), Sql.NamedParam("itemB", "two")).Prepare().Cache().Execute().Should().Be(2);
+		connector.Command(insertSql, Sql.NamedParam("itemA", "three"), Sql.NamedParam("itemB", "four")).Prepare().Cache().Execute().Should().Be(2);
 
-		// fails if parameters aren't reused properly
+		Invoking(() => connector.Command(insertSql, Sql.NamedParam("itemA", "five"), Sql.NamedParam("itemB", "six"), Sql.NamedParam("itemC", "seven")).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
+		Invoking(() => connector.Command(insertSql, Sql.NamedParam("itemA", "five")).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
+		Invoking(() => connector.Command(insertSql, Sql.NamedParam("itemB", "six"), Sql.NamedParam("itemA", "five")).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
+
 		connector.Command(Sql.Format($"select Name from {tableName} order by ItemId;"))
-			.Query<string>().Should().Equal("one", "two", "three", "four", "five", "six");
+			.Query<string>().Should().Equal("one", "two", "three", "four");
 	}
 
 	[Test]
@@ -40,7 +42,7 @@ internal sealed class SqliteTests
 
 		connector.Command(Sql.Format($@"
 				insert into {tableName} ({Sql.ColumnNames<NameValue>()})
-				values {Sql.Join(", ", items.Select(item => Sql.Format($"({Sql.ColumnParams(item)})")))};
+				values {Sql.List(items.Select(item => Sql.Format($"({Sql.DtoParams(item)})")))};
 				")).Execute();
 
 		connector.Command(Sql.Format($"select {Sql.ColumnNames<NameValue>()} from {tableName} t order by ItemId;"))

@@ -2,28 +2,31 @@ using System.Text;
 using BenchmarkDotNet.Attributes;
 using Microsoft.Data.Sqlite;
 using MuchAdo;
-using MuchAdo.Ellipses;
 
 namespace Benchmarks;
 
 [MemoryDiagnoser]
 public class DataMapperBenchmark : IDisposable
 {
-	protected DataMapperBenchmark()
+	public DataMapperBenchmark()
 	{
 		m_connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
-		m_connector.Command("drop table if exists DataMapperBenchmark;").Execute();
-		m_connector.Command("create table DataMapperBenchmark (ItemId integer primary key, AnInteger integer, AReal real, AString text, ABlob blob);").Execute();
+		m_connector.Command("drop table if exists DataMapperBenchmark").Execute();
+		m_connector.Command("create table DataMapperBenchmark (ItemId integer primary key, AnInteger integer, AReal real, AString text, ABlob blob)").Execute();
 
 		const int recordCount = 10000;
-		m_connector
-			.Command("insert into DataMapperBenchmark (AnInteger, AReal, AString, ABlob) values (@AnInteger, @AReal, @AString, @ABlob)...;")
-			.BulkInsert(Enumerable.Range(0, recordCount)
-				.Select(x => new DbParametersList(
-					DbParameters.Create("AnInteger", x < recordCount ? x : (int?) null),
-					DbParameters.Create("AReal", x < recordCount ? 1.0 / (x + 1.0) : (double?) null),
-					DbParameters.Create("AString", x < recordCount ? $"{x:0000}" : null),
-					DbParameters.Create("ABlob", x < recordCount ? Encoding.UTF8.GetBytes($"{x:0000}") : null))));
+		foreach (var chunk in Enumerable.Range(0, recordCount).Chunk(200))
+		{
+			var valuesSql = Sql.List(
+				chunk.Select(x => Sql.Tuple(
+					Sql.Param(x < recordCount ? x : (int?) null),
+					Sql.Param(x < recordCount ? 1.0 / (x + 1.0) : (double?) null),
+					Sql.Param(x < recordCount ? $"{x:0000}" : null),
+					Sql.Param(x < recordCount ? Encoding.UTF8.GetBytes($"{x:0000}") : null))));
+			m_connector
+				.CommandFormat($"insert into DataMapperBenchmark (AnInteger, AReal, AString, ABlob) values {valuesSql}")
+				.Execute();
+		}
 	}
 
 	[Benchmark]
@@ -54,11 +57,14 @@ public class DataMapperBenchmark : IDisposable
 	public (long? AnInteger, double AReal) NullableInt64AndDouble() => m_connector.Command("select AnInteger, ifnull(AReal, 0.0) from DataMapperBenchmark;").Enumerate<(long?, double)>().Last();
 
 	[Benchmark]
-	public MyTuple MyTuples() => m_connector.Command("select AnInteger, ifnull(AReal, 0.0) from DataMapperBenchmark;").Enumerate<MyTuple>().Last();
+	public MyTuple MyTuples() => m_connector.Command("select AnInteger, ifnull(AReal, 0.0) AReal from DataMapperBenchmark;").Enumerate<MyTuple>().Last();
 
 	public void Dispose() => m_connector.Dispose();
 
-	public readonly record struct MyTuple(long? AnInteger, double AReal);
+	public readonly record struct MyTuple(double AReal)
+	{
+		public int? AnInteger { get; init; }
+	}
 
 	private readonly DbConnector m_connector;
 }

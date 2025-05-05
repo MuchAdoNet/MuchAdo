@@ -1,116 +1,142 @@
-using System.Data;
+using System.Globalization;
 using System.Text;
-using MuchAdo.SqlFormatting;
 using static System.FormattableString;
 
 namespace MuchAdo;
 
 internal sealed class DbConnectorCommandBuilder
 {
-	public DbConnectorCommandBuilder(SqlSyntax syntax)
+	public DbConnectorCommandBuilder(SqlSyntax syntax, bool buildText, ISqlParamTarget? paramTarget)
 	{
 		Syntax = syntax;
-		m_textBuilder = new StringBuilder();
-		m_parametersList = new DbParametersList();
+		m_textBuilder = buildText ? new StringBuilder(capacity: 128) : null;
+		m_paramTarget = paramTarget;
 	}
 
 	public SqlSyntax Syntax { get; }
 
-	public string Text => m_textBuilder.ToString();
+	public int TextLength => m_textLength;
 
-	public int TextLength => m_textBuilder.Length;
-
-	public DbParameters Parameters => m_parametersList;
+	public string GetText() => m_textBuilder?.ToString() ?? "";
 
 	public void AppendText(string text)
 	{
 		if (text.Length != 0)
 		{
 			ApplyPrefixes();
-			m_textBuilder.Append(text);
+			m_textBuilder?.Append(text);
+			m_textLength += text.Length;
 		}
 	}
 
-	public void AppendText(char ch)
+	public void SubmitParameters(SqlParamSource parameters)
 	{
-		ApplyPrefixes();
-		m_textBuilder.Append(ch);
+		if (m_paramTarget is not null)
+			parameters.SubmitParameters(m_paramTarget);
 	}
 
-	public void AppendParameterValue<T>(object? key, T value)
+	public void AppendParameterValue<T>(T value, SqlParamType? type = null, object? identity = null)
 	{
 		ApplyPrefixes();
 
-		if (key is null || m_parameterNames is null || !m_parameterNames.TryGetValue(key, out var name))
+		string? needsParameterNamed;
+		if (identity is null || m_placeholders is null || !m_placeholders.TryGetValue(identity, out var tuple))
 		{
-			name = Invariant($"{Syntax.UnnamedParameterPrefix}{++m_parameterCount}");
-			m_parametersList.Add(DbParameters.Create(name, value));
-			if (key is not null)
-				(m_parameterNames ??= new()).Add(key, name);
+			if (Syntax.UnnamedParameterStrategy.NamedParameterNamePrefix is { } namedPrefix)
+			{
+				needsParameterNamed = Invariant($"{namedPrefix}{++m_parameterCount}");
+				tuple = (Syntax.NamedParameterPrefix, needsParameterNamed, -1);
+				tuple.Name = needsParameterNamed;
+				if (identity is not null)
+					(m_placeholders ??= new()).Add(identity, tuple);
+			}
+			else if (Syntax.UnnamedParameterStrategy.NumberedParameterPlaceholderPrefix is { } numberedPrefix)
+			{
+				needsParameterNamed = "";
+				tuple = (numberedPrefix, "", ++m_parameterCount);
+				if (identity is not null)
+					(m_placeholders ??= new()).Add(identity, tuple);
+			}
+			else if (Syntax.UnnamedParameterStrategy.UnnumberedParameterPlaceholder is { } unnumberedPlaceholder)
+			{
+				needsParameterNamed = "";
+				tuple = (unnumberedPlaceholder, "", -1);
+			}
+			else
+			{
+				throw new InvalidOperationException($"Unexpected {nameof(Syntax.UnnamedParameterStrategy)}.");
+			}
 		}
-
-		m_textBuilder.Append(Syntax.ParameterStart);
-		m_textBuilder.Append(name);
-	}
-
-	public void AppendParameterValue<T>(object? key, T valueSource, DbDtoProperty<T> valueProperty)
-	{
-		ApplyPrefixes();
-
-		if (key is null || m_parameterNames is null || !m_parameterNames.TryGetValue(key, out var name))
+		else
 		{
-			name = Invariant($"{Syntax.UnnamedParameterPrefix}{++m_parameterCount}");
-			m_parametersList.Add(valueProperty.CreateParameter(name, valueSource));
-			if (key is not null)
-				(m_parameterNames ??= new()).Add(key, name);
+			needsParameterNamed = null;
 		}
 
-		m_textBuilder.Append(Syntax.ParameterStart);
-		m_textBuilder.Append(name);
+		m_textBuilder?.Append(tuple.Prefix);
+		m_textLength += tuple.Prefix.Length;
+
+		m_textBuilder?.Append(tuple.Name);
+		m_textLength += tuple.Name.Length;
+
+		if (tuple.Number >= 0)
+		{
+#if !NETSTANDARD2_0
+			Span<char> numberBuffer = stackalloc char[10];
+			tuple.Number.TryFormat(numberBuffer, out var numberLength, provider: CultureInfo.InvariantCulture);
+			m_textBuilder?.Append(numberBuffer[..numberLength]);
+			m_textLength += numberLength;
+#else
+			var numberString = tuple.Number.ToString(CultureInfo.InvariantCulture);
+			m_textBuilder?.Append(numberString);
+			m_textLength += numberString.Length;
+#endif
+		}
+
+		if (m_paramTarget is not null && needsParameterNamed is not null)
+			m_paramTarget.AcceptParameter(needsParameterNamed, value, type);
 	}
 
 	private void ApplyPrefixes()
 	{
-		if (m_prefixes is { Count: not 0 })
+		if (m_brackets is { Count: not 0 })
 		{
-			for (var index = 0; index < m_prefixes.Count; index++)
+			for (var index = 0; index < m_brackets.Count; index++)
 			{
-				var prefix = m_prefixes[index];
+				var (prefix, suffix) = m_brackets[index];
 				if (prefix is not null)
 				{
-					m_textBuilder.Append(prefix);
-					m_prefixes[index] = null;
+					m_textBuilder?.Append(prefix);
+					m_textLength += prefix.Length;
+					m_brackets[index] = (null, suffix);
 				}
 			}
 		}
 	}
 
-	public void AddParameters(DbParameters parameters) => m_parametersList.Add(parameters);
+	public DbConnectorBracketScope Prefix(string prefix) => Bracket(prefix, null);
 
-	public DbConnectorBracketScope Prefix(string prefix) => Bracket(prefix, "");
-
-	public DbConnectorBracketScope Bracket(string prefix, string suffix)
+	public DbConnectorBracketScope Bracket(string prefix, string? suffix)
 	{
-		(m_prefixes ??= new()).Add(prefix);
-		(m_suffixes ??= new()).Add(suffix);
+		(m_brackets ??= new()).Add((prefix, suffix));
 		return new(this);
 	}
 
 	internal void EndBracket()
 	{
-		var index = m_prefixes!.Count - 1;
-		if (m_prefixes![index] is null)
-			m_textBuilder.Append(m_suffixes![index]);
-		m_prefixes!.RemoveAt(index);
-		m_suffixes!.RemoveAt(index);
+		var index = m_brackets!.Count - 1;
+		var (prefix, suffix) = m_brackets[index];
+		if (prefix is null && suffix is not null)
+		{
+			m_textBuilder?.Append(suffix);
+			m_textLength += suffix.Length;
+		}
+		m_brackets!.RemoveAt(index);
 	}
 
-	public DbConnectorCommand Build(DbConnector connector) => new DbConnectorCommand(connector, m_textBuilder.ToString(), CommandType.Text).WithParameters(m_parametersList);
-
-	private readonly StringBuilder m_textBuilder;
-	private readonly DbParametersList m_parametersList;
+	private readonly StringBuilder? m_textBuilder;
+	private readonly ISqlParamTarget? m_paramTarget;
+	private int m_textLength;
 	private int m_parameterCount;
-	private List<string?>? m_prefixes;
-	private List<string?>? m_suffixes;
-	private Dictionary<object, string>? m_parameterNames;
+	private List<(string? Prefix, string? Suffix)>? m_brackets;
+	private Dictionary<object, (string Prefix, string Name, int Number)>? m_placeholders;
 }

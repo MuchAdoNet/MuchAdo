@@ -34,7 +34,7 @@
 
   <PropertyGroup>
     <!-- Requires 'docker-compose up' from '/docker'. -->
-    <!--<DefineConstants>MYSQL;NPGSQL;SQLSERVER</DefineConstants>-->
+    <DefineConstants>MYSQL;NPGSQL;SQLSERVER</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(BuildNumber)' != '' ">

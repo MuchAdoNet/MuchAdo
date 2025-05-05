@@ -14,18 +14,19 @@ internal sealed class EllipsesExtensionsTests
 	public void ParameterCollectionTests()
 	{
 		using var connector = CreateConnector();
-		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
-		connector.Command("insert into Items (Name) values ('one'), ('two'), ('three');").Execute().Should().Be(3);
+		var tableName = Sql.Raw(nameof(ParameterCollectionTests));
+		connector.CommandFormat($"create table {tableName} (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
+		connector.CommandFormat($"insert into {tableName} (Name) values ('one'), ('two'), ('three');").Execute().Should().Be(3);
 		var resultSets = connector
-			.Command("""
-				select Name from Items where Name in (@names...);
-				select Name from Items where Name not in (@names...);
+			.CommandFormat($"""
+				select Name from {tableName} where Name in (@names...);
+				select Name from {tableName} where Name not in (@names...);
 				select @before + @after;
-				""")
-			.WithParameter("before", 1)
-			.WithParameter("names", new[] { "one", "three", "five" })
-			.WithParameter("ignore", new[] { 0 })
-			.WithParameter("after", 2)
+				""",
+				Sql.NamedParam("before", 1),
+				Sql.NamedParam("names", new[] { "one", "three", "five" }),
+				Sql.NamedParam("ignore", new[] { 0 }),
+				Sql.NamedParam("after", 2))
 			.QueryMultiple();
 		resultSets.Read<string>().Should().BeEquivalentTo("one", "three");
 		resultSets.Read<string>().Should().BeEquivalentTo("two");
@@ -38,14 +39,14 @@ internal sealed class EllipsesExtensionsTests
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
 		connector.Command("insert into Items (Name) values ('one'), ('two'), ('three');").Execute().Should().Be(3);
-		Invoking(() => connector.Command("select Name from Items where Name in (@names...);").WithParameter("names", Array.Empty<string>())
+		Invoking(() => connector.Command("select Name from Items where Name in (@names...);", Sql.NamedParam("names", Array.Empty<string>()))
 			.Query<string>()).Should().Throw<InvalidOperationException>();
 	}
 
 	private static DbConnector CreateConnector()
 	{
 		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
-		connector.CommandExecuting += (_, e) => e.ConnectorCommand.ExpandEllipses();
+		connector.Executing += (_, e) => e.CommandBatch.ExpandEllipses();
 		return connector;
 	}
 }

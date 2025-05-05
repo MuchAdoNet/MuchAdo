@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net472;net9.0</TargetFrameworks>
@@ -30,8 +30,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MuchAdo\MuchAdo.csproj" />
     <ProjectReference Include="..\..\src\MuchAdo.Ellipses\MuchAdo.Ellipses.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\MuchAdo.Tests\TestUtility.cs" Link="TestUtility.cs" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net472' ">

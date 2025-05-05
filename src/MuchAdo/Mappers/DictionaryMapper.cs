@@ -2,27 +2,22 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class DictionaryMapper<T> : DbTypeMapper<T>
+internal sealed class DictionaryMapper<TDictionary, TValue>(DbDataMapper dataMapper) : DbTypeMapper<TDictionary>
 {
 	public override int? FieldCount => null;
 
-	protected override T MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
+	protected override TDictionary MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
-		var dictionary = new Dictionary<string, object?>();
+		var dictionary = new Dictionary<string, TValue>();
+		var typeMapper = dataMapper.GetTypeMapper<TValue>();
 		var notNull = false;
 		for (var i = index; i < index + count; i++)
 		{
 			var name = record.GetName(i);
-			if (!record.IsDBNull(i))
-			{
-				dictionary[name] = record.GetValue(i);
+			dictionary[name] = typeMapper.Map(record, i, state);
+			if (!notNull && !record.IsDBNull(i))
 				notNull = true;
-			}
-			else
-			{
-				dictionary[name] = null;
-			}
 		}
-		return notNull ? (T) (object) dictionary : default!;
+		return notNull ? (TDictionary) (object) dictionary : default!;
 	}
 }

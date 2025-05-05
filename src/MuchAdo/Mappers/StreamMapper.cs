@@ -3,9 +3,9 @@ using System.Data.Common;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class StreamMapper : ReferenceValueMapper<Stream>
+internal sealed class StreamMapper(DbDataMapper dataMapper) : SingleFieldReferenceMapper<Stream>(dataMapper)
 {
-	public override Stream MapNotNullField(IDataRecord record, int index)
+	public override Stream MapNotNullField(IDataRecord record, int index, DbConnectorRecordState? state)
 	{
 		if (record is DbDataReader dbReader)
 			return dbReader.GetStream(index);

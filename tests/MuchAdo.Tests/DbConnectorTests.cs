@@ -2,7 +2,6 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
-using MuchAdo.SqlFormatting;
 using NUnit.Framework;
 using static FluentAssertions.FluentActions;
 
@@ -13,9 +12,12 @@ namespace MuchAdo.Tests;
 internal sealed class DbConnectorTests
 {
 	[Test]
-	public void NullConnection()
+	public void ArgumentNullException()
 	{
 		Invoking(() => new DbConnector(null!)).Should().Throw<ArgumentNullException>();
+
+		using var connection = new SqliteConnection("Data Source=:memory:");
+		Invoking(() => new DbConnector(connection, null!)).Should().Throw<ArgumentNullException>();
 	}
 
 	[Test]
@@ -44,6 +46,68 @@ internal sealed class DbConnectorTests
 			connector.Connection.State.Should().Be(ConnectionState.Open);
 		}
 		connector.Connection.State.Should().Be(ConnectionState.Closed);
+	}
+
+	[Test]
+	public void GetOpenConnection()
+	{
+		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.Connection.State.Should().Be(ConnectionState.Closed);
+		var connection = connector.GetOpenConnection();
+		connection.State.Should().Be(ConnectionState.Open);
+		connection.Should().BeSameAs(connector.Connection);
+		connector.CloseConnection();
+		connection.State.Should().Be(ConnectionState.Closed);
+		connector.CloseConnection();
+	}
+
+	[Test]
+	public async Task GetOpenConnectionAsync()
+	{
+		await using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.Connection.State.Should().Be(ConnectionState.Closed);
+		var connection = await connector.GetOpenConnectionAsync();
+		connection.State.Should().Be(ConnectionState.Open);
+		connection.Should().BeSameAs(connector.Connection);
+		await connector.CloseConnectionAsync();
+		connection.State.Should().Be(ConnectionState.Closed);
+		await connector.CloseConnectionAsync();
+	}
+
+	[Test]
+	public void AttachDisposable()
+	{
+		var ints = new List<int>();
+		var disposable1 = new DisposableAction(() => ints.Add(1));
+		var disposable2 = new AsyncDisposableAction(async () => ints.Add(2));
+
+		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.AttachDisposable(disposable1);
+		connector.AttachDisposable(disposable2);
+
+		connector.Dispose();
+		ints.Should().Equal(2, 1);
+
+		connector.Dispose();
+		ints.Should().Equal(2, 1);
+	}
+
+	[Test]
+	public async Task AttachDisposableAsync()
+	{
+		var ints = new List<int>();
+		var disposable1 = new DisposableAction(() => ints.Add(1));
+		var disposable2 = new AsyncDisposableAction(async () => ints.Add(2));
+
+		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.AttachDisposable(disposable1);
+		connector.AttachDisposable(disposable2);
+
+		await connector.DisposeAsync();
+		ints.Should().Equal(2, 1);
+
+		await connector.DisposeAsync();
+		ints.Should().Equal(2, 1);
 	}
 
 	[Test]
@@ -105,8 +169,8 @@ internal sealed class DbConnectorTests
 	{
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
-		connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);").WithParameters(("item1", "one"), ("item2", "two")).Execute().Should().Be(2);
-		connector.Command("select Name from Items where Name like @like;").WithParameter("like", "t%").QueryFirst<string>().Should().Be("two");
+		connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);", Sql.NamedParam("item1", "one"), Sql.NamedParam("item2", "two")).Execute().Should().Be(2);
+		connector.Command("select Name from Items where Name like @like;", Sql.NamedParam("like", "t%")).QueryFirst<string>().Should().Be("two");
 	}
 
 	[Test]
@@ -114,8 +178,8 @@ internal sealed class DbConnectorTests
 	{
 		await using var connector = CreateConnector();
 		(await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync()).Should().Be(0);
-		(await connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);").WithParameters(("item1", "one"), ("item2", "two")).ExecuteAsync()).Should().Be(2);
-		(await connector.Command("select Name from Items where Name like @like;").WithParameter("like", "t%").QueryFirstAsync<string>()).Should().Be("two");
+		(await connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);", Sql.NamedParam("item1", "one"), Sql.NamedParam("item2", "two")).ExecuteAsync()).Should().Be(2);
+		(await connector.Command("select Name from Items where Name like @like;", Sql.NamedParam("like", "t%")).QueryFirstAsync<string>()).Should().Be("two");
 	}
 
 	[Test]
@@ -125,7 +189,7 @@ internal sealed class DbConnectorTests
 		const string item1 = "one";
 		const string item2 = "two";
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
-		connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);").WithParameters(DbParameters.FromDto(new { item1, item2 })).Execute().Should().Be(2);
+		connector.Command("insert into Items (Name) values (@item1); insert into Items (Name) values (@item2);", Sql.DtoNamedParams(new { item1, item2 })).Execute().Should().Be(2);
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal(item1, item2);
 	}
 
@@ -147,15 +211,15 @@ internal sealed class DbConnectorTests
 	{
 		using var connector = CreateConnector();
 		var createCmd = connector.Command("create table Items (ItemId integer primary key, Name text not null);");
-		createCmd.IsPrepared.Should().Be(false);
+		createCmd.IsPrepared.Should().Be(null);
 		createCmd.Execute().Should().Be(0);
 
 		string insertStmt = "insert into Items (Name) values (@item);";
-		var preparedCmd = connector.Command(insertStmt).WithParameter("item", "one").Prepare();
+		var preparedCmd = connector.Command(insertStmt, Sql.NamedParam("item", "one")).Prepare();
 		preparedCmd.IsPrepared.Should().Be(true);
 		preparedCmd.Execute().Should().Be(1);
 
-		connector.Command(insertStmt).WithParameter("item", "two").Execute().Should().Be(1);
+		connector.Command(insertStmt, Sql.NamedParam("item", "two")).Execute().Should().Be(1);
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal("one", "two");
 	}
 
@@ -166,8 +230,8 @@ internal sealed class DbConnectorTests
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
 
 		var insertStmt = "insert into Items (Name) values (@item);";
-		connector.Command(insertStmt).WithParameter("item", "one").Prepare().Cache().Execute().Should().Be(1);
-		connector.Command(insertStmt).WithParameter("item", "two").Prepare().Cache().Execute().Should().Be(1);
+		connector.Command(insertStmt, Sql.NamedParam("item", "one")).Prepare().Cache().Execute().Should().Be(1);
+		connector.Command(insertStmt, Sql.NamedParam("item", "two")).Prepare().Cache().Execute().Should().Be(1);
 
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal("one", "two");
 	}
@@ -179,8 +243,8 @@ internal sealed class DbConnectorTests
 		await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync();
 
 		var insertStmt = "insert into Items (Name) values (@item);";
-		(await connector.Command(insertStmt).WithParameter("item", "one").Prepare().Cache().ExecuteAsync()).Should().Be(1);
-		(await connector.Command(insertStmt).WithParameter("item", "two").Prepare().Cache().ExecuteAsync()).Should().Be(1);
+		(await connector.Command(insertStmt, Sql.NamedParam("item", "one")).Prepare().Cache().ExecuteAsync()).Should().Be(1);
+		(await connector.Command(insertStmt, Sql.NamedParam("item", "two")).Prepare().Cache().ExecuteAsync()).Should().Be(1);
 
 		(await connector.Command("select Name from Items order by ItemId;").QueryAsync<string>()).Should().Equal("one", "two");
 	}
@@ -262,12 +326,12 @@ internal sealed class DbConnectorTests
 		{
 			using (connector.BeginTransaction())
 			{
-				connector.Command("insert into Items (Name) values (@item);").WithParameter("item", item).Prepare().Cache().Execute().Should().Be(1);
+				connector.Command("insert into Items (Name) values (@item);", Sql.NamedParam("item", item)).Prepare().Cache().Execute().Should().Be(1);
 				connector.CommitTransaction();
 			}
 		}
 
-		connector.Command("insert into Items (Name) values (@item);").WithParameter("item", "three").Prepare().Cache().Execute().Should().Be(1);
+		connector.Command("insert into Items (Name) values (@item);", Sql.NamedParam("item", "three")).Prepare().Cache().Execute().Should().Be(1);
 
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal("one", "two", "three");
 	}
@@ -278,8 +342,8 @@ internal sealed class DbConnectorTests
 		var connectionString = new SqliteConnectionStringBuilder { DataSource = nameof(DeferredTransaction), Mode = SqliteOpenMode.Memory, Cache = SqliteCacheMode.Shared }.ConnectionString;
 		using var connector1 = new DbConnector(new SqliteConnection(connectionString));
 		using var connector2 = new DbConnector(new SqliteConnection(connectionString));
-		((SqliteConnection) connector1.GetOpenConnection()).DefaultTimeout = 5;
-		((SqliteConnection) connector2.GetOpenConnection()).DefaultTimeout = 5;
+		((SqliteConnection) connector1.Connection).DefaultTimeout = 5;
+		((SqliteConnection) connector2.Connection).DefaultTimeout = 5;
 		connector1.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
 		connector1.Command("insert into Items (Name) values ('xyzzy');").Execute();
 		using var transaction1 = connector1.AttachTransaction(((SqliteConnection) connector1.GetOpenConnection()).BeginTransaction(deferred: true));
@@ -351,7 +415,7 @@ internal sealed class DbConnectorTests
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
 		foreach (var name in new[] { "one", "two", "three" })
-			connector.Command("insert into Items (Name) values (@name);").WithParameter("name", name).Cache().Execute().Should().Be(1);
+			connector.Command("insert into Items (Name) values (@name);", Sql.NamedParam("name", name)).Cache().Execute().Should().Be(1);
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal("one", "two", "three");
 	}
 
@@ -361,9 +425,9 @@ internal sealed class DbConnectorTests
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
 		var sql = "insert into Items (Name) values (@name);";
-		connector.Command(sql).WithParameter("name", "one").Cache().Execute().Should().Be(1);
-		Invoking(() => connector.Command(sql).WithParameter("three", "four").WithParameter("name", "two").Cache().Execute()).Should().Throw<InvalidOperationException>();
-		Invoking(() => connector.Command(sql).WithParameter("title", "three").Cache().Execute()).Should().Throw<InvalidOperationException>();
+		connector.Command(sql, Sql.NamedParam("name", "one")).Cache().Execute().Should().Be(1);
+		Invoking(() => connector.Command(sql, Sql.NamedParam("three", "four"), Sql.NamedParam("name", "two")).Cache().Execute()).Should().Throw<InvalidOperationException>();
+		Invoking(() => connector.Command(sql, Sql.NamedParam("title", "three")).Cache().Execute()).Should().Throw<InvalidOperationException>();
 		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().Equal("one");
 	}
 
@@ -373,7 +437,7 @@ internal sealed class DbConnectorTests
 		await using var connector = CreateConnector();
 		(await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync()).Should().Be(0);
 		foreach (var name in new[] { "one", "two", "three" })
-			(await connector.Command("insert into Items (Name) values (@name);").WithParameter("name", name).Cache().ExecuteAsync()).Should().Be(1);
+			(await connector.Command("insert into Items (Name) values (@name);", Sql.NamedParam("name", name)).Cache().ExecuteAsync()).Should().Be(1);
 		(await connector.Command("select Name from Items order by ItemId;").QueryAsync<string>()).Should().Equal("one", "two", "three");
 	}
 
@@ -382,14 +446,14 @@ internal sealed class DbConnectorTests
 	{
 		using var connector = CreateConnector();
 		var createCommand = connector.Command("create table Items (ItemId integer primary key, Name text not null);");
-		createCommand.CommandType.Should().Be(CommandType.Text);
+		createCommand.LastCommand.Type.Should().Be(CommandType.Text);
 		createCommand.Execute().Should().Be(0);
-		connector.Command("insert into Items (Name) values (@item1);").WithParameter("item1", "one").CommandType.Should().Be(CommandType.Text);
+		connector.Command("insert into Items (Name) values (@item1);", Sql.NamedParam("item1", "one")).LastCommand.Type.Should().Be(CommandType.Text);
 
 		var storedProcedureCommand = connector.StoredProcedure("values (1);");
-		storedProcedureCommand.CommandType.Should().Be(CommandType.StoredProcedure);
+		storedProcedureCommand.LastCommand.Type.Should().Be(CommandType.StoredProcedure);
 		Invoking(storedProcedureCommand.Execute).Should().Throw<ArgumentException>("CommandType must be Text. (Parameter 'value')");
-		connector.StoredProcedure("values (@two);").WithParameter("two", 2).CommandType.Should().Be(CommandType.StoredProcedure);
+		connector.StoredProcedure("values (@two);", Sql.NamedParam("two", 2)).LastCommand.Type.Should().Be(CommandType.StoredProcedure);
 	}
 
 	[Test]
@@ -436,7 +500,7 @@ internal sealed class DbConnectorTests
 	[TestCase(false)]
 	public void EnumQueryTests(bool flexible)
 	{
-		using var connector = CreateConnector(new DefaultDbTypeMapperSettings { AllowStringToEnum = flexible });
+		using var connector = CreateConnector(DbDataMapper.Default.WithAllowStringToEnum(flexible));
 		connector.Command("create table Items (ItemId integer primary key, Name text null, Number integer null);").Execute();
 		connector.Command("insert into Items (Name, Number) values ('Ordinal', 4), ('ordinal', null), (null, 4), ('fail', null);").Execute();
 
@@ -476,10 +540,22 @@ internal sealed class DbConnectorTests
 	{
 		using var connector = CreateConnector();
 		connector.Command("create table Items (ItemId integer primary key, Name text null, Number integer null);").Execute();
-		connector.Command("insert into Items (Name, Number) values (@Name, @Number);").WithParameter("Name", 'A').WithParameter("Number", 'A').Execute();
+		connector.Command("insert into Items (Name, Number) values (@Name, @Number);", Sql.NamedParam("Name", 'A'), Sql.NamedParam("Number", 'A')).Execute();
 		connector.Command("select Name, Number from Items order by ItemId limit 1;").QuerySingle<(string, string)>().Should().Be(("A", "A"));
-		connector.Command("insert into Items (Name, Number) values (@Name, @Number);").WithParameter("Name", new SqliteParameter { Value = 'A', SqliteType = SqliteType.Text }).WithParameter("Number", new SqliteParameter { Value = 'A', SqliteType = SqliteType.Integer }).Execute();
+		connector.Command("insert into Items (Name, Number) values (@Name, @Number);",
+			Sql.NamedParam("Name", new SqliteParameter { Value = 'A', SqliteType = SqliteType.Text }),
+			Sql.NamedParam("Number", new SqliteParameter { Value = 'A', SqliteType = SqliteType.Integer })).Execute();
 		connector.Command("select Name, Number from Items order by ItemId limit 1 offset 1;").QuerySingle<(string, long)>().Should().Be(("A", 65L));
+	}
+
+	[Test]
+	public void ParameterSizeTests()
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text null);").Execute();
+		connector.Command("insert into Items (Name) values (@Name);",
+			Sql.NamedParam("Name", "1234567890", SqlParamType.Create(x => x.Size = 5))).Execute();
+		connector.Command("select Name from Items order by ItemId limit 1;").QuerySingle<string>().Should().Be("12345");
 	}
 
 	[Test]
@@ -517,9 +593,22 @@ internal sealed class DbConnectorTests
 		throw new InvalidOperationException();
 	}
 
-	private static DbConnector CreateConnector(DefaultDbTypeMapperSettings? defaultTypeMapperSettings = null) =>
+	private sealed class DisposableAction(Action action) : IDisposable
+	{
+		public void Dispose() => action();
+	}
+
+	private sealed class AsyncDisposableAction(Func<ValueTask> asyncAction) : IAsyncDisposable
+	{
+		public ValueTask DisposeAsync() => asyncAction();
+	}
+
+	private static DbConnector CreateConnector(DbDataMapper? dataMapper = null) =>
 		new(new SqliteConnection("Data Source=:memory:"),
-			defaultTypeMapperSettings is null ? null : new DbConnectorSettings { DataMapper = new DbDataMapper(new DefaultDbTypeMapperFactory(defaultTypeMapperSettings)) });
+			new DbConnectorSettings
+			{
+				DataMapper = dataMapper ?? DbDataMapper.Default,
+			});
 
 	private static string ToUpper(DbConnectorRecord x) => x.Get<string>().ToUpperInvariant();
 }

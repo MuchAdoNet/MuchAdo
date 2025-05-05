@@ -12,7 +12,7 @@ internal sealed class DbDtoProperty<T>
 		ValueType = propertyInfo.PropertyType;
 		IsReadOnly = propertyInfo.SetMethod?.IsPublic is not true;
 		ColumnName = columnName;
-		m_lazyCreateParameter = new(CreateParameterCreator);
+		m_lazySubmitParameter = new(CreateSubmitParameter);
 	}
 
 	public DbDtoProperty(FieldInfo fieldInfo, string? columnName)
@@ -22,7 +22,7 @@ internal sealed class DbDtoProperty<T>
 		ValueType = fieldInfo.FieldType;
 		IsReadOnly = fieldInfo.IsInitOnly;
 		ColumnName = columnName;
-		m_lazyCreateParameter = new(CreateParameterCreator);
+		m_lazySubmitParameter = new(CreateSubmitParameter);
 	}
 
 	public MemberInfo MemberInfo { get; }
@@ -35,28 +35,31 @@ internal sealed class DbDtoProperty<T>
 
 	public string? ColumnName { get; }
 
-	public DbParameters CreateParameter(string name, T valueSource) => m_lazyCreateParameter.Value(name, valueSource);
+	public void SubmitParameter(ISqlParamTarget target, string name, T source, SqlParamType? type) => m_lazySubmitParameter.Value(target, name, source, type);
 
-	private Func<string, T, DbParameters> CreateParameterCreator()
+	private Action<ISqlParamTarget, string, T, SqlParamType?> CreateSubmitParameter()
 	{
+		var targetParam = Expression.Parameter(typeof(ISqlParamTarget), "target");
 		var nameParam = Expression.Parameter(typeof(string), "name");
 		var sourceParam = Expression.Parameter(typeof(T), "source");
+		var typeParam = Expression.Parameter(typeof(SqlParamType), "type");
 
 		var getValue = MemberInfo is PropertyInfo propertyInfo
 			? Expression.Property(sourceParam, propertyInfo)
 			: Expression.Field(sourceParam, (FieldInfo) MemberInfo);
 
-		var createMethod = typeof(DbParameters)
-			.GetMethods(BindingFlags.Public | BindingFlags.Static)
-			.Single(x => x is { Name: "Create", IsGenericMethod: true } &&
+		var acceptMethod = typeof(ISqlParamTarget)
+			.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+			.Single(x => x is { Name: "AcceptParameter", IsGenericMethod: true } &&
 				x.GetGenericArguments().Length == 1 &&
-				x.GetParameters() is [var p0, var p1] &&
+				x.GetParameters() is [var p0, var p1, var p2] &&
 				p0.ParameterType == typeof(string) &&
-				p1.ParameterType.IsGenericParameter).MakeGenericMethod(ValueType);
+				p1.ParameterType.IsGenericParameter &&
+				p2.ParameterType == typeof(SqlParamType)).MakeGenericMethod(ValueType);
 
-		return Expression.Lambda<Func<string, T, DbParameters>>(
-			Expression.Call(createMethod, nameParam, getValue), nameParam, sourceParam).Compile();
+		return Expression.Lambda<Action<ISqlParamTarget, string, T, SqlParamType?>>(
+			Expression.Call(targetParam, acceptMethod, nameParam, getValue, typeParam), targetParam, nameParam, sourceParam, typeParam).Compile();
 	}
 
-	private readonly Lazy<Func<string, T, DbParameters>> m_lazyCreateParameter;
+	private readonly Lazy<Action<ISqlParamTarget, string, T, SqlParamType?>> m_lazySubmitParameter;
 }

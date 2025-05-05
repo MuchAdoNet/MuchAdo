@@ -2,7 +2,7 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class CharMapper : NonNullableValueMapper<char>
+internal sealed class CharMapper(DbDataMapper dataMapper) : SingleFieldValueMapper<char>(dataMapper)
 {
-	public override char MapNotNullField(IDataRecord record, int index) => record.GetChar(index);
+	public override char MapNotNullField(IDataRecord record, int index, DbConnectorRecordState? state) => record.GetChar(index);
 }

@@ -19,20 +19,20 @@ internal static class DtoMapper
 
 		public override bool Equals(object? obj) => obj is FieldNameSet other && Equals(other);
 
-		public override int GetHashCode() => Names.Aggregate(0, (hash, name) => PortableUtility.CombineHashCodes(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(name)));
+		public override int GetHashCode() => Names.Aggregate(0, (hash, name) => Utility.CombineHashCodes(hash, StringComparer.OrdinalIgnoreCase.GetHashCode(name)));
 	}
 }
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 internal sealed class DtoMapper<T> : DbTypeMapper<T>
 {
-	public DtoMapper(DbDataMapper mapper)
+	public DtoMapper(DbDataMapper dataMapper)
 	{
+		m_dataMapper = dataMapper;
 		var properties = DbDtoInfo.GetInfo<T>().Properties;
-
 		var propertiesByNormalizedFieldName = new Dictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>(capacity: properties.Count, StringComparer.OrdinalIgnoreCase);
 		foreach (var property in properties)
-			propertiesByNormalizedFieldName.Add(NormalizeFieldName(property.ColumnName ?? property.Name), (property, mapper.GetTypeMapper(property.ValueType)));
+			propertiesByNormalizedFieldName.Add(NormalizeFieldName(property.ColumnName ?? property.Name), (property, m_dataMapper.GetTypeMapper(property.ValueType)));
 		m_propertiesByNormalizedFieldName = propertiesByNormalizedFieldName;
 	}
 
@@ -78,7 +78,12 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 			{
 				var fieldName = fieldNameSet.Names[index];
 				if (!m_propertiesByNormalizedFieldName!.TryGetValue(NormalizeFieldName(fieldName), out var property))
-					throw new InvalidOperationException($"Type does not have a property for '{fieldName}': {Type.FullName}");
+				{
+					if (m_dataMapper.IgnoreUnusedFields)
+						continue;
+					else
+						throw new InvalidOperationException($"Type does not have a property for '{fieldName}': {Type.FullName}");
+				}
 
 				if (creator?.GetPropertyParameterIndex(property.Property) is { } parameterIndex)
 				{
@@ -139,7 +144,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 
 	private static string NormalizeFieldName(string text) => text.ReplaceOrdinal("_", "");
 
+	private readonly DbDataMapper m_dataMapper;
 	private readonly Dictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>? m_propertiesByNormalizedFieldName;
-
 	private readonly ConcurrentDictionary<DtoMapper.FieldNameSet, Func<IDataRecord, int, DbConnectorRecordState?, T>> m_funcsByFieldNameSet = new();
 }

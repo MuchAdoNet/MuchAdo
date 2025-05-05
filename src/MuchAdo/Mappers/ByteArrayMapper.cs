@@ -2,9 +2,9 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class ByteArrayMapper : ReferenceValueMapper<byte[]>
+internal sealed class ByteArrayMapper(DbDataMapper dataMapper) : SingleFieldReferenceMapper<byte[]>(dataMapper)
 {
-	public override byte[] MapNotNullField(IDataRecord record, int index)
+	public override byte[] MapNotNullField(IDataRecord record, int index, DbConnectorRecordState? state)
 	{
 		if (record.GetValue(index) is byte[] blob)
 			return blob;

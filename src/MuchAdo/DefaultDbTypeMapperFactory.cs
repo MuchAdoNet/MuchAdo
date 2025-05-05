@@ -3,80 +3,92 @@ using MuchAdo.Mappers;
 
 namespace MuchAdo;
 
-public sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
+internal sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
 {
-	public DefaultDbTypeMapperFactory(DefaultDbTypeMapperSettings? settings = null)
-	{
-		m_allowStringToEnum = settings?.AllowStringToEnum is true;
-	}
-
 	public override DbTypeMapper<T>? TryCreateTypeMapper<T>(DbDataMapper dataMapper)
 	{
-		if (typeof(T) == typeof(string))
-			return (DbTypeMapper<T>) (object) new StringMapper();
-
 		if (typeof(T) == typeof(bool))
-			return (DbTypeMapper<T>) (object) new BooleanMapper();
-
+			return (DbTypeMapper<T>) (object) new BooleanMapper(dataMapper);
 		if (typeof(T) == typeof(byte))
-			return (DbTypeMapper<T>) (object) new ByteMapper();
-
+			return (DbTypeMapper<T>) (object) new ByteMapper(dataMapper);
 		if (typeof(T) == typeof(char))
-			return (DbTypeMapper<T>) (object) new CharMapper();
-
+			return (DbTypeMapper<T>) (object) new CharMapper(dataMapper);
 		if (typeof(T) == typeof(Guid))
-			return (DbTypeMapper<T>) (object) new GuidMapper();
-
+			return (DbTypeMapper<T>) (object) new GuidMapper(dataMapper);
 		if (typeof(T) == typeof(short))
-			return (DbTypeMapper<T>) (object) new Int16Mapper();
-
+			return (DbTypeMapper<T>) (object) new Int16Mapper(dataMapper);
 		if (typeof(T) == typeof(int))
-			return (DbTypeMapper<T>) (object) new Int32Mapper();
-
+			return (DbTypeMapper<T>) (object) new Int32Mapper(dataMapper);
 		if (typeof(T) == typeof(long))
-			return (DbTypeMapper<T>) (object) new Int64Mapper();
-
+			return (DbTypeMapper<T>) (object) new Int64Mapper(dataMapper);
 		if (typeof(T) == typeof(float))
-			return (DbTypeMapper<T>) (object) new FloatMapper();
-
+			return (DbTypeMapper<T>) (object) new FloatMapper(dataMapper);
 		if (typeof(T) == typeof(double))
-			return (DbTypeMapper<T>) (object) new DoubleMapper();
-
+			return (DbTypeMapper<T>) (object) new DoubleMapper(dataMapper);
+		if (typeof(T) == typeof(string))
+			return (DbTypeMapper<T>) (object) new StringMapper(dataMapper);
 		if (typeof(T) == typeof(decimal))
-			return (DbTypeMapper<T>) (object) new DecimalMapper();
-
+			return (DbTypeMapper<T>) (object) new DecimalMapper(dataMapper);
 		if (typeof(T) == typeof(DateTime))
-			return (DbTypeMapper<T>) (object) new DateTimeMapper();
+			return (DbTypeMapper<T>) (object) new DateTimeMapper(dataMapper);
+
+		if (typeof(T) == typeof(DateTimeOffset))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<DateTimeOffset>(dataMapper);
+		if (typeof(T) == typeof(sbyte))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<sbyte>(dataMapper);
+		if (typeof(T) == typeof(ushort))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<ushort>(dataMapper);
+		if (typeof(T) == typeof(uint))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<uint>(dataMapper);
+		if (typeof(T) == typeof(ulong))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<ulong>(dataMapper);
+		if (typeof(T) == typeof(TimeSpan))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<TimeSpan>(dataMapper);
+
+#if !NETSTANDARD2_0
+		if (typeof(T) == typeof(DateOnly))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<DateOnly>(dataMapper);
+		if (typeof(T) == typeof(TimeOnly))
+			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<TimeOnly>(dataMapper);
+#endif
 
 		if (typeof(T) == typeof(byte[]))
-			return (DbTypeMapper<T>) (object) new ByteArrayMapper();
+			return (DbTypeMapper<T>) (object) new ByteArrayMapper(dataMapper);
 
 		if (typeof(T) == typeof(object))
-			return (DbTypeMapper<T>) (object) new ObjectMapper();
+			return (DbTypeMapper<T>) (object) new ObjectMapper(dataMapper);
 
 		if (typeof(T).IsEnum)
 		{
-			if (m_allowStringToEnum)
-				return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(FlexibleEnumMapper<>).MakeGenericType(typeof(T)))!);
+			if (dataMapper.AllowStringToEnum)
+				return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(FlexibleEnumMapper<>).MakeGenericType(typeof(T)), dataMapper)!);
 
 			var underlyingType = Enum.GetUnderlyingType(typeof(T));
-			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NumericEnumMapper<,>).MakeGenericType(typeof(T), underlyingType), dataMapper.GetTypeMapper(underlyingType))!);
+			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NumericEnumMapper<,>).MakeGenericType(typeof(T), underlyingType), dataMapper, dataMapper.GetTypeMapper(underlyingType))!);
 		}
 
-		if (typeof(T) == typeof(Dictionary<string, object?>))
-			return (DbTypeMapper<T>) (object) new DictionaryMapper<Dictionary<string, object?>>();
-		if (typeof(T) == typeof(IDictionary<string, object?>))
-			return (DbTypeMapper<T>) (object) new DictionaryMapper<IDictionary<string, object?>>();
-		if (typeof(T) == typeof(IReadOnlyDictionary<string, object?>))
-			return (DbTypeMapper<T>) (object) new DictionaryMapper<IReadOnlyDictionary<string, object?>>();
+		if (typeof(T).IsGenericType &&
+			typeof(T).GetGenericTypeDefinition() is { } genericType &&
+			(genericType == typeof(Dictionary<,>) ||
+				genericType == typeof(IDictionary<,>) ||
+				genericType == typeof(IReadOnlyDictionary<,>)) &&
+			typeof(T).GetGenericArguments() is [var keyType, var valueType] &&
+			keyType == typeof(string))
+		{
+			var dictionaryMapperType = typeof(DictionaryMapper<,>).MakeGenericType(typeof(T), valueType);
+			return (DbTypeMapper<T>) Activator.CreateInstance(dictionaryMapperType, dataMapper)!;
+		}
+
 		if (typeof(T) == typeof(IDictionary))
-			return (DbTypeMapper<T>) (object) new DictionaryMapper<IDictionary>();
+			return (DbTypeMapper<T>) (object) new DictionaryMapper<IDictionary, object?>(dataMapper);
 
 		if (typeof(T) == typeof(Stream))
-			return (DbTypeMapper<T>) (object) new StreamMapper();
+			return (DbTypeMapper<T>) (object) new StreamMapper(dataMapper);
+		if (typeof(T) == typeof(TextReader))
+			return (DbTypeMapper<T>) (object) new TextReaderMapper(dataMapper);
 
 		if (Nullable.GetUnderlyingType(typeof(T)) is { } nonNullType)
-			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NullableValueMapper<>).MakeGenericType(nonNullType), dataMapper.GetTypeMapper(nonNullType))!);
+			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NullableValueMapper<>).MakeGenericType(nonNullType), dataMapper, dataMapper.GetTypeMapper(nonNullType))!);
 
 		var typeName = typeof(T).FullName ?? "";
 		if (typeName.StartsWith("System.ValueTuple`", StringComparison.Ordinal))
@@ -93,11 +105,9 @@ public sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
 				7 => typeof(ValueTupleMapper<,,,,,,>),
 				_ => typeof(ValueTupleMapperRest<,,,,,,,>),
 			};
-			return (DbTypeMapper<T>) Activator.CreateInstance(tupleMapperType.MakeGenericType(tupleTypes), [.. tupleTypes.Select(dataMapper.GetTypeMapper)])!;
+			return (DbTypeMapper<T>) Activator.CreateInstance(tupleMapperType.MakeGenericType(tupleTypes), [dataMapper, .. tupleTypes.Select(dataMapper.GetTypeMapper)])!;
 		}
 
 		return null;
 	}
-
-	private readonly bool m_allowStringToEnum;
 }

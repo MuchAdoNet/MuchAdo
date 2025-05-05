@@ -1,6 +1,5 @@
 using System.Collections;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using NUnit.Framework;
@@ -123,10 +122,11 @@ internal sealed class DbDataMapperTests
 			.Sum().Should().Be(2);
 	}
 
-	[Test]
-	public void BadFieldCount()
+	[TestCase(false)]
+	[TestCase(true)]
+	public void BadFieldCount(bool ignore)
 	{
-		using var connector = GetConnectorWithItems();
+		using var connector = GetConnectorWithItems(ignoreUnusedFields: ignore);
 		connector
 			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
 			.QueryFirst(
@@ -134,7 +134,10 @@ internal sealed class DbDataMapperTests
 				{
 					Invoking(() => record.Get<(string, long)>(0, 1)).Should().Throw<InvalidOperationException>();
 					record.Get<(string?, long)>(0, 2).Should().Be((s_dto.TheText, s_dto.TheInteger));
-					Invoking(() => record.Get<(string, long)>(0, 3)).Should().Throw<InvalidOperationException>();
+					if (ignore)
+						record.Get<(string?, long)>(0, 3).Should().Be((s_dto.TheText, s_dto.TheInteger));
+					else
+						Invoking(() => record.Get<(string?, long)>(0, 3)).Should().Throw<InvalidOperationException>();
 					return 1;
 				})
 			.Should().Be(1);
@@ -419,10 +422,11 @@ internal sealed class DbDataMapperTests
 			.Sum().Should().Be(2);
 	}
 
-	[Test]
-	public void BadPropertyName()
+	[TestCase(false)]
+	[TestCase(true)]
+	public void BadPropertyName(bool ignore)
 	{
-		using var connector = GetConnectorWithItems();
+		using var connector = GetConnectorWithItems(ignoreUnusedFields: ignore);
 		var index = 0;
 		connector
 			.Command("select TheText, TheInteger as Nope from items;")
@@ -431,7 +435,10 @@ internal sealed class DbDataMapperTests
 				{
 					if (index++ == 0)
 					{
-						Invoking(() => record.Get<ItemDto>(0, 2)).Should().Throw<InvalidOperationException>();
+						if (ignore)
+							record.Get<ItemDto>(0, 2).Should().BeEquivalentTo(new ItemDto(s_dto.TheText));
+						else
+							Invoking(() => record.Get<ItemDto>(0, 2)).Should().Throw<InvalidOperationException>();
 					}
 					return 1;
 				})
@@ -491,6 +498,8 @@ internal sealed class DbDataMapperTests
 						((long) record.Get<IDictionary<string, object?>>(0, 4)["TheInteger"]!).Should().Be(s_dto.TheInteger);
 						((long) record.Get<IReadOnlyDictionary<string, object?>>(0, 4)["TheInteger"]!).Should().Be(s_dto.TheInteger);
 						((double) record.Get<IDictionary>(0, 4)["TheReal"]!).Should().Be(s_dto.TheReal);
+						record.Get<Dictionary<string, double>>(1, 2)["TheInteger"].Should().Be(s_dto.TheInteger);
+						record.Get<Dictionary<string, double>>(1, 2)["TheReal"].Should().Be(s_dto.TheReal);
 					}
 					else
 					{
@@ -614,9 +623,14 @@ internal sealed class DbDataMapperTests
 			.Sum().Should().Be(2);
 	}
 
-	private static DbConnector GetConnectorWithItems()
+	private static DbConnector GetConnectorWithItems(bool ignoreUnusedFields = false)
 	{
-		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		var settings = new DbConnectorSettings
+		{
+			DataMapper = DbDataMapper.Default.WithIgnoreUnusedFields(ignoreUnusedFields),
+		};
+
+		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"), settings);
 		connector
 			.Command("create table Items (TheText text null, TheInteger integer null, TheReal real null, TheBlob blob null);")
 			.Execute();
