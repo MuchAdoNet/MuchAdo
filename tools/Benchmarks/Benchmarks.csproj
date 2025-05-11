@@ -17,7 +17,7 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Microsoft.Data.SQLite" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Npgsql" />
   </ItemGroup>
