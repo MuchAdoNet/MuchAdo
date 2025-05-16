@@ -40,19 +40,20 @@ var widgets = new[]
     new Widget("Third", 3.1415),
 };
 
-connector.BeginTransaction();
-
-foreach (var widget in widgets)
+using (connector.BeginTransaction())
 {
-    connector
-        .CommandFormat($"""
-            insert into widgets (name, height)
-            values ({widget.Name}, {widget.Height})
-            """)
-        .Execute();
-}
+    foreach (var widget in widgets)
+    {
+        connector
+            .CommandFormat($"""
+                insert into widgets (name, height)
+                values ({widget.Name}, {widget.Height})
+                """)
+            .Execute();
+    }
 
-connector.CommitTransaction();
+    connector.CommitTransaction();
+}
 
 var maxHeight = 5.0;
 foreach (var widget in connector
