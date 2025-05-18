@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
-    <Description>A fluent, powerful, efficient library for querying with NpgsqlConnector.</Description>
+    <Description>A fluent, powerful, efficient library for querying with Npgsql.</Description>
     <PackageTags>ado.net sql database orm micro-orm npgsql</PackageTags>
     <IsPackable>true</IsPackable>
     <EnablePackageValidation>true</EnablePackageValidation>

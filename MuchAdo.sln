@@ -43,6 +43,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.Npgsql", "src\MuchA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.Npgsql.Tests", "tests\MuchAdo.Npgsql.Tests\MuchAdo.Npgsql.Tests.csproj", "{31410150-B426-37DE-A5B8-0AF716174F84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.SqlServer", "src\MuchAdo.SqlServer\MuchAdo.SqlServer.csproj", "{0FAA9B10-BAA4-A603-8662-BFEDFC7936FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.SqlServer.Tests", "tests\MuchAdo.SqlServer.Tests\MuchAdo.SqlServer.Tests.csproj", "{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +101,14 @@ Global
 		{31410150-B426-37DE-A5B8-0AF716174F84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{31410150-B426-37DE-A5B8-0AF716174F84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{31410150-B426-37DE-A5B8-0AF716174F84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FAA9B10-BAA4-A603-8662-BFEDFC7936FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FAA9B10-BAA4-A603-8662-BFEDFC7936FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FAA9B10-BAA4-A603-8662-BFEDFC7936FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FAA9B10-BAA4-A603-8662-BFEDFC7936FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

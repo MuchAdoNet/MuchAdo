@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MuchAdo.MySql\MuchAdo.MySql.csproj" />
+    <ProjectReference Include="..\..\src\MuchAdo.SqlServer\MuchAdo.SqlServer.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net472' ">
