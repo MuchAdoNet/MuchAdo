@@ -48,7 +48,7 @@ internal sealed class NpgsqlTests
 			.CommandFormat($"insert into {tableName} (Name) values ($1), ($2)", Sql.Param("one"), Sql.Param("two"))
 			.Execute();
 
-		var three = Sql.ReusedParam("three");
+		var three = Sql.RepeatParam("three");
 		var four = "four";
 		connector.CommandFormat($"insert into {tableName} (Name) values ({three}), ({four}), ({three}), ({four})").Execute();
 		lastCommandText.Should().Contain("(Name) values ($1), ($2), ($1), ($3)");

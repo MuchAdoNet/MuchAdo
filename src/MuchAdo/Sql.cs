@@ -193,14 +193,14 @@ public static class Sql
 	/// Creates an unnamed parameter with the specified value.
 	/// </summary>
 	/// <remarks>If the same object is used multiple times in the same command, the same parameter is used, if possible.</remarks>
-	public static SqlParam<T> ReusedParam<T>(T value) => new ReusedSqlParam<T>(value);
+	public static SqlParam<T> RepeatParam<T>(T value) => new RepeatSqlParam<T>(value);
 
 	/// <summary>
 	/// Creates an unnamed parameter with the specified value.
 	/// </summary>
 	/// <remarks>If the same object is used multiple times in the same command, the same parameter is used, if possible.</remarks>
-	public static SqlParam<T> ReusedParam<T>(T value, SqlParamType? type) =>
-		type is null ? new ReusedSqlParam<T>(value) : new ReusedTypedSqlParam<T>(value, type);
+	public static SqlParam<T> RepeatParam<T>(T value, SqlParamType? type) =>
+		type is null ? new RepeatSqlParam<T>(value) : new RepeatTypedSqlParam<T>(value, type);
 
 	/// <summary>
 	/// Creates SQL for a comma-separated list of SQL fragments, surrounded by parentheses.

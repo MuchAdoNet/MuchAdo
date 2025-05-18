@@ -22,7 +22,7 @@ public class SqlParam<T> : SqlParamSource
 
 	internal SqlParam(T value) => Value = value;
 
-	internal virtual bool IsReused => false;
+	internal virtual bool IsRepeatable => false;
 
 	internal override void SubmitParameters(ISqlParamTarget target) => target.AcceptParameter(Name, Value, Type);
 
@@ -30,7 +30,7 @@ public class SqlParam<T> : SqlParamSource
 	{
 		if (string.IsNullOrEmpty(Name))
 		{
-			builder.AppendParameterValue(Value, Type, identity: IsReused ? this : null);
+			builder.AppendParameterValue(Value, Type, identity: IsRepeatable ? this : null);
 		}
 		else
 		{
