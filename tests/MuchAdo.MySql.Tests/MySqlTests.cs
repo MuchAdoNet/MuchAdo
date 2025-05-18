@@ -136,10 +136,10 @@ internal sealed class MySqlTests
 			CancelUnfinishedCommands = cancelUnfinishedCommands,
 		});
 
-#if NET9_0
-	private const string c_framework = "net9";
+#if NET
+	private const string c_framework = "netc";
 #else
-	private const string c_framework = "net472";
+	private const string c_framework = "netf";
 #endif
 }
 #endif

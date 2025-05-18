@@ -13,7 +13,7 @@ internal sealed class FlexibleEnumMapper<T>(DbDataMapper dataMapper) : SingleFie
 			return value switch
 			{
 				T enumValue => enumValue,
-#if !NETSTANDARD2_0
+#if NET
 				string stringValue => Enum.Parse<T>(stringValue, ignoreCase: true),
 #else
 				string stringValue => (T) Enum.Parse(typeof(T), stringValue, ignoreCase: true),

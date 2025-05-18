@@ -35,10 +35,10 @@ internal sealed class SqlServerTests
 		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.SqlServer });
 
-#if NET9_0
-	private const string c_suffix = "_net9";
+#if NET
+	private const string c_suffix = "_netc";
 #else
-	private const string c_suffix = "_net472";
+	private const string c_suffix = "_netf";
 #endif
 }
 #endif

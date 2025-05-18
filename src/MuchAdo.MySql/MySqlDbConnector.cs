@@ -27,7 +27,7 @@ public class MySqlDbConnector : DbConnector
 
 	public new MySqlCommand? ActiveCommand => (MySqlCommand?) base.ActiveCommand;
 
-#if NETSTANDARD2_0
+#if !NET
 	public MySqlBatch? ActiveBatch => ActiveCommandOrBatch as MySqlBatch;
 #else
 	public new MySqlBatch? ActiveBatch => ActiveCommandOrBatch as MySqlBatch;
@@ -46,7 +46,7 @@ public class MySqlDbConnector : DbConnector
 
 	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new MySqlParameter(name, value);
 
-#if NETSTANDARD2_0
+#if !NET
 	protected override ValueTask CloseConnectionCoreAsync() => new(Connection.CloseAsync());
 
 	protected override ValueTask DisposeConnectionCoreAsync() => new(Connection.DisposeAsync());

@@ -45,7 +45,7 @@ internal sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
 		if (typeof(T) == typeof(TimeSpan))
 			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<TimeSpan>(dataMapper);
 
-#if !NETSTANDARD2_0
+#if NET
 		if (typeof(T) == typeof(DateOnly))
 			return (DbTypeMapper<T>) (object) new GetFieldValueMapper<DateOnly>(dataMapper);
 		if (typeof(T) == typeof(TimeOnly))

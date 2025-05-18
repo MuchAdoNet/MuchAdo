@@ -576,7 +576,7 @@ internal sealed class DbDataMapperTests
 				{
 					record.Get<long>(1).Should().Be(s_dto.TheInteger);
 					record.Get<long>("TheInteger").Should().Be(s_dto.TheInteger);
-#if !NET472
+#if NET
 					record.Get<long>(^3).Should().Be(s_dto.TheInteger);
 #endif
 					return 1;
@@ -596,7 +596,7 @@ internal sealed class DbDataMapperTests
 					record.Get<(long, double)>(1, 2).Should().Be((s_dto.TheInteger, s_dto.TheReal));
 					record.Get<(long, double)>("TheInteger", 2).Should().Be((s_dto.TheInteger, s_dto.TheReal));
 					record.Get<(long, double)>("TheInteger", "TheReal").Should().Be((s_dto.TheInteger, s_dto.TheReal));
-#if !NET472
+#if NET
 					record.Get<(long, double)>(1..3).Should().Be((s_dto.TheInteger, s_dto.TheReal));
 #endif
 					return 1;

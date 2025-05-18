@@ -80,7 +80,7 @@ internal sealed class DbConnectorCommandBuilder
 
 		if (tuple.Number >= 0)
 		{
-#if !NETSTANDARD2_0
+#if NET
 			Span<char> numberBuffer = stackalloc char[10];
 			tuple.Number.TryFormat(numberBuffer, out var numberLength, provider: CultureInfo.InvariantCulture);
 			m_textBuilder?.Append(numberBuffer[..numberLength]);

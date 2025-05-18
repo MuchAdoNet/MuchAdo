@@ -48,7 +48,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	public IDbCommand? ActiveCommand => m_activeCommandOrBatch as IDbCommand;
 
-#if !NETSTANDARD2_0
+#if NET
 	/// <summary>
 	/// The active batch, if any.
 	/// </summary>
@@ -496,7 +496,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask CloseConnectionCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Connection is DbConnection dbConnection)
 			return new ValueTask(dbConnection.CloseAsync());
 #endif
@@ -515,7 +515,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask DisposeConnectionCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Connection is DbConnection dbConnection)
 			return dbConnection.DisposeAsync();
 #endif
@@ -534,7 +534,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Connection is DbConnection dbConnection)
 		{
 			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, CancellationToken ct) =>
@@ -557,7 +557,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Connection is DbConnection dbConnection)
 		{
 			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, IsolationLevel il, CancellationToken ct) =>
@@ -580,7 +580,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask CommitTransactionCoreAsync(CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Transaction! is DbTransaction dbTransaction)
 			return new ValueTask(dbTransaction.CommitAsync(cancellationToken));
 #endif
@@ -599,7 +599,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask RollbackTransactionCoreAsync(CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Transaction! is DbTransaction dbTransaction)
 			return new ValueTask(dbTransaction.RollbackAsync(cancellationToken));
 #endif
@@ -618,7 +618,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask DisposeTransactionCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Transaction! is DbTransaction dbTransaction)
 			return dbTransaction.DisposeAsync();
 #endif
@@ -640,7 +640,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (ActiveCommandOrBatch is IDbCommand command)
 			return command.ExecuteNonQuery();
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 			return batch.ExecuteNonQuery();
 #endif
@@ -656,7 +656,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (ActiveCommandOrBatch is DbCommand command)
 			return new ValueTask<int>(command.ExecuteNonQueryAsync(cancellationToken));
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 			return new ValueTask<int>(batch.ExecuteNonQueryAsync(cancellationToken));
 #endif
@@ -672,7 +672,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (ActiveCommandOrBatch is IDbCommand command)
 			return command.ExecuteReader();
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 			return batch.ExecuteReader();
 #endif
@@ -693,7 +693,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return DoAsync(command, cancellationToken);
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 		{
 			static async ValueTask<IDataReader> DoAsync(DbBatch b, CancellationToken ct) =>
@@ -714,7 +714,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (ActiveCommandOrBatch is IDbCommand command)
 			return command.ExecuteReader(commandBehavior);
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 			return batch.ExecuteReader(commandBehavior);
 #endif
@@ -735,7 +735,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return DoAsync(command, commandBehavior, cancellationToken);
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 		{
 			static async ValueTask<IDataReader> DoAsync(DbBatch b, CommandBehavior cb, CancellationToken ct) =>
@@ -759,7 +759,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 		{
 			batch.Prepare();
@@ -775,7 +775,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask PrepareCoreAsync(CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbCommand command)
 			return new ValueTask(command.PrepareAsync(cancellationToken));
 
@@ -798,7 +798,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 		{
 			batch.Cancel();
@@ -820,7 +820,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch batch)
 		{
 			batch.Dispose();
@@ -836,7 +836,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask DisposeCommandOrBatchCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbCommand command)
 			return command.DisposeAsync();
 
@@ -890,7 +890,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask CloseReaderCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveReader is DbDataReader dbReader)
 			return new ValueTask(dbReader.CloseAsync());
 #endif
@@ -909,7 +909,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual ValueTask DisposeReaderCoreAsync()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveReader is DbDataReader dbReader)
 			return dbReader.DisposeAsync();
 #endif
@@ -934,7 +934,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual object CreateBatchCore()
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (Connection is DbConnection dbConnection)
 			return dbConnection.CreateBatch();
 #endif
@@ -947,7 +947,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	protected virtual void AddBatchCommandCore(CommandType commandType)
 	{
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch dbBatch)
 		{
 			var command = dbBatch.CreateBatchCommand();
@@ -972,7 +972,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch dbBatch)
 		{
 			dbBatch.Timeout = timeout;
@@ -994,7 +994,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch dbBatch && transaction is DbTransaction dbTransaction)
 		{
 			dbBatch.Transaction = dbTransaction;
@@ -1016,7 +1016,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch dbBatch)
 		{
 			dbBatch.BatchCommands[commandIndex].CommandText = commandText;
@@ -1035,7 +1035,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (ActiveCommandOrBatch is IDbCommand command && commandIndex == 0)
 			return command.Parameters;
 
-#if !NETSTANDARD2_0
+#if NET
 		if (ActiveCommandOrBatch is DbBatch dbBatch)
 			return dbBatch.BatchCommands[commandIndex].Parameters;
 #endif
@@ -1052,7 +1052,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 		if (ActiveCommandOrBatch is IDbCommand command)
 			parameter = command.CreateParameter();
-#if !NETSTANDARD2_0
+#if NET
 		else if (ActiveCommandOrBatch is DbBatch dbBatch)
 			parameter = dbBatch.BatchCommands[0].CreateParameter();
 #endif

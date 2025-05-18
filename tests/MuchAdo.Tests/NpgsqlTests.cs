@@ -55,10 +55,10 @@ internal sealed class NpgsqlTests
 		new NpgsqlConnection("host=localhost;user id=root;password=test;database=test"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.Postgres.WithUnnamedParameterStrategy(SqlUnnamedParameterStrategy.Numbered("$")) });
 
-#if NET9_0
-	private const string c_suffix = "_net9";
+#if NET
+	private const string c_suffix = "_netc";
 #else
-	private const string c_suffix = "_net472";
+	private const string c_suffix = "_netf";
 #endif
 }
 #endif

@@ -49,7 +49,7 @@ public sealed class DbConnectorRecord
 		return m_connector.DataMapper.GetTypeMapper<T>().Map(record, fromIndex, toIndex - fromIndex + 1, m_state);
 	}
 
-#if !NETSTANDARD2_0
+#if NET
 	/// <summary>
 	/// Converts the specified record field to the specified type.
 	/// </summary>

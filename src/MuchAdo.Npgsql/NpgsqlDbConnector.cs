@@ -27,7 +27,7 @@ public class NpgsqlDbConnector : DbConnector
 
 	public new NpgsqlCommand? ActiveCommand => (NpgsqlCommand?) base.ActiveCommand;
 
-#if NETSTANDARD2_0
+#if !NET
 	public NpgsqlBatch? ActiveBatch => ActiveCommandOrBatch as NpgsqlBatch;
 #else
 	public new NpgsqlBatch? ActiveBatch => ActiveCommandOrBatch as NpgsqlBatch;
@@ -54,7 +54,7 @@ public class NpgsqlDbConnector : DbConnector
 			base.SetParameterValueCore(parameter, value);
 	}
 
-#if NETSTANDARD2_0
+#if !NET
 	protected override ValueTask CloseConnectionCoreAsync() => new(Connection.CloseAsync());
 
 	protected override ValueTask DisposeConnectionCoreAsync() => Connection.DisposeAsync();
