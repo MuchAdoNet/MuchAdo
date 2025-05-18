@@ -30,7 +30,9 @@ public class SqliteDbConnector : DbConnector
 	public new SqliteDataReader? ActiveReader => (SqliteDataReader?) base.ActiveReader;
 
 	public DbTransactionDisposer BeginTransaction(bool deferred) =>
-		AttachTransaction(GetOpenConnection().BeginTransaction(deferred));
+		AttachTransaction(Settings.DefaultIsolationLevel is { } isolationLevel
+			? GetOpenConnection().BeginTransaction(isolationLevel, deferred)
+			: GetOpenConnection().BeginTransaction(deferred));
 
 	public DbTransactionDisposer BeginTransaction(IsolationLevel isolationLevel, bool deferred) =>
 		AttachTransaction(GetOpenConnection().BeginTransaction(isolationLevel, deferred));
