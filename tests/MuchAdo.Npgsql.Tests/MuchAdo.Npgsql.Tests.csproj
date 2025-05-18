@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net462;net9.0</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX'))">net462;net9.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net481;net9.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX'))">net481;net9.0</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Linux'))">net9.0</TargetFrameworks>
     <NoWarn>$(NoWarn);CA1849;CA1861;CA2007</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net462' ">
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net481' ">
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</RuntimeIdentifier>
@@ -29,7 +29,7 @@
     <ProjectReference Include="..\..\src\MuchAdo.Npgsql\MuchAdo.Npgsql.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net481' ">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
     <PackageReference Update="Npgsql" VersionOverride="8.0.7" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
