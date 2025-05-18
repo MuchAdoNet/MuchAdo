@@ -15,9 +15,9 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
-	public void PrepareCacheTests()
+	public void ReuseParameter()
 	{
-		var tableName = Sql.Name($"{nameof(PrepareCacheTests)}_{c_framework}");
+		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
 
 		using var connector = CreateConnector();
 		connector.CommandFormat($"drop table if exists {tableName}").Execute();
@@ -33,9 +33,9 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
-	public void UnnamedParameterTest()
+	public void UnnamedParameter()
 	{
-		var tableName = Sql.Name($"{nameof(UnnamedParameterTest)}_{c_framework}");
+		var tableName = Sql.Name($"{nameof(UnnamedParameter)}_{c_framework}");
 
 		using var connector = CreateConnector();
 
