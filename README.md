@@ -5,10 +5,10 @@
 The **MuchAdo** class library provides an intuitive API for [working with relational databases](https://muchado.net/databases) like MySQL, PostgreSQL, SQLite, and Microsoft SQL Server. It is similar to Dapper and other micro ORMs for .NET.
 
 ```csharp
-var widgets = await connector
+var shortWidgets = await connector
     .CommandFormat(
         $"select id, name from widgets where height <= {maxHeight}")
-    .QueryAsync<(long Id, string Name)>();
+    .QueryAsync<(long Id, string Name)>(cancellationToken);
 ```
 
 ## Key Features
