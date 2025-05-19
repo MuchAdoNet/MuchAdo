@@ -1103,22 +1103,22 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		return await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
 	}
 
-	internal DbConnectorResultSets QueryMultiple(DbConnectorCommandBatch commandBatch)
+	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
 	{
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
 		CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
-		return new DbConnectorResultSets(this);
+		return new DbResultSetReader(this);
 	}
 
-	internal async ValueTask<DbConnectorResultSets> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
+	internal async ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
 	{
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
 		await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
-		return new DbConnectorResultSets(this);
+		return new DbResultSetReader(this);
 	}
 
 	internal IReadOnlyList<T> Query<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)

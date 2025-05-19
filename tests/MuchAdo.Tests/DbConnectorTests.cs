@@ -364,20 +364,20 @@ internal sealed class DbConnectorTests
 				select ItemId from Items order by Name;
 				select ItemId from Items where Name = 'item2';";
 
-		using (var resultSet = connector.Command(sql).QueryMultiple())
+		using (var reader = connector.Command(sql).QueryMultiple())
 		{
-			var id1 = resultSet.Read<long>().First();
-			var id2 = resultSet.Read(x => x.Get<long>()).Single();
+			var id1 = reader.Read<long>().First();
+			var id2 = reader.Read(x => x.Get<long>()).Single();
 			id1.Should().BeLessThan(id2);
-			Invoking(() => resultSet.Read(x => 0)).Should().Throw<InvalidOperationException>();
+			Invoking(() => reader.Read(x => 0)).Should().Throw<InvalidOperationException>();
 		}
 
-		using (var resultSet = connector.Command(sql).QueryMultiple())
+		using (var reader = connector.Command(sql).QueryMultiple())
 		{
-			var id1 = resultSet.Enumerate<long>().First();
-			var id2 = resultSet.Enumerate(x => x.Get<long>()).Single();
+			var id1 = reader.Enumerate<long>().First();
+			var id2 = reader.Enumerate(x => x.Get<long>()).Single();
 			id1.Should().BeLessThan(id2);
-			Invoking(() => resultSet.Enumerate(x => 0).Count()).Should().Throw<InvalidOperationException>();
+			Invoking(() => reader.Enumerate(x => 0).Count()).Should().Throw<InvalidOperationException>();
 		}
 	}
 
@@ -392,20 +392,20 @@ internal sealed class DbConnectorTests
 				select ItemId from Items order by Name;
 				select ItemId from Items where Name = 'item2';";
 
-		await using (var resultSet = await connector.Command(sql).QueryMultipleAsync())
+		await using (var reader = await connector.Command(sql).QueryMultipleAsync())
 		{
-			var id1 = (await resultSet.ReadAsync<long>()).First();
-			var id2 = (await resultSet.ReadAsync(x => x.Get<long>())).Single();
+			var id1 = (await reader.ReadAsync<long>()).First();
+			var id2 = (await reader.ReadAsync(x => x.Get<long>())).Single();
 			id1.Should().BeLessThan(id2);
-			await Awaiting(async () => await resultSet.ReadAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
+			await Awaiting(async () => await reader.ReadAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
 		}
 
-		await using (var resultSet = await connector.Command(sql).QueryMultipleAsync())
+		await using (var reader = await connector.Command(sql).QueryMultipleAsync())
 		{
-			var id1 = await FirstAsync(resultSet.EnumerateAsync<long>());
-			var id2 = await FirstAsync(resultSet.EnumerateAsync(x => x.Get<long>()));
+			var id1 = await FirstAsync(reader.EnumerateAsync<long>());
+			var id2 = await FirstAsync(reader.EnumerateAsync(x => x.Get<long>()));
 			id1.Should().BeLessThan(id2);
-			await Awaiting(async () => await ToListAsync(resultSet.EnumerateAsync(x => 0))).Should().ThrowAsync<InvalidOperationException>();
+			await Awaiting(async () => await ToListAsync(reader.EnumerateAsync(x => 0))).Should().ThrowAsync<InvalidOperationException>();
 		}
 	}
 

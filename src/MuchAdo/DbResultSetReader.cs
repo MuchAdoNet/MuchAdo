@@ -1,9 +1,9 @@
 namespace MuchAdo;
 
 /// <summary>
-/// Encapsulates multiple result sets.
+/// Provides access to multiple result sets.
 /// </summary>
-public readonly struct DbConnectorResultSets : IDisposable, IAsyncDisposable
+public readonly struct DbResultSetReader : IDisposable, IAsyncDisposable
 {
 	/// <summary>
 	/// Reads a result set, converting each record to the specified type.
@@ -81,7 +81,7 @@ public readonly struct DbConnectorResultSets : IDisposable, IAsyncDisposable
 		await m_connector.DisposeActiveCommandOrBatchAsync().ConfigureAwait(false);
 	}
 
-	internal DbConnectorResultSets(DbConnector connector)
+	internal DbResultSetReader(DbConnector connector)
 	{
 		m_connector = connector;
 	}

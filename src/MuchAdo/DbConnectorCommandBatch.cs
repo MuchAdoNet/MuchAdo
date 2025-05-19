@@ -239,13 +239,13 @@ public sealed class DbConnectorCommandBatch
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultipleAsync" />
-	public DbConnectorResultSets QueryMultiple() => Connector.QueryMultiple(this);
+	public DbResultSetReader QueryMultiple() => Connector.QueryMultiple(this);
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public ValueTask<DbConnectorResultSets> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
+	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
 
 	/// <summary>
 	/// Sets the timeout.

@@ -17,7 +17,7 @@ internal sealed class EllipsesExtensionsTests
 		var tableName = Sql.Raw(nameof(ParameterCollectionTests));
 		connector.CommandFormat($"create table {tableName} (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
 		connector.CommandFormat($"insert into {tableName} (Name) values ('one'), ('two'), ('three');").Execute().Should().Be(3);
-		var resultSets = connector
+		var reader = connector
 			.CommandFormat($"""
 				select Name from {tableName} where Name in (@names...);
 				select Name from {tableName} where Name not in (@names...);
@@ -28,9 +28,9 @@ internal sealed class EllipsesExtensionsTests
 				Sql.NamedParam("ignore", new[] { 0 }),
 				Sql.NamedParam("after", 2))
 			.QueryMultiple();
-		resultSets.Read<string>().Should().BeEquivalentTo("one", "three");
-		resultSets.Read<string>().Should().BeEquivalentTo("two");
-		resultSets.Read<long>().Should().BeEquivalentTo([3L]);
+		reader.Read<string>().Should().BeEquivalentTo("one", "three");
+		reader.Read<string>().Should().BeEquivalentTo("two");
+		reader.Read<long>().Should().BeEquivalentTo([3L]);
 	}
 
 	[Test]
