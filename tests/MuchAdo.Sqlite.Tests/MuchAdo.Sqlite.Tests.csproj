@@ -31,7 +31,6 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net481' ">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>
 

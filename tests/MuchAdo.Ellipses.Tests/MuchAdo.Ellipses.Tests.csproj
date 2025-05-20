@@ -21,7 +21,6 @@
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
     <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Npgsql" />
