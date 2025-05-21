@@ -180,11 +180,6 @@ public static class Sql
 		new ParamsSqlParamSource<T>((values ?? throw new ArgumentNullException(nameof(values))).Memoize());
 
 	/// <summary>
-	/// Creates SQL for comma-separated unnamed parameters, surrounded by parentheses.
-	/// </summary>
-	public static SqlSource ParamsTuple<T>(IEnumerable<T> values) => Tuple(Params(values));
-
-	/// <summary>
 	/// Creates SQL from a raw string.
 	/// </summary>
 	public static SqlSource Raw(string text) => new RawSqlSource(text ?? throw new ArgumentNullException(nameof(text)));

@@ -96,15 +96,6 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
-	public void ParamsTuple()
-	{
-		var strings = new[] { "one", "two" };
-		var (text, parameters) = Render(Sql.ParamsTuple(strings));
-		text.Should().Be("(@ado1, @ado2)");
-		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
-	}
-
-	[Test]
 	public void ParamsOneString()
 	{
 		var (text, parameters) = Render(Sql.Params("hi"));
