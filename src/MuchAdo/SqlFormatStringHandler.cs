@@ -60,7 +60,7 @@ public readonly ref struct SqlFormatStringHandler
 			var type = typeof(T);
 			var itemsParam = Expression.Parameter(type, "items");
 
-			var itemType = type.GetInterfaces()
+			var itemType = type.GetInterfaces().Prepend(type)
 				.Where(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IEnumerable<>))
 				.Select(x => x.GetGenericArguments()[0])
 				.FirstOrDefault() ?? throw new NotSupportedException($"Type {type.FullName} must implement IEnumerable<T>.");

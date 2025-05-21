@@ -229,9 +229,19 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
-	public void FormatTupleStrings()
+	public void FormatTupleStringsArray()
 	{
 		var strings = new[] { "one", "two" };
+		var sql = Sql.Format($"select * from widgets where id in {strings:tuple}");
+		var (text, parameters) = Render(sql);
+		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
+		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
+	}
+
+	[Test]
+	public void FormatTupleStringsEnumerable()
+	{
+		var strings = new[] { "one", "two" }.AsEnumerable();
 		var sql = Sql.Format($"select * from widgets where id in {strings:tuple}");
 		var (text, parameters) = Render(sql);
 		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
