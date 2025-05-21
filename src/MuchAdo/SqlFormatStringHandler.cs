@@ -63,7 +63,11 @@ public readonly ref struct SqlFormatStringHandler
 			var itemType = type.GetInterfaces()
 				.Where(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IEnumerable<>))
 				.Select(x => x.GetGenericArguments()[0])
-				.FirstOrDefault() ?? throw new NotSupportedException($"Type {type.FullName} does not implement IEnumerable<T>.");
+				.FirstOrDefault() ?? throw new NotSupportedException($"Type {type.FullName} must implement IEnumerable<T>.");
+
+			if (typeof(SqlSource).IsAssignableFrom(itemType))
+				throw new NotSupportedException("Format specifier not supported for collections of SqlSource.");
+
 			var paramsMethod = FormatInfo.GenericParamsMethod.MakeGenericMethod(itemType);
 			return Expression.Lambda<Func<T, SqlParamSource>>(Expression.Call(paramsMethod, itemsParam), itemsParam).Compile();
 		}

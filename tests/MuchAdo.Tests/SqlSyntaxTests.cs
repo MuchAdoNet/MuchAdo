@@ -222,6 +222,13 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
+	public void FormatListSqls()
+	{
+		var sqls = new[] { Sql.Raw("one"), Sql.Raw("two") };
+		Invoking(() => Sql.Format($"select * from widgets where id in ({sqls:list})")).Should().Throw<NotSupportedException>();
+	}
+
+	[Test]
 	public void FormatTupleStrings()
 	{
 		var strings = new[] { "one", "two" };
