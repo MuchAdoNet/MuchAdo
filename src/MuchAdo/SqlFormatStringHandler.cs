@@ -33,6 +33,9 @@ public readonly ref struct SqlFormatStringHandler
 			case "raw" when t is string { } text:
 				m_parts.Add(text);
 				break;
+			case "tuple":
+				m_parts.Add(Sql.Tuple(FormatInfo<T>.Instance.CreateParamSourceForCollection(t)));
+				break;
 			default:
 				throw new NotSupportedException($"Format '{format}' not supported for {typeof(T).FullName}.");
 		}
