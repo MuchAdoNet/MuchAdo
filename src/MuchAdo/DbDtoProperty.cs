@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
 namespace MuchAdo;
 
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
 internal sealed class DbDtoProperty<T>
 {
 	public DbDtoProperty(PropertyInfo propertyInfo, string? columnName)
@@ -48,18 +50,22 @@ internal sealed class DbDtoProperty<T>
 			? Expression.Property(sourceParam, propertyInfo)
 			: Expression.Field(sourceParam, (FieldInfo) MemberInfo);
 
-		var acceptMethod = typeof(ISqlParamTarget)
-			.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-			.Single(x => x is { Name: "AcceptParameter", IsGenericMethod: true } &&
-				x.GetGenericArguments().Length == 1 &&
-				x.GetParameters() is [var p0, var p1, var p2] &&
-				p0.ParameterType == typeof(string) &&
-				p1.ParameterType.IsGenericParameter &&
-				p2.ParameterType == typeof(SqlParamType)).MakeGenericMethod(ValueType);
-
+		var acceptMethod = DbDtoProperty.GenericAcceptMethod.MakeGenericMethod(ValueType);
 		return Expression.Lambda<Action<ISqlParamTarget, string, T, SqlParamType?>>(
 			Expression.Call(targetParam, acceptMethod, nameParam, getValue, typeParam), targetParam, nameParam, sourceParam, typeParam).Compile();
 	}
 
 	private readonly Lazy<Action<ISqlParamTarget, string, T, SqlParamType?>> m_lazySubmitParameter;
+}
+
+internal static class DbDtoProperty
+{
+	public static MethodInfo GenericAcceptMethod { get; } = typeof(ISqlParamTarget)
+		.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+		.Single(x => x is { Name: nameof(ISqlParamTarget.AcceptParameter), IsGenericMethod: true } &&
+			x.GetGenericArguments().Length == 1 &&
+			x.GetParameters() is [var p0, var p1, var p2] &&
+			p0.ParameterType == typeof(string) &&
+			p1.ParameterType.IsGenericParameter &&
+			p2.ParameterType == typeof(SqlParamType));
 }
