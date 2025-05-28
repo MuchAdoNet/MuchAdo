@@ -17,17 +17,17 @@ public static class Sql
 	/// <summary>
 	/// Joins the specified SQL fragments with the AND operator.
 	/// </summary>
-	public static SqlSource And(params IEnumerable<SqlSource> sqls) => new AndOperatorSqlSource(sqls.Memoize());
+	public static SqlSource And(params IEnumerable<SqlSource> sqls) => new AndOperatorSqlSource(sqls);
 
 	/// <summary>
 	/// Joins the specified SQL fragments with newlines.
 	/// </summary>
-	public static SqlSource Clauses(params IEnumerable<SqlSource> sqls) => new ClausesSqlSource(sqls.Memoize());
+	public static SqlSource Clauses(params IEnumerable<SqlSource> sqls) => new ClausesSqlSource(sqls);
 
 	/// <summary>
 	/// Concatenates SQL fragments.
 	/// </summary>
-	public static SqlSource Concat(params IEnumerable<SqlSource> sqls) => new ConcatSqlSource(sqls.Memoize());
+	public static SqlSource Concat(params IEnumerable<SqlSource> sqls) => new ConcatSqlSource(sqls);
 
 	/// <summary>
 	/// Returns a comma-separated list of column names corresponding to the properties of a DTO of the specified type.
@@ -84,7 +84,7 @@ public static class Sql
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
 	public static SqlSource Join(string separator, params IEnumerable<SqlSource> sqls) =>
-		new JoinSqlSource(separator ?? throw new ArgumentNullException(nameof(separator)), sqls.Memoize());
+		new JoinSqlSource(separator ?? throw new ArgumentNullException(nameof(separator)), sqls);
 
 	/// <summary>
 	/// Creates SQL for an unnamed parameter set to a LIKE pattern ending with <c>%</c>.
@@ -118,7 +118,7 @@ public static class Sql
 	/// Creates SQL for a comma-separated list of SQL fragments.
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
-	public static SqlSource List(params IEnumerable<SqlSource> sqls) => new ListSqlSource(sqls.Memoize());
+	public static SqlSource List(params IEnumerable<SqlSource> sqls) => new ListSqlSource(sqls);
 
 	/// <summary>
 	/// Creates SQL for a quoted identifier.
@@ -140,18 +140,18 @@ public static class Sql
 	/// Creates named parameters from tuples.
 	/// </summary>
 	public static SqlParamSource NamedParams<T>(params IEnumerable<(string Name, T Value)> parameters) =>
-		new TuplesSqlParamSource<T>(parameters.Memoize());
+		new TuplesSqlParamSource<T>(parameters);
 
 	/// <summary>
 	/// Creates named parameters from a dictionary.
 	/// </summary>
 	public static SqlParamSource NamedParams<T>(IEnumerable<KeyValuePair<string, T>> parameters) =>
-		new DictionarySqlParamSource<T>(parameters.Memoize());
+		new DictionarySqlParamSource<T>(parameters);
 
 	/// <summary>
 	/// Joins the specified SQL fragments with the OR operator.
 	/// </summary>
-	public static SqlSource Or(params IEnumerable<SqlSource> sqls) => new OrOperatorSqlSource(sqls.Memoize());
+	public static SqlSource Or(params IEnumerable<SqlSource> sqls) => new OrOperatorSqlSource(sqls);
 
 	/// <summary>
 	/// Creates SQL for an ORDER BY clause. If the SQL is empty, the ORDER BY clause is omitted.
@@ -177,7 +177,7 @@ public static class Sql
 	/// Creates unnamed parameters with the specified values.
 	/// </summary>
 	public static SqlParamSource Params<T>(IEnumerable<T> values) =>
-		new ParamsSqlParamSource<T>((values ?? throw new ArgumentNullException(nameof(values))).Memoize());
+		new ParamsSqlParamSource<T>(values ?? throw new ArgumentNullException(nameof(values)));
 
 	/// <summary>
 	/// Creates a comma-separated list of unnamed parameters for the specified values, surrounded by parentheses.
