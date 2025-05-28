@@ -7,13 +7,21 @@ namespace MuchAdo.MySql.Tests.Examples;
 
 [TestFixture(Explicit = true), NonParallelizable]
 [SuppressMessage("ReSharper", "InterpolatedStringExpressionIsNotIFormattable", Justification = "Custom formatting.")]
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1400:Access modifier should be declared", Justification = "Simpler for example.")]
+[SuppressMessage("Style", "IDE0040:Add accessibility modifiers", Justification = "Simpler for example.")]
 internal sealed class ExampleTests
 {
     [Test]
     public async Task Examples()
     {
         await using (var setupConnector = CreateConnector())
-            await setupConnector.Command("drop table if exists widgets").ExecuteAsync();
+        {
+            await setupConnector
+                .Command("drop table if exists widgets")
+                .Command("drop table if exists widget_children")
+                .Command("drop procedure if exists create_widget")
+                .ExecuteAsync();
+        }
 
         await using var connector = CreateConnector();
 
@@ -22,7 +30,12 @@ internal sealed class ExampleTests
                 create table widgets (
                     id bigint not null auto_increment primary key,
                     name text not null,
-                    height real not null)
+                    height real)
+                """)
+            .Command("""
+                create table widget_children (
+                    parent_id bigint not null,
+                    child_id bigint not null)
                 """)
             .ExecuteAsync();
 
@@ -48,6 +61,12 @@ internal sealed class ExampleTests
 
         widgetNames.Should().HaveCount(2);
 
+        var widgetHeights = await connector
+            .Command("select height from widgets")
+            .QueryAsync<double?>();
+
+        widgetHeights.Should().HaveCount(2);
+
         var widgetTuples = await connector
             .Command("select id, name from widgets")
             .QueryAsync<(long Id, string Name)>();
@@ -67,7 +86,7 @@ internal sealed class ExampleTests
 
         widgetCount.Should().Be(2);
 
-        var widgetsById = new Dictionary<int, Widget>();
+        var widgetsById = new Dictionary<long, Widget>();
         await foreach (var widget in connector
              .Command("select id, name, height from widgets")
              .EnumerateAsync<Widget>())
@@ -149,9 +168,85 @@ internal sealed class ExampleTests
 
         shortWidgetNames.Should().HaveCount(3);
         longWidgetIds.Should().HaveCount(2);
+
+        await connector
+            .Command("""
+                CREATE PROCEDURE create_widget (
+                    IN widget_name VARCHAR(255),
+                    IN widget_height INT
+                )
+                BEGIN
+                    INSERT INTO widgets (name, height) VALUES (widget_name, widget_height);
+                END
+                """)
+            .ExecuteAsync();
+
+        name = "Sixth";
+        height = 6.6;
+
+        await connector
+            .StoredProcedure("create_widget",
+                Sql.NamedParam("widget_name", name),
+                Sql.NamedParam("widget_height", height))
+            .ExecuteAsync();
+
+        var widgetNameLengths = await connector
+            .Command("select id, height, length(name) from widgets")
+            .QueryAsync<(Widget Widget, long NameLength)>();
+
+        widgetNameLengths.Should().HaveCount(6);
+
+        await connector.Command("""
+            insert into widget_children (parent_id, child_id)
+                values ((select id from widgets where name = 'First'), (select id from widgets where name = 'Second'))
+            """).ExecuteAsync();
+
+        var lineage = await connector
+            .Command("""
+                select p.id, p.name, p.height, null, c.id, c.name, c.height
+                from widgets p
+                join widget_children wc on wc.parent_id = p.id
+                join widgets c on c.id = wc.child_id
+                """)
+            .QueryAsync<(Widget Parent, Widget Child)>();
+
+        lineage.Single().Parent.Name.Should().Be("First");
+        lineage.Single().Child.Name.Should().Be("Second");
+
+        var boxedHeights = await connector
+            .Command("select height from widgets")
+            .QueryAsync<object?>();
+
+        boxedHeights.Should().HaveCount(6);
+
+        var dynamicWidgets = await connector
+            .Command("select name, height from widgets")
+            .QueryAsync<dynamic>();
+        string firstWidgetName = dynamicWidgets[0].name;
+
+        firstWidgetName.Should().NotBeNullOrEmpty();
+
+        var dictionaryWidgets = await connector
+            .Command("select name, height from widgets")
+            .QueryAsync<Dictionary<string, object>>();
+        var firstWidgetHeight = (double?) dictionaryWidgets[0]["height"];
+
+        firstWidgetHeight.Should().NotBeNull();
+
+        var doubledHeights = await connector
+            .Command("select id, name, height from widgets")
+            .QueryAsync(x => x.Get<double?>(2) * 2.0);
+
+        doubledHeights.Should().HaveCount(6);
+
+        var halvedHeights = await connector
+            .Command("select id, name, height from widgets")
+            .QueryAsync(x => x.Get<double?>("height") / 2.0);
+
+        halvedHeights.Should().HaveCount(6);
     }
 
-    private sealed record Widget(int Id, string Name, double Height);
+    sealed record Widget(long Id, string Name, double? Height);
 
     private static string GetConnectionString() =>
         "Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true";
