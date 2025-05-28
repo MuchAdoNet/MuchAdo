@@ -2,13 +2,13 @@ namespace MuchAdo.Sources;
 
 public sealed class DtoSqlParamSource<T> : SqlParamSource
 {
-	public new DtoSqlParamSource<T> Where(Func<string, bool> filterName) =>
-		new(m_dto, m_filterName is null ? filterName : x => m_filterName(x) && filterName(x));
+	public new DtoSqlParamSource<T> Where(Func<string, bool> nameMatches) =>
+		new(m_dto, m_nameMatches is null ? nameMatches : x => m_nameMatches(x) && nameMatches(x));
 
-	internal DtoSqlParamSource(T dto, Func<string, bool>? filterName = null)
+	internal DtoSqlParamSource(T dto, Func<string, bool>? nameMatches = null)
 	{
 		m_dto = dto;
-		m_filterName = filterName;
+		m_nameMatches = nameMatches;
 	}
 
 	internal override void SubmitParameters(ISqlParamTarget target)
@@ -19,11 +19,11 @@ public sealed class DtoSqlParamSource<T> : SqlParamSource
 
 		foreach (var property in properties)
 		{
-			if (m_filterName is null || m_filterName(property.Name))
+			if (m_nameMatches is null || m_nameMatches(property.Name))
 				property.SubmitParameter(target, "", m_dto, type: null);
 		}
 	}
 
 	private readonly T m_dto;
-	private readonly Func<string, bool>? m_filterName;
+	private readonly Func<string, bool>? m_nameMatches;
 }
