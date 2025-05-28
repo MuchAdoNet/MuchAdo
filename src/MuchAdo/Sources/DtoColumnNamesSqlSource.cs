@@ -5,15 +5,15 @@ using System.Text.Json;
 namespace MuchAdo.Sources;
 
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:File may only contain a single type", Justification = "Same name.")]
-public sealed class ColumnNamesSqlSource<T> : SqlSource
+public sealed class DtoColumnNamesSqlSource<T> : SqlSource
 {
-	public ColumnNamesSqlSource<T> From(string tableName) =>
+	public DtoColumnNamesSqlSource<T> From(string tableName) =>
 		new(tableName, m_filterName);
 
-	public ColumnNamesSqlSource<T> Where(Func<string, bool> nameMatches) =>
+	public DtoColumnNamesSqlSource<T> Where(Func<string, bool> nameMatches) =>
 		new(m_tableName, m_filterName is null ? nameMatches : x => m_filterName(x) && nameMatches(x));
 
-	internal ColumnNamesSqlSource(string tableName = "", Func<string, bool>? filterName = null)
+	internal DtoColumnNamesSqlSource(string tableName = "", Func<string, bool>? filterName = null)
 	{
 		m_tableName = tableName;
 		m_filterName = filterName;

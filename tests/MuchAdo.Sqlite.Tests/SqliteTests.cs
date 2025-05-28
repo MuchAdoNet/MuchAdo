@@ -57,15 +57,15 @@ internal sealed class SqliteTests
 		var items = new[] { new NameValue("one", "two"), new NameValue("two", "four") };
 
 		connector.Command(Sql.Format($@"
-				insert into {tableName} ({Sql.ColumnNames<NameValue>()})
+				insert into {tableName} ({Sql.DtoColumnNames<NameValue>()})
 				values {Sql.List(items.Select(item => Sql.Format($"({Sql.DtoParams(item)})")))};
 				")).Execute();
 
-		connector.Command(Sql.Format($"select {Sql.ColumnNames<NameValue>()} from {tableName} t order by ItemId;"))
+		connector.Command(Sql.Format($"select {Sql.DtoColumnNames<NameValue>()} from {tableName} t order by ItemId;"))
 			.Query<NameValue>().Should().Equal(items);
-		connector.Command(Sql.Format($"select {Sql.ColumnNames<NameValue>().From(nameof(InsertAndSelectNameValue))} from {tableName} order by ItemId;"))
+		connector.Command(Sql.Format($"select {Sql.DtoColumnNames<NameValue>().From(nameof(InsertAndSelectNameValue))} from {tableName} order by ItemId;"))
 			.Query<NameValue>().Should().Equal(items);
-		connector.Command(Sql.Format($"select {Sql.ColumnNames<NameValue>().From("t")} from {tableName} t order by ItemId;"))
+		connector.Command(Sql.Format($"select {Sql.DtoColumnNames<NameValue>().From("t")} from {tableName} t order by ItemId;"))
 			.Query<NameValue>().Should().Equal(items);
 	}
 
