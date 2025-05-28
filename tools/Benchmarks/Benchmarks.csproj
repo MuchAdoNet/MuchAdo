@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MuchAdo\MuchAdo.csproj" />
-    <ProjectReference Include="..\..\src\MuchAdo.Ellipses\MuchAdo.Ellipses.csproj" />
     <ProjectReference Include="..\..\src\MuchAdo.MySql\MuchAdo.MySql.csproj" />
     <ProjectReference Include="..\..\src\MuchAdo.Npgsql\MuchAdo.Npgsql.csproj" />
     <ProjectReference Include="..\..\src\MuchAdo.Sqlite\MuchAdo.Sqlite.csproj" />
