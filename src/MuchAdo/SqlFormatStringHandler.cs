@@ -27,13 +27,7 @@ public readonly ref struct SqlFormatStringHandler
 			case null or "":
 				AppendFormatted(t);
 				break;
-			case "list":
-				m_parts.Add(FormatInfo<T>.Instance.CreateParamSourceForCollection(t));
-				break;
-			case "raw" when t is string { } text:
-				m_parts.Add(text);
-				break;
-			case "tuple":
+			case "set":
 				m_parts.Add(Sql.Tuple(FormatInfo<T>.Instance.CreateParamSourceForCollection(t)));
 				break;
 			default:

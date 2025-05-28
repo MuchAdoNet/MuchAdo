@@ -197,55 +197,30 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
-	public void FormatRawString()
-	{
-		var sql = Sql.Format($"select * from widgets where id in ({"42":raw})");
-		var (text, parameters) = Render(sql);
-		text.Should().Be("select * from widgets where id in (42)");
-		parameters.EnumeratePairs().Should().BeEmpty();
-	}
-
-	[Test]
-	public void FormatRawInteger()
-	{
-		Invoking(() => Sql.Format($"select * from widgets where id in ({42:raw})")).Should().Throw<NotSupportedException>();
-	}
-
-	[Test]
-	public void FormatListStrings()
+	public void FormatSetStringsArray()
 	{
 		var strings = new[] { "one", "two" };
-		var sql = Sql.Format($"select * from widgets where id in ({strings:list})");
+		var sql = Sql.Format($"select * from widgets where id in {strings:set}");
 		var (text, parameters) = Render(sql);
 		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
 		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
 	}
 
 	[Test]
-	public void FormatListSqls()
-	{
-		var sqls = new[] { Sql.Raw("one"), Sql.Raw("two") };
-		Invoking(() => Sql.Format($"select * from widgets where id in ({sqls:list})")).Should().Throw<NotSupportedException>();
-	}
-
-	[Test]
-	public void FormatTupleStringsArray()
-	{
-		var strings = new[] { "one", "two" };
-		var sql = Sql.Format($"select * from widgets where id in {strings:tuple}");
-		var (text, parameters) = Render(sql);
-		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
-		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
-	}
-
-	[Test]
-	public void FormatTupleStringsEnumerable()
+	public void FormatSetStringsEnumerable()
 	{
 		var strings = new[] { "one", "two" }.AsEnumerable();
-		var sql = Sql.Format($"select * from widgets where id in {strings:tuple}");
+		var sql = Sql.Format($"select * from widgets where id in {strings:set}");
 		var (text, parameters) = Render(sql);
 		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
 		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
+	}
+
+	[Test]
+	public void FormatSetSqls()
+	{
+		var sqls = new[] { Sql.Raw("one"), Sql.Raw("two") };
+		Invoking(() => Sql.Format($"select * from widgets where id in ({sqls:set})")).Should().Throw<NotSupportedException>();
 	}
 
 	[Test]
