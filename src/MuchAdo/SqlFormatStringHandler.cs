@@ -28,7 +28,7 @@ public readonly ref struct SqlFormatStringHandler
 				AppendFormatted(t);
 				break;
 			case "set":
-				m_parts.Add(FormatInfo<T>.Instance.CreateParamSet(t));
+				m_parts.Add(Sql.Tuple(FormatInfo<T>.Instance.CreateParamSourceForCollection(t)));
 				break;
 			default:
 				throw new NotSupportedException($"Format '{format}' not supported for {typeof(T).FullName}.");
@@ -41,14 +41,15 @@ public readonly ref struct SqlFormatStringHandler
 	{
 		public static readonly FormatInfo<T> Instance = new();
 
-		public SqlSource CreateParamSet(T items) => m_lazyCreateParamSetCreator.Value(items);
+		public SqlParamSource CreateParamSourceForCollection(T items) =>
+			m_lazyCreateParamSourceCreator.Value(items);
 
 		private FormatInfo()
 		{
-			m_lazyCreateParamSetCreator = new(CreateParamSetCreator);
+			m_lazyCreateParamSourceCreator = new(CreateParamSourceCreator);
 		}
 
-		private Func<T, SqlSource> CreateParamSetCreator()
+		private Func<T, SqlParamSource> CreateParamSourceCreator()
 		{
 			var type = typeof(T);
 			var itemsParam = Expression.Parameter(type, "items");
@@ -61,18 +62,18 @@ public readonly ref struct SqlFormatStringHandler
 			if (typeof(SqlSource).IsAssignableFrom(itemType))
 				throw new NotSupportedException("Format specifier not supported for collections of SqlSource.");
 
-			var paramsMethod = FormatInfo.GenericParamSetMethod.MakeGenericMethod(itemType);
-			return Expression.Lambda<Func<T, SqlSource>>(Expression.Call(paramsMethod, itemsParam), itemsParam).Compile();
+			var paramsMethod = FormatInfo.GenericParamsMethod.MakeGenericMethod(itemType);
+			return Expression.Lambda<Func<T, SqlParamSource>>(Expression.Call(paramsMethod, itemsParam), itemsParam).Compile();
 		}
 
-		private readonly Lazy<Func<T, SqlSource>> m_lazyCreateParamSetCreator;
+		private readonly Lazy<Func<T, SqlParamSource>> m_lazyCreateParamSourceCreator;
 	}
 
 	private static class FormatInfo
 	{
-		public static MethodInfo GenericParamSetMethod { get; } = typeof(Sql)
+		public static MethodInfo GenericParamsMethod { get; } = typeof(Sql)
 			.GetMethods(BindingFlags.Public | BindingFlags.Static)
-			.Single(x => x is { Name: nameof(Sql.ParamSet), IsGenericMethod: true } &&
+			.Single(x => x is { Name: nameof(Sql.Params), IsGenericMethod: true } &&
 				x.GetGenericArguments().Length == 1 &&
 				x.GetParameters().Length == 1);
 	}
