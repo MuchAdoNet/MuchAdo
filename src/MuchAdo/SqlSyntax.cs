@@ -13,11 +13,6 @@ public sealed class SqlSyntax
 	public static SqlSyntax Default { get; } = new();
 
 	/// <summary>
-	/// The syntax for ANSI SQL.
-	/// </summary>
-	public static SqlSyntax Ansi { get; } = Default.WithIdentifierQuoting(SqlIdentifierQuoting.DoubleQuotes);
-
-	/// <summary>
 	/// The syntax for MySQL.
 	/// </summary>
 	public static SqlSyntax MySql { get; } = Default

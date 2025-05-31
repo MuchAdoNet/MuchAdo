@@ -194,7 +194,7 @@ internal sealed class SqlSyntaxTests
 		var (text, parameters) = Render(sql);
 		text.Should().Be("select * from widgets where id in (@ado1, @ado2)");
 		parameters.EnumeratePairs().Should().Equal(("ado1", 42), ("ado2", -42));
-		sql.ToString().Should().Be("select * from widgets where id in (@ado1, @ado2)");
+		sql.ToString().Should().Be("select * from widgets where id in (?, ?)");
 	}
 
 	[TestCase(null)]
@@ -351,7 +351,7 @@ internal sealed class SqlSyntaxTests
 	[Test]
 	public void ColumnNamesAndValuesSql()
 	{
-		var syntax = SqlSyntax.Ansi;
+		var syntax = SqlSyntax.Sqlite;
 
 		Render(Sql.DtoColumnNames<ItemDto>(), syntax).Text.Should().Be("""
 			"ItemId", "DisplayName", "IsActive"
@@ -380,7 +380,7 @@ internal sealed class SqlSyntaxTests
 	[Test]
 	public void ColumnNamesAndValuesWhereSql()
 	{
-		var syntax = SqlSyntax.Ansi;
+		var syntax = SqlSyntax.Sqlite;
 
 		Render(Sql.DtoColumnNames<ItemDto>().Where(x => x is nameof(ItemDto.DisplayName)), syntax).Text.Should().Be("\"DisplayName\"");
 

@@ -16,9 +16,9 @@ public abstract class SqlSource
 		new AddSqlSource(a ?? throw new ArgumentNullException(nameof(a)), b ?? throw new ArgumentNullException(nameof(b)));
 
 	/// <summary>
-	/// Renders the SQL source using ANSI syntax.
+	/// Renders the SQL source.
 	/// </summary>
-	public override string ToString() => ToString(SqlSyntax.Ansi);
+	public override string ToString() => ToString(s_toStringSqlSyntax);
 
 	/// <summary>
 	/// Renders the SQL source using the specified syntax.
@@ -31,4 +31,8 @@ public abstract class SqlSource
 	}
 
 	internal abstract void Render(DbConnectorCommandBuilder builder);
+
+	private static readonly SqlSyntax s_toStringSqlSyntax = SqlSyntax.Default
+		.WithIdentifierQuoting(SqlIdentifierQuoting.DoubleQuotes)
+		.WithUnnamedParameterStrategy(SqlUnnamedParameterStrategy.Unnumbered("?"));
 }
