@@ -28,7 +28,7 @@ public readonly ref struct SqlFormatStringHandler
 				AppendFormatted(t);
 				break;
 			case "set":
-				m_parts.Add(Sql.Tuple(FormatInfo<T>.Instance.CreateParamSourceForCollection(t)));
+				m_parts.Add(Sql.Set(FormatInfo<T>.Instance.CreateParamSourceForCollection(t)));
 				break;
 			default:
 				throw new NotSupportedException($"Format '{format}' not supported for {typeof(T).FullName}.");

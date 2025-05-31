@@ -96,6 +96,26 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
+	public void SetSql()
+	{
+		var (text, parameters) = Render(Sql.Set(Sql.Param("one"), Sql.Param("two"), Sql.Raw("null")));
+		text.Should().Be("(@ado1, @ado2, null)");
+		parameters.EnumeratePairs().Should().Equal(("ado1", "one"), ("ado2", "two"));
+	}
+
+	[Test]
+	public void SetNone()
+	{
+		Invoking(() => Render(Sql.Set())).Should().Throw<InvalidOperationException>();
+	}
+
+	[Test]
+	public void SetEmpty()
+	{
+		Invoking(() => Render(Sql.Set(Sql.Empty))).Should().Throw<InvalidOperationException>();
+	}
+
+	[Test]
 	public void ParamsOneString()
 	{
 		var (text, parameters) = Render(Sql.Params("hi"));
@@ -217,16 +237,23 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
+	public void FormatSetStringsEmpty()
+	{
+		var strings = Array.Empty<string>();
+		Invoking(() => Render(Sql.Format($"select * from widgets where id in {strings:set}"))).Should().Throw<InvalidOperationException>();
+	}
+
+	[Test]
 	public void FormatSetSqls()
 	{
 		var sqls = new[] { Sql.Raw("one"), Sql.Raw("two") };
-		Invoking(() => Sql.Format($"select * from widgets where id in ({sqls:set})")).Should().Throw<NotSupportedException>();
+		Invoking(() => Sql.Format($"select * from widgets where id in {sqls:set}")).Should().Throw<NotSupportedException>();
 	}
 
 	[Test]
 	public void FormatUnknown()
 	{
-		Invoking(() => Sql.Format($"select * from widgets where id in ({"42":xyzzy})")).Should().Throw<NotSupportedException>();
+		Invoking(() => Sql.Format($"select * from widgets where id in {"42":xyzzy}")).Should().Throw<NotSupportedException>();
 	}
 
 	[Test]

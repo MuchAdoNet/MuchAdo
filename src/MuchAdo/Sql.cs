@@ -198,6 +198,12 @@ public static class Sql
 		type is null ? new RepeatSqlParam<T>(value) : new RepeatTypedSqlParam<T>(value, type);
 
 	/// <summary>
+	/// Creates SQL for a non-empty comma-separated list of SQL fragments, surrounded by parentheses.
+	/// </summary>
+	/// <remarks>If the set is empty, an exception is thrown.</remarks>
+	public static SqlSource Set(params IEnumerable<SqlSource> sqls) => Format($"({new SetListSqlSource(sqls)})");
+
+	/// <summary>
 	/// Creates SQL for a comma-separated list of SQL fragments, surrounded by parentheses.
 	/// </summary>
 	public static SqlSource Tuple(params IEnumerable<SqlSource> sqls) => Format($"({List(sqls)})");

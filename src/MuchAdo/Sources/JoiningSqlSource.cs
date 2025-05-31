@@ -4,6 +4,8 @@ internal abstract class JoiningSqlSource(IEnumerable<SqlSource> sqls) : SqlSourc
 {
 	public abstract string Separator { get; }
 
+	public virtual string TextOnEmpty => "";
+
 	internal override void Render(DbConnectorCommandBuilder builder)
 	{
 		var oldTextLength = builder.TextLength;
@@ -13,5 +15,8 @@ internal abstract class JoiningSqlSource(IEnumerable<SqlSource> sqls) : SqlSourc
 			using var scope = builder.Prefix(builder.TextLength != oldTextLength ? Separator : "");
 			sql.Render(builder);
 		}
+
+		if (builder.TextLength == oldTextLength)
+			builder.AppendText(TextOnEmpty);
 	}
 }
