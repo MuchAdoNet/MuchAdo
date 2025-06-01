@@ -80,6 +80,11 @@ public static class Sql
 	public static SqlSource Having(SqlSource sql) => new HavingClauseSqlSource(sql);
 
 	/// <summary>
+	/// Creates SQL for a HAVING clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the HAVING clause is omitted.
+	/// </summary>
+	public static SqlSource Having(params IEnumerable<SqlSource> sqls) => Having(And(sqls));
+
+	/// <summary>
 	/// Intersperses SQL fragments with the specified raw SQL separator.
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
@@ -212,4 +217,9 @@ public static class Sql
 	/// Creates SQL for a WHERE clause. If the SQL is empty, the WHERE clause is omitted.
 	/// </summary>
 	public static SqlSource Where(SqlSource sql) => new WhereClauseSqlSource(sql);
+
+	/// <summary>
+	/// Creates SQL for an WHERE clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the WHERE clause is omitted.
+	/// </summary>
+	public static SqlSource Where(params IEnumerable<SqlSource> sqls) => Where(And(sqls));
 }

@@ -490,6 +490,14 @@ internal sealed class SqlSyntaxTests
 		parameters.EnumeratePairs().Should().Equal();
 	}
 
+	[Test]
+	public void WhereMultiple()
+	{
+		var (text, parameters) = Render(Sql.Where(Sql.Raw("a"), Sql.Raw("b")));
+		text.Should().Be("WHERE (a) AND (b)");
+		parameters.EnumeratePairs().Should().Equal();
+	}
+
 	[TestCase("", "")]
 	[TestCase("x asc", "ORDER BY x asc")]
 	[TestCase("x asc;y desc", "order by x asc, y desc", true)]
@@ -520,6 +528,14 @@ internal sealed class SqlSyntaxTests
 		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
 		var (text, parameters) = Render(Sql.Having(Sql.Raw(condition)), syntax);
 		text.Should().Be(sql);
+		parameters.EnumeratePairs().Should().Equal();
+	}
+
+	[Test]
+	public void HavingMultiple()
+	{
+		var (text, parameters) = Render(Sql.Having(Sql.Raw("a"), Sql.Raw("b")));
+		text.Should().Be("HAVING (a) AND (b)");
 		parameters.EnumeratePairs().Should().Equal();
 	}
 

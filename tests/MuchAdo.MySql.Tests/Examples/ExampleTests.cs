@@ -297,13 +297,13 @@ internal sealed class ExampleTests
 
     private async Task<int> CountWidgets(DbConnector connector, double? maxHeight, double? minHeight)
     {
-        var ands = new List<SqlSource>();
+        var conditions = new List<SqlSource>();
         if (minHeight.HasValue)
-            ands.Add(Sql.Format($"height >= {minHeight.Value}"));
+            conditions.Add(Sql.Format($"height >= {minHeight.Value}"));
         if (maxHeight.HasValue)
-            ands.Add(Sql.Format($"height <= {maxHeight.Value}"));
+            conditions.Add(Sql.Format($"height <= {maxHeight.Value}"));
         return await connector
-            .CommandFormat($"select count(*) from widgets {Sql.Where(Sql.And(ands))}")
+            .CommandFormat($"select count(*) from widgets {Sql.Where(conditions)}")
             .QuerySingleAsync<int>();
     }
 
