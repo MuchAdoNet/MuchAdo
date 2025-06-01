@@ -244,6 +244,49 @@ internal sealed class ExampleTests
             .QueryAsync(x => x.Get<double?>("height") / 2.0);
 
         halvedHeights.Should().HaveCount(6);
+
+        widgetIds = await connector
+            .CommandFormat($"select id from widgets order by id")
+            .QueryAsync<long>();
+
+        var widgetIdAfter = await GetNextWidgetId(connector, widgetIds[1], reverse: false);
+        widgetIdAfter.Should().Be(widgetIds[2]);
+        var widgetIdBefore = await GetNextWidgetId(connector, widgetIds[1], reverse: true);
+        widgetIdBefore.Should().Be(widgetIds[0]);
+
+        widgetCount = await CountWidgets(connector, maxHeight: 5.0, minHeight: null);
+        widgetCount.Should().Be(3);
+        widgetCount = await CountWidgets(connector, maxHeight: null, minHeight: 5.0);
+        widgetCount.Should().Be(3);
+        widgetCount = await CountWidgets(connector, maxHeight: 5.0, minHeight: 3.0);
+        widgetCount.Should().Be(3);
+        widgetCount = await CountWidgets(connector, maxHeight: null, minHeight: null);
+        widgetCount.Should().Be(6);
+    }
+
+    private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)
+    {
+        const string tableName = "widgets";
+
+        var sql = Sql.Format($"""
+            select id from {Sql.Name(tableName)}
+            where id {Sql.Raw(reverse ? "<" : ">")} {id}
+            order by id {(reverse ? Sql.Raw("desc") : Sql.Empty)}
+            limit 1
+            """);
+        return await connector.Command(sql).QuerySingleOrDefaultAsync<long?>();
+    }
+
+    private async Task<int> CountWidgets(DbConnector connector, double? maxHeight, double? minHeight)
+    {
+        var ands = new List<SqlSource>();
+        if (minHeight.HasValue)
+            ands.Add(Sql.Format($"height >= {minHeight.Value}"));
+        if (maxHeight.HasValue)
+            ands.Add(Sql.Format($"height <= {maxHeight.Value}"));
+        return await connector
+            .CommandFormat($"select count(*) from widgets {Sql.Where(Sql.And(ands))}")
+            .QuerySingleAsync<int>();
     }
 
     sealed record Widget(long Id, string Name, double? Height);

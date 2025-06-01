@@ -1,6 +1,6 @@
 namespace MuchAdo.Sources;
 
-internal sealed class SetListSqlSource(IEnumerable<SqlSource> sqls) : JoiningSqlSource(sqls)
+internal sealed class SetListSqlSource(IEnumerable<SqlSource> sqls) : InterspersingSqlSource(sqls)
 {
 	public override string Separator => ", ";
 

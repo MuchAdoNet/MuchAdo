@@ -1,6 +1,6 @@
 namespace MuchAdo.Sources;
 
-internal abstract class JoiningSqlSource(IEnumerable<SqlSource> sqls) : SqlSource
+internal abstract class InterspersingSqlSource(IEnumerable<SqlSource> sqls) : SqlSource
 {
 	public abstract string Separator { get; }
 

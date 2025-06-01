@@ -270,7 +270,7 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
-	public void JoinParams()
+	public void ListParams()
 	{
 		var (text, parameters) = Render(Sql.List(Sql.Param(42), Sql.Param(-42)));
 		text.Should().Be("@ado1, @ado2");
@@ -278,7 +278,7 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
-	public void JoinEnumerable()
+	public void IntersperseEnumerable()
 	{
 		Render(CreateSql(42, 24)).Text.Should().Be("select * from widgets where width = @ado1 and height = @ado2;");
 		Render(CreateSql(null, 24)).Text.Should().Be("select * from widgets where height = @ado1;");
@@ -291,15 +291,15 @@ internal sealed class SqlSyntaxTests
 				sqls.Add(Sql.Format($"width = {width}"));
 			if (height is not null)
 				sqls.Add(Sql.Format($"height = {height}"));
-			var whereSql = sqls.Count == 0 ? Sql.Empty : Sql.Format($"where {Sql.Join(" and ", sqls)}");
+			var whereSql = sqls.Count == 0 ? Sql.Empty : Sql.Format($"where {Sql.Intersperse(" and ", sqls)}");
 			return Sql.Format($"select * from widgets {whereSql};");
 		}
 	}
 
 	[Test]
-	public void JoinEmpty()
+	public void IntersperseEmpty()
 	{
-		var (text, parameters) = Render(Sql.Join("/", Sql.Raw("one"), Sql.Empty, Sql.Raw("two")));
+		var (text, parameters) = Render(Sql.Intersperse("/", Sql.Raw("one"), Sql.Empty, Sql.Raw("two")));
 		text.Should().Be("one/two");
 		parameters.EnumeratePairs().Should().Equal();
 	}

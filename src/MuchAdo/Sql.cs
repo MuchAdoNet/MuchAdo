@@ -15,12 +15,12 @@ public static class Sql
 	public static readonly SqlParamSource Empty = new EmptySqlParamSource();
 
 	/// <summary>
-	/// Joins the specified SQL fragments with the AND operator.
+	/// Intersperses the specified SQL fragments with the AND operator.
 	/// </summary>
 	public static SqlSource And(params IEnumerable<SqlSource> sqls) => new AndOperatorSqlSource(sqls);
 
 	/// <summary>
-	/// Joins the specified SQL fragments with newlines.
+	/// Intersperses the specified SQL fragments with newlines.
 	/// </summary>
 	public static SqlSource Clauses(params IEnumerable<SqlSource> sqls) => new ClausesSqlSource(sqls);
 
@@ -80,11 +80,11 @@ public static class Sql
 	public static SqlSource Having(SqlSource sql) => new HavingClauseSqlSource(sql);
 
 	/// <summary>
-	/// Joins SQL fragments with the specified separator.
+	/// Intersperses SQL fragments with the specified raw SQL separator.
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
-	public static SqlSource Join(string separator, params IEnumerable<SqlSource> sqls) =>
-		new JoinSqlSource(separator ?? throw new ArgumentNullException(nameof(separator)), sqls);
+	public static SqlSource Intersperse(string separator, params IEnumerable<SqlSource> sqls) =>
+		new IntersperseSqlSource(separator ?? throw new ArgumentNullException(nameof(separator)), sqls);
 
 	/// <summary>
 	/// Creates SQL for an unnamed parameter set to a LIKE pattern ending with <c>%</c>.
@@ -149,7 +149,7 @@ public static class Sql
 		new DictionarySqlParamSource<T>(parameters);
 
 	/// <summary>
-	/// Joins the specified SQL fragments with the OR operator.
+	/// Intersperses the specified SQL fragments with the OR operator.
 	/// </summary>
 	public static SqlSource Or(params IEnumerable<SqlSource> sqls) => new OrOperatorSqlSource(sqls);
 
