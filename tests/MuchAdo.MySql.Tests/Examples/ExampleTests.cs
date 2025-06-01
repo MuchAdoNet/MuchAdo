@@ -262,6 +262,24 @@ internal sealed class ExampleTests
         widgetCount.Should().Be(3);
         widgetCount = await CountWidgets(connector, maxHeight: null, minHeight: null);
         widgetCount.Should().Be(6);
+
+        var widgetsFromIds = await connector
+            .CommandFormat($"""
+                select id, name, height from widgets
+                where id in {widgetIds:set}
+                """)
+            .QueryAsync<Widget>();
+
+        widgetsFromIds.Should().HaveCount(6);
+
+        await InsertWidgets(connector, new (string, double?)[]
+        {
+            ("Seventh", 7.0),
+            ("Eighth", 8.0),
+        });
+
+        widgetCount = await CountWidgets(connector, maxHeight: null, minHeight: null);
+        widgetCount.Should().Be(8);
     }
 
     private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)
@@ -287,6 +305,17 @@ internal sealed class ExampleTests
         return await connector
             .CommandFormat($"select count(*) from widgets {Sql.Where(Sql.And(ands))}")
             .QuerySingleAsync<int>();
+    }
+
+    private async Task InsertWidgets(DbConnector connector, IReadOnlyList<(string Name, double? Height)> widgets)
+    {
+        await connector
+            .CommandFormat($"""
+                insert into widgets (name, height)
+                values {Sql.List(widgets.Select(x =>
+                    Sql.Tuple(Sql.Param(x.Name), Sql.Param(x.Height))))}
+                """)
+            .ExecuteAsync();
     }
 
     sealed record Widget(long Id, string Name, double? Height);
