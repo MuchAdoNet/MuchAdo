@@ -1,5 +1,5 @@
 # Release Notes
 
-## 0.0.13
+## 0.0.14
 
 * Initial release. Adapted from [Faithlife.Data](https://github.com/Faithlife/FaithlifeData/) and [Faithlife.Reflection](https://github.com/Faithlife/FaithlifeReflection/).
