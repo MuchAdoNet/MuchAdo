@@ -449,8 +449,8 @@ internal sealed class SqlSyntaxTests
 
 	[TestCase("", "")]
 	[TestCase("one", "one")]
-	[TestCase("one,two", "(one AND two)")]
-	[TestCase("one,two,three", "(one and two and three)", true)]
+	[TestCase("one,two", "(one) AND (two)")]
+	[TestCase("one,two,three", "(one) and (two) and (three)", true)]
 	public void And(string values, string sql, bool lowercase = false)
 	{
 		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
@@ -461,8 +461,8 @@ internal sealed class SqlSyntaxTests
 
 	[TestCase("", "")]
 	[TestCase("one", "one")]
-	[TestCase("one,two", "(one OR two)")]
-	[TestCase("one,two,three", "(one or two or three)", true)]
+	[TestCase("one,two", "(one) OR (two)")]
+	[TestCase("one,two,three", "(one) or (two) or (three)", true)]
 	public void Or(string values, string sql, bool lowercase = false)
 	{
 		var syntax = lowercase ? SqlSyntax.Default.WithLowercaseKeywords() : SqlSyntax.Default;
@@ -475,7 +475,7 @@ internal sealed class SqlSyntaxTests
 	public void AndOrAnd()
 	{
 		var (text, parameters) = Render(Sql.And(Sql.Raw("one"), Sql.Or(Sql.Raw("two"), Sql.And(Sql.Raw("three")))));
-		text.Should().Be("(one AND (two OR three))");
+		text.Should().Be("(one) AND ((two) OR (three))");
 		parameters.EnumeratePairs().Should().Equal();
 	}
 

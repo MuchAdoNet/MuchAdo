@@ -10,7 +10,7 @@ internal abstract class BinaryOperatorSqlSource(IEnumerable<SqlSource> sqls) : S
 	{
 		var oldTextLength = builder.TextLength;
 		SqlSource? firstSql = null;
-		DbConnectorBracketScope? outerScope = null;
+		var firstSqlRendered = false;
 
 		foreach (var sql in sqls)
 		{
@@ -20,19 +20,19 @@ internal abstract class BinaryOperatorSqlSource(IEnumerable<SqlSource> sqls) : S
 				continue;
 			}
 
-			if (outerScope is null)
+			if (!firstSqlRendered)
 			{
-				outerScope = builder.Bracket("(", ")");
+				using var firstSqlScope = builder.Bracket("(", ")");
 				firstSql.Render(builder);
+				firstSqlRendered = true;
 			}
 
-			using var innerScope = builder.Prefix(builder.TextLength != oldTextLength ? builder.Syntax.LowercaseKeywords ? Lowercase : Uppercase : "");
+			using var opScope = builder.Prefix(builder.TextLength == oldTextLength ? "" : builder.Syntax.LowercaseKeywords ? Lowercase : Uppercase);
+			using var sqlScope = builder.Bracket("(", ")");
 			sql.Render(builder);
 		}
 
-		if (outerScope is { } scope)
-			scope.Dispose();
-		else if (firstSql is not null)
+		if (firstSql is not null && !firstSqlRendered)
 			firstSql.Render(builder);
 	}
 }
