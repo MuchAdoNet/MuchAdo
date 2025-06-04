@@ -98,11 +98,11 @@ internal sealed class ExampleTests
 
         var name = "Second";
 
-        var widgetIds = await connector
+        var widgetId = await connector
             .CommandFormat($"select id from widgets where name = {name}")
-            .QueryAsync<long>();
+            .QuerySingleAsync<long>();
 
-        widgetIds.Should().HaveCount(1);
+        widgetId.Should().BeGreaterThan(0);
 
         var averageHeight = await connector
             .Command("select avg(height) from widgets")
@@ -137,7 +137,6 @@ internal sealed class ExampleTests
         name = "Fifth";
         height = 5.5;
 
-        long widgetId;
         await using (await connector.BeginTransactionAsync())
         {
             var existingWidgetId = await connector
@@ -245,7 +244,7 @@ internal sealed class ExampleTests
 
         halvedHeights.Should().HaveCount(6);
 
-        widgetIds = await connector
+        var widgetIds = await connector
             .CommandFormat($"select id from widgets order by id")
             .QueryAsync<long>();
 
