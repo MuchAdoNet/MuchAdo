@@ -279,6 +279,59 @@ internal sealed class ExampleTests
 
         widgetCount = await CountWidgets(connector, maxHeight: null, minHeight: null);
         widgetCount.Should().Be(8);
+
+        name = "Ninth";
+        height = 9.0;
+
+        var heightParam = Sql.RepeatParam(height);
+        await connector
+            .CommandFormat($"""
+                insert into widgets (name, height)
+                values ({name}, {heightParam})
+                on duplicate key update height = {heightParam}
+                """)
+            .ExecuteAsync();
+
+        widgetId = await connector
+            .Command("select id from widgets where name = ?", Sql.Param(name))
+            .QuerySingleAsync<long>();
+
+        widgetId.Should().BeGreaterThan(0);
+
+        widgetsFromIds = await connector
+            .CommandFormat($"""
+                select id, name, height from widgets
+                where id in ({Sql.Params(widgetIds)})
+                """)
+            .QueryAsync<Widget>();
+
+        widgetsFromIds.Should().HaveCount(6);
+
+        widgetId = await connector
+            .CommandFormat($"""
+                select id from widgets
+                where name = {Sql.NamedParam("name", name)}
+                """)
+            .QuerySingleAsync<long>();
+
+        widgetId.Should().BeGreaterThan(0);
+
+        widgetId = await connector
+            .Command("select id from widgets where name = @name",
+                Sql.NamedParam("name", name))
+            .QuerySingleAsync<long>();
+
+        widgetId.Should().BeGreaterThan(0);
+
+        var namedParams = Sql.NamedParams(widgetIds.Select((x, i) => ($"p{i}", x)));
+        widgetsFromIds = await connector
+            .CommandFormat($"""
+                select id, name, height from widgets
+                where id in ({namedParams})
+                """)
+            .QueryAsync<Widget>();
+
+        widgetsFromIds.Should().HaveCount(6);
     }
 
     private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)

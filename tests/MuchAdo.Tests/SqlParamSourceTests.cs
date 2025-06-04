@@ -94,9 +94,6 @@ internal sealed class SqlParamSourceTests
 	public void Nulls()
 	{
 		Invoking(() => new SqlParamSourceList(default(IEnumerable<SqlParamSource>)!)).Should().Throw<ArgumentNullException>();
-		////Invoking(() => new SqlParamSources(default((string, string)[])!)).Should().Throw<ArgumentNullException>();
-		////Invoking(() => new SqlParamSources(default(Dictionary<string, string>)!)).Should().Throw<ArgumentNullException>();
-		////Invoking(() => Sql.NamedParamsFromDto(default(object?))).Should().Throw<ArgumentNullException>();
 	}
 
 	private sealed class HasTwo
