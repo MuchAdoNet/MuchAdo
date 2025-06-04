@@ -91,7 +91,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <param name="text">The text of the command.</param>
 	/// <param name="parameters">The parameters of the command.</param>
 	public DbConnectorCommandBatch Command(string text, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.Text, text ?? throw new ArgumentNullException(nameof(text)), new SqlParamSources(parameters));
+		new(this, CommandType.Text, text ?? throw new ArgumentNullException(nameof(text)), new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Creates a new command from parameterized SQL.
@@ -114,7 +114,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <param name="sql">The parameterized SQL.</param>
 	/// <param name="parameters">The parameters of the command.</param>
 	public DbConnectorCommandBatch Command(SqlSource sql, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.Text, sql ?? throw new ArgumentNullException(nameof(sql)), new SqlParamSources(parameters));
+		new(this, CommandType.Text, sql ?? throw new ArgumentNullException(nameof(sql)), new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Creates a new command from a formatted SQL string.
@@ -161,7 +161,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <param name="name">The name of the stored procedure.</param>
 	/// <param name="parameters">The parameters of the stored procedure.</param>
 	public DbConnectorCommandBatch StoredProcedure(string name, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.StoredProcedure, name ?? throw new ArgumentNullException(nameof(name)), new SqlParamSources(parameters));
+		new(this, CommandType.StoredProcedure, name ?? throw new ArgumentNullException(nameof(name)), new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Begins a transaction.

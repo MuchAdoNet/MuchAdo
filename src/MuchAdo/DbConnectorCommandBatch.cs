@@ -297,7 +297,7 @@ public sealed class DbConnectorCommandBatch
 	/// </summary>
 	/// <param name="text">The text of the command.</param>
 	/// <param name="parameters">The parameters of the command.</param>
-	public DbConnectorCommandBatch Command(string text, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, text, new SqlParamSources(parameters));
+	public DbConnectorCommandBatch Command(string text, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, text, new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Creates the next command from parameterized SQL.
@@ -317,7 +317,7 @@ public sealed class DbConnectorCommandBatch
 	/// </summary>
 	/// <param name="sql">The parameterized SQL.</param>
 	/// <param name="parameters">Additional parameters.</param>
-	public DbConnectorCommandBatch Command(SqlSource sql, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, sql, new SqlParamSources(parameters));
+	public DbConnectorCommandBatch Command(SqlSource sql, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, sql, new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Creates the next command from a formatted SQL string.
@@ -359,7 +359,7 @@ public sealed class DbConnectorCommandBatch
 	/// </summary>
 	/// <param name="name">The name of the stored procedure.</param>
 	/// <param name="parameters">The parameters of the stored procedure.</param>
-	public DbConnectorCommandBatch StoredProcedure(string name, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.StoredProcedure, name, new SqlParamSources(parameters));
+	public DbConnectorCommandBatch StoredProcedure(string name, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.StoredProcedure, name, new SqlParamSourceList(parameters));
 
 	/// <summary>
 	/// Gets the last command in the batch.

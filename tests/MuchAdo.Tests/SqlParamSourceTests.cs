@@ -55,7 +55,7 @@ internal sealed class SqlParamSourceTests
 	[Test]
 	public void CreateFromDto()
 	{
-		var parameters = new SqlParamSources(Sql.DtoNamedParams(new { one = 1 }), Sql.DtoNamedParams(new HasTwo()));
+		var parameters = new SqlParamSourceList(Sql.DtoNamedParams(new { one = 1 }), Sql.DtoNamedParams(new HasTwo()));
 		parameters.EnumeratePairs().Should().Equal(("one", 1), ("Two", 2));
 	}
 
@@ -93,7 +93,7 @@ internal sealed class SqlParamSourceTests
 	[Test]
 	public void Nulls()
 	{
-		Invoking(() => new SqlParamSources(default(IEnumerable<SqlParamSource>)!)).Should().Throw<ArgumentNullException>();
+		Invoking(() => new SqlParamSourceList(default(IEnumerable<SqlParamSource>)!)).Should().Throw<ArgumentNullException>();
 		////Invoking(() => new SqlParamSources(default((string, string)[])!)).Should().Throw<ArgumentNullException>();
 		////Invoking(() => new SqlParamSources(default(Dictionary<string, string>)!)).Should().Throw<ArgumentNullException>();
 		////Invoking(() => Sql.NamedParamsFromDto(default(object?))).Should().Throw<ArgumentNullException>();

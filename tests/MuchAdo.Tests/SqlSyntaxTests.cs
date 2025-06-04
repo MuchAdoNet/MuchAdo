@@ -566,7 +566,7 @@ internal sealed class SqlSyntaxTests
 
 	private sealed class ParamTarget : ISqlParamTarget
 	{
-		public SqlParamSources Params { get; } = new();
+		public SqlParamSourceList Params { get; } = new();
 
 		public void AcceptParameter<T>(string name, T value, SqlParamType? type) => Params.Add(Sql.NamedParam(name, value, type));
 	}

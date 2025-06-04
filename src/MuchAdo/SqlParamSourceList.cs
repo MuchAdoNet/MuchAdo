@@ -5,22 +5,22 @@ namespace MuchAdo;
 /// <summary>
 /// A list of parameter sources.
 /// </summary>
-public sealed class SqlParamSources : SqlParamSource, IList<SqlParamSource>, IReadOnlyList<SqlParamSource>
+public sealed class SqlParamSourceList : SqlParamSource, IList<SqlParamSource>, IReadOnlyList<SqlParamSource>
 {
 	/// <summary>
 	/// Creates an empty list.
 	/// </summary>
-	public SqlParamSources() => m_sources = [];
+	public SqlParamSourceList() => m_sources = [];
 
 	/// <summary>
 	/// Creates a list from the specified parameter sources.
 	/// </summary>
-	public SqlParamSources(params ReadOnlySpan<SqlParamSource> items) => m_sources = [.. items];
+	public SqlParamSourceList(params ReadOnlySpan<SqlParamSource> items) => m_sources = [.. items];
 
 	/// <summary>
 	/// Creates a list from the specified parameter sources.
 	/// </summary>
-	public SqlParamSources(IEnumerable<SqlParamSource> items) => m_sources = [.. items];
+	public SqlParamSourceList(IEnumerable<SqlParamSource> items) => m_sources = [.. items];
 
 	/// <inheritdoc />
 	public void Add(SqlParamSource source) => m_sources.Add(source);
