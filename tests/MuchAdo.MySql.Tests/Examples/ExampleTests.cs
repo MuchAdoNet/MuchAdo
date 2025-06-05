@@ -332,6 +332,38 @@ internal sealed class ExampleTests
             .QueryAsync<Widget>();
 
         widgetsFromIds.Should().HaveCount(6);
+
+        widgets = await connector
+            .CommandFormat($"select {Sql.DtoColumnNames<Widget>()} from widgets")
+            .QueryAsync<Widget>();
+
+        widgets.Should().HaveCount(9);
+
+        lineage = await connector
+            .CommandFormat($"""
+                select {Sql.DtoColumnNames<Widget>().From("p")}, null,
+                    {Sql.DtoColumnNames<Widget>().From("c")}
+                from widgets p
+                join widget_children wc on wc.parent_id = p.id
+                join widgets c on c.id = wc.child_id
+                """)
+            .QueryAsync<(Widget Parent, Widget Child)>();
+
+        lineage.Single().Parent.Name.Should().Be("First");
+        lineage.Single().Child.Name.Should().Be("Second");
+
+        var newWidget = new Widget(1, "Tenth", 10.0);
+
+        await connector
+            .CommandFormat($"""
+                insert into widgets
+                    ({Sql.DtoColumnNames(newWidget)
+                        .Where(x => x != nameof(Widget.Id))})
+                values
+                    ({Sql.DtoParams(newWidget)
+                        .Where(x => x != nameof(Widget.Id))})
+                """)
+            .ExecuteAsync();
     }
 
     private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)
