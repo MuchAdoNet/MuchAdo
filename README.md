@@ -7,7 +7,7 @@
 [![MuchAdo.SqlServer](https://img.shields.io/nuget/v/MuchAdo.SqlServer.svg?label=MuchAdo.SqlServer)](https://www.nuget.org/packages/MuchAdo.SqlServer)
 [![Build](https://github.com/MuchAdoNet/MuchAdo/workflows/Build/badge.svg)](https://github.com/MuchAdoNet/MuchAdo/actions?query=workflow%3ABuild)
 
-The **MuchAdo** class library provides an intuitive API for [working with relational databases](https://muchado.net/databases) like MySQL, PostgreSQL, SQLite, and Microsoft SQL Server. It is similar to Dapper and other micro ORMs for .NET.
+The **MuchAdo** class library provides an intuitive API for [working with relational databases](https://muchado.net/databases) like MySQL, PostgreSQL, SQLite, and Microsoft SQL Server. It is [similar to Dapper](https://muchado.net/other-libraries.md) and other micro ORMs for .NET.
 
 ```csharp
 var shortWidgets = await connector
@@ -23,8 +23,8 @@ var shortWidgets = await connector
 * read multiple result sets from [command batches](https://muchado.net/command-batches.md)
 * track the [current transaction](https://muchado.net/transactions.md) for correct command execution
 * [map data records](https://muchado.net/data-mapping.md) into simple types, tuples, and DTOs
-* use [formatted SQL](https://muchado.net/formatted-sql.md) to inject parameters and build SQL statements
-* execute stored procedures with [parameters](https://muchado.net/parameters.md)
-* prepare and/or cache database commands for better performance
+* use [formatted SQL](https://muchado.net/formatted-sql.md) to build SQL statements
+* use [parameters](https://muchado.net/parameters.md) with commands and stored procedures
+* [improve performance](https://muchado.net/optimizations.md) by preparing, caching, and pooling
 
 For more information, please check out our [comprehensive documentation](https://muchado.net/)!
