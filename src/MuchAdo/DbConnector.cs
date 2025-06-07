@@ -164,6 +164,11 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		new(this, CommandType.StoredProcedure, name ?? throw new ArgumentNullException(nameof(name)), new SqlParamSourceList(parameters));
 
 	/// <summary>
+	/// Creates an empty command batch. Add one or more commands before executing it.
+	/// </summary>
+	public DbConnectorCommandBatch CreateCommandBatch() => new(this);
+
+	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
@@ -1479,10 +1484,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private void DoCreateCommand(DbConnectorCommandBatch commandBatch)
 	{
+		var commandCount = commandBatch.CommandCount;
+		if (commandCount == 0)
+			throw new InvalidOperationException("The command batch is empty.");
+
 		m_activeCommandOrBatch = null;
 		m_activeCommandOrBatchCacheKey = null;
 
-		var commandCount = commandBatch.CommandCount;
 		var transaction = Transaction;
 		var timeout = commandBatch.Timeout ?? Settings.DefaultTimeout;
 
@@ -1491,7 +1499,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		{
 			if (commandCount == 1)
 			{
-				var currentCommand = commandBatch.LastCommand;
+				var currentCommand = commandBatch.GetCommand(0);
 				var commandText = BuildCommand(currentCommand.TextOrSql, buildText: true);
 				m_activeCommandOrBatchCacheKey = commandText;
 
@@ -1533,7 +1541,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		{
 			if (commandCount == 1)
 			{
-				var currentCommand = commandBatch.LastCommand;
+				var currentCommand = commandBatch.GetCommand(0);
 				m_activeCommandOrBatch = CreateCommandCore(currentCommand.Type);
 			}
 			else

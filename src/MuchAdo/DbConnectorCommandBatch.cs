@@ -31,7 +31,7 @@ public sealed class DbConnectorCommandBatch
 	/// <summary>
 	/// The number of queries in the command batch.
 	/// </summary>
-	public int CommandCount => 1 + (m_batchedCommands?.Count ?? 0);
+	public int CommandCount => m_textOrSql is null ? 0 : (1 + (m_batchedCommands?.Count ?? 0));
 
 	/// <summary>
 	/// Executes the command, returning the number of rows affected.
@@ -362,17 +362,15 @@ public sealed class DbConnectorCommandBatch
 	public DbConnectorCommandBatch StoredProcedure(string name, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.StoredProcedure, name, new SqlParamSourceList(parameters));
 
 	/// <summary>
-	/// Gets the last command in the batch.
-	/// </summary>
-	public DbConnectorCommand LastCommand => new(m_commandType, m_textOrSql, m_paramSource ?? Sql.Empty);
-
-	/// <summary>
 	/// Gets the command at the specified index.
 	/// </summary>
 	public DbConnectorCommand GetCommand(int index)
 	{
+		if (m_textOrSql is null)
+			throw new ArgumentOutOfRangeException(nameof(index));
+
 		if (index == (m_batchedCommands?.Count ?? 0))
-			return LastCommand;
+			return new DbConnectorCommand(m_commandType, m_textOrSql, m_paramSource ?? Sql.Empty);
 
 		if (m_batchedCommands is null)
 			throw new ArgumentOutOfRangeException(nameof(index));
@@ -402,6 +400,11 @@ public sealed class DbConnectorCommandBatch
 		return this;
 	}
 
+	internal DbConnectorCommandBatch(DbConnector connector)
+	{
+		Connector = connector;
+	}
+
 	internal DbConnectorCommandBatch(DbConnector connector, CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{
 		Connector = connector;
@@ -412,18 +415,27 @@ public sealed class DbConnectorCommandBatch
 
 	private DbConnectorCommandBatch StartNextCommand(CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{
-		m_batchedCommands ??= [];
-		m_batchedCommands.Add(LastCommand);
+		if (m_textOrSql is null)
+		{
+			m_commandType = commandType;
+			m_textOrSql = textOrSql;
+			m_paramSource = paramSource;
+		}
+		else
+		{
+			m_batchedCommands ??= [];
+			m_batchedCommands.Add(GetCommand(CommandCount - 1));
 
-		m_commandType = commandType;
-		m_textOrSql = textOrSql;
-		m_paramSource = paramSource;
+			m_commandType = commandType;
+			m_textOrSql = textOrSql;
+			m_paramSource = paramSource;
+		}
 
 		return this;
 	}
 
 	private CommandType m_commandType;
-	private object m_textOrSql;
+	private object? m_textOrSql;
 	private SqlParamSource? m_paramSource;
 	private List<DbConnectorCommand>? m_batchedCommands;
 }

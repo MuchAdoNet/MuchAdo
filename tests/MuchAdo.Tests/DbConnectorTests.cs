@@ -128,6 +128,8 @@ internal sealed class DbConnectorTests
 		connector.Command("select Name from Items order by ItemId limit 1;").QuerySingle(ToUpper).Should().Be("ITEM1");
 		connector.Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefault<string>().Should().Be("item1");
 		connector.Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefault(ToUpper).Should().Be("ITEM1");
+		connector.CreateCommandBatch().Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefault(ToUpper).Should().Be("ITEM1");
+		Invoking(() => connector.CreateCommandBatch().QueryFirst<string>()).Should().Throw<InvalidOperationException>();
 		Invoking(() => connector.Command("select Name from Items where Name = 'nope';").QueryFirst<string>()).Should().Throw<InvalidOperationException>();
 		Invoking(() => connector.Command("select Name from Items;").QuerySingle<string>()).Should().Throw<InvalidOperationException>();
 		connector.Command("select Name from Items where Name = 'nope';").QueryFirstOrDefault<string>().Should().BeNull();
@@ -155,6 +157,8 @@ internal sealed class DbConnectorTests
 		(await connector.Command("select Name from Items order by ItemId limit 1;").QuerySingleAsync(ToUpper)).Should().Be("ITEM1");
 		(await connector.Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefaultAsync<string>()).Should().Be("item1");
 		(await connector.Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefaultAsync(ToUpper)).Should().Be("ITEM1");
+		(await connector.CreateCommandBatch().Command("select Name from Items order by ItemId limit 1;").QuerySingleOrDefaultAsync(ToUpper)).Should().Be("ITEM1");
+		await Invoking(async () => await connector.CreateCommandBatch().QueryFirstAsync<string>()).Should().ThrowAsync<InvalidOperationException>();
 		await Invoking(async () => await connector.Command("select Name from Items where Name = 'nope';").QueryFirstAsync<string>()).Should().ThrowAsync<InvalidOperationException>();
 		await Invoking(async () => await connector.Command("select Name from Items;").QuerySingleAsync<string>()).Should().ThrowAsync<InvalidOperationException>();
 		(await connector.Command("select Name from Items where Name = 'nope';").QueryFirstOrDefaultAsync<string>()).Should().BeNull();
@@ -478,14 +482,14 @@ internal sealed class DbConnectorTests
 	{
 		using var connector = CreateConnector();
 		var createCommand = connector.Command("create table Items (ItemId integer primary key, Name text not null);");
-		createCommand.LastCommand.Type.Should().Be(CommandType.Text);
+		createCommand.GetCommand(0).Type.Should().Be(CommandType.Text);
 		createCommand.Execute().Should().Be(0);
-		connector.Command("insert into Items (Name) values (@item1);", Sql.NamedParam("item1", "one")).LastCommand.Type.Should().Be(CommandType.Text);
+		connector.Command("insert into Items (Name) values (@item1);", Sql.NamedParam("item1", "one")).GetCommand(0).Type.Should().Be(CommandType.Text);
 
 		var storedProcedureCommand = connector.StoredProcedure("values (1);");
-		storedProcedureCommand.LastCommand.Type.Should().Be(CommandType.StoredProcedure);
+		storedProcedureCommand.GetCommand(0).Type.Should().Be(CommandType.StoredProcedure);
 		Invoking(storedProcedureCommand.Execute).Should().Throw<ArgumentException>("CommandType must be Text. (Parameter 'value')");
-		connector.StoredProcedure("values (@two);", Sql.NamedParam("two", 2)).LastCommand.Type.Should().Be(CommandType.StoredProcedure);
+		connector.StoredProcedure("values (@two);", Sql.NamedParam("two", 2)).GetCommand(0).Type.Should().Be(CommandType.StoredProcedure);
 	}
 
 	[Test]

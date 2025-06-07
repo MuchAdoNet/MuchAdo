@@ -66,7 +66,7 @@ internal sealed class NpgsqlTests
 		await using var connector = CreateConnector();
 
 		var lastCommandText = "";
-		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.LastCommand.BuildText(connector.SqlSyntax);
+		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.GetCommand(e.CommandBatch.CommandCount - 1).BuildText(connector.SqlSyntax);
 
 		await connector
 			.CommandFormat($"drop table if exists {tableName}")
