@@ -193,6 +193,7 @@ internal sealed class DbDataMapperTests
 	{
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
 		var columns = string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => $"Item{x}"));
+#pragma warning disable MUCH0001
 		connector
 			.Command($"""
 				create table Tuples ({columns});
@@ -200,6 +201,7 @@ internal sealed class DbDataMapperTests
 				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(_ => "null"))});
 				""")
 			.Execute();
+#pragma warning restore MUCH0001
 
 		var index = 0;
 		connector

@@ -43,6 +43,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.SqlServer", "src\Mu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.SqlServer.Tests", "tests\MuchAdo.SqlServer.Tests\MuchAdo.SqlServer.Tests.csproj", "{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.Analyzers", "src\MuchAdo.Analyzers\MuchAdo.Analyzers.csproj", "{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,10 @@ Global
 		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AAF7EA29-FF0E-C6E9-3928-7E7C7E471306}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

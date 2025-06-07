@@ -29,6 +29,10 @@
     <ProjectReference Include="..\..\src\MuchAdo.MySql\MuchAdo.MySql.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MuchAdo.Analyzers\MuchAdo.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <ItemGroup Condition=" '$(TargetFramework)' == 'net481' ">
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>

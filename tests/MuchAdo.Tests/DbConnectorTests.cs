@@ -200,10 +200,10 @@ internal sealed class DbConnectorTests
 		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
 		var item1 = "two";
 		var item2 = "t_o";
-		connector.Command(Sql.Format(
-			$"insert into Items (Name) values ({item1}); insert into Items (Name) values ({item2});")).Execute().Should().Be(2);
-		connector.Command(Sql.Format(
-			$@"select Name from Items where Name like {Sql.LikeParamStartsWith("t_")} escape '\';")).QuerySingle<string>().Should().Be("t_o");
+		connector.CommandFormat(
+			$"insert into Items (Name) values ({item1}); insert into Items (Name) values ({item2});").Execute().Should().Be(2);
+		connector.CommandFormat(
+			$@"select Name from Items where Name like {Sql.LikeParamStartsWith("t_")} escape '\';").QuerySingle<string>().Should().Be("t_o");
 	}
 
 	[Test]

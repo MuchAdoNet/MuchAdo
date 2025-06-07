@@ -29,6 +29,10 @@
     <ProjectReference Include="..\..\src\MuchAdo.Npgsql\MuchAdo.Npgsql.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MuchAdo.Analyzers\MuchAdo.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <ItemGroup Condition=" '$(TargetFramework)' == 'net481' ">
     <PackageReference Update="Npgsql" VersionOverride="8.0.7" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
