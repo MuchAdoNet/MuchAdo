@@ -364,6 +364,26 @@ internal sealed class ExampleTests
                         .Where(x => x != nameof(Widget.Id))})
                 """)
             .ExecuteAsync();
+
+        var prefix = "F";
+        var widgetsWithNamePrefix = await connector
+            .CommandFormat($"""
+                select id, name, height from widgets
+                where name like {Sql.LikeParamStartsWith(prefix)}
+                """)
+            .QueryAsync<Widget>();
+        widgetsWithNamePrefix.Should().HaveCount(3);
+
+        var minHeight = 2.0;
+
+        widgetIds = await connector
+            .Command("""
+                select id from widgets
+                where height between @minHeight and @maxHeight
+                """, Sql.DtoNamedParams(new { minHeight, maxHeight }))
+            .QueryAsync<long>();
+
+        widgetIds.Should().HaveCount(3);
     }
 
     private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)
