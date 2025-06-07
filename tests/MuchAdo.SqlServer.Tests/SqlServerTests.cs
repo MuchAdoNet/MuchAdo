@@ -1,4 +1,3 @@
-#if SQLSERVER
 using System.Data;
 using FluentAssertions;
 using Microsoft.Data.SqlClient;
@@ -7,7 +6,7 @@ using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.SqlServer.Tests;
 
-[TestFixture]
+[TestFixture(Explicit = true)]
 internal sealed class SqlServerTests
 {
 	[Test]
@@ -41,4 +40,3 @@ internal sealed class SqlServerTests
 	private const string c_suffix = "_netf";
 #endif
 }
-#endif

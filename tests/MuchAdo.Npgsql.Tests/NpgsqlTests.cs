@@ -1,11 +1,10 @@
-#if NPGSQL
 using FluentAssertions;
 using Npgsql;
 using NUnit.Framework;
 
 namespace MuchAdo.Npgsql.Tests;
 
-[TestFixture]
+[TestFixture(Explicit = true)]
 internal sealed class NpgsqlTests
 {
 	[OneTimeSetUp]
@@ -97,4 +96,3 @@ internal sealed class NpgsqlTests
 	private const string c_framework = "netf";
 #endif
 }
-#endif

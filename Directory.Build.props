@@ -32,11 +32,6 @@
     <DisablePackageBaselineValidation Condition=" $(PackageValidationBaselineVersion) == $(VersionPrefix) or $(PackageValidationBaselineVersion) == '0.0.0' ">true</DisablePackageBaselineValidation>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- Requires 'docker-compose up' from '/docker'. -->
-    <!--<DefineConstants>MYSQL;NPGSQL;SQLSERVER</DefineConstants>-->
-  </PropertyGroup>
-
   <PropertyGroup Condition=" '$(BuildNumber)' != '' ">
     <AssemblyVersion>$(VersionPrefix).$(BuildNumber)</AssemblyVersion>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

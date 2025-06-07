@@ -1,4 +1,3 @@
-#if MYSQL
 using System.Data;
 using System.Diagnostics;
 using FluentAssertions;
@@ -8,7 +7,7 @@ using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.MySql.Tests;
 
-[TestFixture]
+[TestFixture(Explicit = true)]
 internal sealed class MySqlTests
 {
 	[Test]
@@ -142,4 +141,3 @@ internal sealed class MySqlTests
 	private const string c_framework = "netf";
 #endif
 }
-#endif
