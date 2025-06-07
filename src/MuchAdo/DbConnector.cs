@@ -1277,6 +1277,44 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		return list;
 	}
 
+	internal T ReadResultSetFirst<T>(Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
+	{
+		if (m_hasReadFirstResultSet && !NextReaderResultCore())
+			throw CreateNoMoreResultsException();
+		m_hasReadFirstResultSet = true;
+
+		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
+
+		if (!ReadReaderCore())
+			return orDefault ? default(T)! : throw CreateNoRecordsException();
+
+		var value = map is not null ? map(record) : record.Get<T>();
+
+		if (single && ReadReaderCore())
+			throw CreateTooManyRecordsException();
+
+		return value;
+	}
+
+	internal async ValueTask<T> ReadResultSetFirstAsync<T>(Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
+	{
+		if (m_hasReadFirstResultSet && !await NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false))
+			throw CreateNoMoreResultsException();
+		m_hasReadFirstResultSet = true;
+
+		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
+
+		if (!await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
+			return orDefault ? default(T)! : throw CreateNoRecordsException();
+
+		var value = map is not null ? map(record) : record.Get<T>();
+
+		if (single && await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
+			throw CreateTooManyRecordsException();
+
+		return value;
+	}
+
 	internal IEnumerable<T> EnumerateResultSet<T>(Func<DbConnectorRecord, T>? map)
 	{
 		if (m_hasReadFirstResultSet && !NextReaderResultCore())
