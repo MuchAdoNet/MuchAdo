@@ -1,6 +1,7 @@
 # MuchAdo
 
 [![MuchAdo](https://img.shields.io/nuget/v/MuchAdo.svg?label=MuchAdo)](https://www.nuget.org/packages/MuchAdo)
+[![MuchAdo.Analyzers](https://img.shields.io/nuget/v/MuchAdo.Analyzers.svg?label=MuchAdo.Analyzers)](https://www.nuget.org/packages/MuchAdo.Analyzers)
 [![MuchAdo.MySql](https://img.shields.io/nuget/v/MuchAdo.MySql.svg?label=MuchAdo.MySql)](https://www.nuget.org/packages/MuchAdo.MySql)
 [![MuchAdo.Npgsql](https://img.shields.io/nuget/v/MuchAdo.Npgsql.svg?label=MuchAdo.Npgsql)](https://www.nuget.org/packages/MuchAdo.Npgsql)
 [![MuchAdo.Sqlite](https://img.shields.io/nuget/v/MuchAdo.Sqlite.svg?label=MuchAdo.Sqlite)](https://www.nuget.org/packages/MuchAdo.Sqlite)
@@ -26,5 +27,6 @@ var shortWidgets = await connector
 * use [formatted SQL](https://muchado.net/formatted-sql.md) to build SQL statements
 * use [parameters](https://muchado.net/parameters.md) with commands and stored procedures
 * [improve performance](https://muchado.net/optimizations.md) by preparing, caching, and pooling
+* provide [analyzers](https://muchado.net/analyzers.md) to help ensure proper use of the library
 
 For more information, please check out our [comprehensive documentation](https://muchado.net/)!
