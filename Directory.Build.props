@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <VersionPrefix>0.0.16</VersionPrefix>
+    <VersionPrefix>0.0.17</VersionPrefix>
     <PackageValidationBaselineVersion>0.0.0</PackageValidationBaselineVersion>
     <LangVersion>13.0</LangVersion>
     <Nullable>enable</Nullable>
