@@ -15,53 +15,81 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
-	public void ReuseParameter()
+	public async Task ReuseParameter()
 	{
 		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
 
-		using var connector = CreateConnector();
-		connector.CommandFormat($"drop table if exists {tableName}").Execute();
-		connector.CommandFormat($"create table {tableName} (ItemId serial primary key, Number integer not null)").Execute();
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (ItemId serial primary key, Number integer not null)")
+			.ExecuteAsync();
 
 		var param = Sql.Param(1);
 		var insertSql = Sql.Format($"insert into {tableName} (Number) values ({param});");
-		connector.Command(insertSql).Prepare().Cache().Execute().Should().Be(1);
+		(await connector.Command(insertSql).ExecuteAsync()).Should().Be(1);
 		param.Value = 2;
-		connector.Command(insertSql).Prepare().Cache().Execute().Should().Be(1);
+		(await connector.Command(insertSql).ExecuteAsync()).Should().Be(1);
 
-		connector.CommandFormat($"select Number from {tableName} order by ItemId;").Query<int>().Should().Equal(1, 2);
+		var values = await connector
+			.CommandFormat($"select Number from {tableName} order by ItemId;")
+			.QueryAsync<int>();
+		values.Should().Equal(1, 2);
 	}
 
 	[Test]
-	public void UnnamedParameter()
+	public async Task NullableValueTypeParameter()
 	{
-		var tableName = Sql.Name($"{nameof(UnnamedParameter)}_{c_framework}");
+		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
 
-		using var connector = CreateConnector();
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (ItemId serial primary key, Number integer)")
+			.ExecuteAsync();
+
+		int? value = 1;
+		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").ExecuteAsync()).Should().Be(1);
+		value = null;
+		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").ExecuteAsync()).Should().Be(1);
+
+		var values = await connector
+			.CommandFormat($"select Number from {tableName} order by ItemId;")
+			.QueryAsync<int?>();
+		values.Should().Equal(1, null);
+	}
+
+	[Test]
+	public async Task RepeatParameter()
+	{
+		var tableName = Sql.Name($"{nameof(RepeatParameter)}_{c_framework}");
+
+		await using var connector = CreateConnector();
 
 		var lastCommandText = "";
 		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.LastCommand.BuildText(connector.SqlSyntax);
 
-		connector
+		await connector
 			.CommandFormat($"drop table if exists {tableName}")
 			.CommandFormat($"create table {tableName} (ItemId serial primary key, Name varchar not null)")
 			.CommandFormat($"insert into {tableName} (Name) values ($1), ($2)", Sql.Param("one"), Sql.Param("two"))
-			.Execute();
+			.ExecuteAsync();
 
 		var three = Sql.RepeatParam("three");
 		var four = "four";
-		connector.CommandFormat($"insert into {tableName} (Name) values ({three}), ({four}), ({three}), ({four})").Execute();
+		await connector
+			.CommandFormat($"insert into {tableName} (Name) values ({three}), ({four}), ({three}), ({four})")
+			.ExecuteAsync();
 		lastCommandText.Should().Contain("(Name) values ($1), ($2), ($1), ($3)");
 
-		connector.CommandFormat($"select Name from {tableName} order by ItemId").Query<string>().Should().Equal("one", "two", "three", "four", "three", "four");
+		var names = await connector
+			.CommandFormat($"select Name from {tableName} order by ItemId")
+			.QueryAsync<string>();
+		names.Should().Equal("one", "two", "three", "four", "three", "four");
 	}
 
-	private static NpgsqlDbConnector CreateConnector(bool cancelUnfinishedCommands = false) => new(
-		new NpgsqlConnection("host=localhost;user id=root;password=test;database=test"),
-		new NpgsqlDbConnectorSettings
-		{
-			CancelUnfinishedCommands = cancelUnfinishedCommands,
-		});
+	private static NpgsqlDbConnector CreateConnector() => new(
+		new NpgsqlConnection("host=localhost;user id=root;password=test;database=test"));
 
 #if NET
 	private const string c_framework = "netc";
