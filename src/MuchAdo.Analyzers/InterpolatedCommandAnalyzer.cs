@@ -22,14 +22,15 @@ public sealed class InterpolatedCommandAnalyzer : DiagnosticAnalyzer
 			{
 				compilationStartAnalysisContext.RegisterSyntaxNodeAction(syntaxNodeAnalysisContext =>
 				{
-					if (syntaxNodeAnalysisContext.Node is InvocationExpressionSyntax invocation &&
-						syntaxNodeAnalysisContext.SemanticModel.GetSymbolInfo(invocation.Expression).Symbol is IMethodSymbol method &&
-						(SymbolEqualityComparer.Default.Equals(method.ContainingType, dbConnectorType) ||
-							SymbolEqualityComparer.Default.Equals(method.ContainingType, dbConnectorCommandBatchType)) &&
-						method.Name == "Command" &&
-						method.Parameters.Length != 0 &&
-						method.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-						invocation.ArgumentList.Arguments[0].Expression is InterpolatedStringExpressionSyntax)
+					if (syntaxNodeAnalysisContext.Node is InvocationExpressionSyntax { ArgumentList.Arguments: var invocationArguments } invocation &&
+						invocationArguments.Count != 0 &&
+						invocationArguments[0].Expression is InterpolatedStringExpressionSyntax &&
+						syntaxNodeAnalysisContext.SemanticModel.GetSymbolInfo(invocation.Expression)
+							.Symbol is IMethodSymbol { Name: "Command", Parameters: var methodParameters, ContainingType: var methodContainingType } &&
+						methodParameters.Length != 0 &&
+						methodParameters[0].Type.SpecialType == SpecialType.System_String &&
+						(SymbolEqualityComparer.Default.Equals(methodContainingType, dbConnectorType) ||
+							SymbolEqualityComparer.Default.Equals(methodContainingType, dbConnectorCommandBatchType)))
 					{
 						syntaxNodeAnalysisContext.ReportDiagnostic(Diagnostic.Create(s_rule, invocation.GetLocation()));
 					}
