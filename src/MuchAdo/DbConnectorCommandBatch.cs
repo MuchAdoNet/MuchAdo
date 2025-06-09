@@ -280,54 +280,54 @@ public sealed class DbConnectorCommandBatch
 	}
 
 	/// <summary>
-	/// Creates the next command.
+	/// Adds a command.
 	/// </summary>
 	/// <param name="text">The text of the command.</param>
 	public DbConnectorCommandBatch Command(string text) => StartNextCommand(CommandType.Text, text);
 
 	/// <summary>
-	/// Creates the next command.
+	/// Adds a command.
 	/// </summary>
 	/// <param name="text">The text of the command.</param>
 	/// <param name="parameters">The parameters of the command.</param>
 	public DbConnectorCommandBatch Command(string text, SqlParamSource parameters) => StartNextCommand(CommandType.Text, text, parameters);
 
 	/// <summary>
-	/// Creates the next command.
+	/// Adds a command.
 	/// </summary>
 	/// <param name="text">The text of the command.</param>
 	/// <param name="parameters">The parameters of the command.</param>
 	public DbConnectorCommandBatch Command(string text, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, text, new SqlParamSourceList(parameters));
 
 	/// <summary>
-	/// Creates the next command from parameterized SQL.
+	/// Adds a command from parameterized SQL.
 	/// </summary>
 	/// <param name="sql">The parameterized SQL.</param>
 	public DbConnectorCommandBatch Command(SqlSource sql) => StartNextCommand(CommandType.Text, sql);
 
 	/// <summary>
-	/// Creates the next command from parameterized SQL.
+	/// Adds a command from parameterized SQL.
 	/// </summary>
 	/// <param name="sql">The parameterized SQL.</param>
 	/// <param name="parameters">Additional parameters.</param>
 	public DbConnectorCommandBatch Command(SqlSource sql, SqlParamSource parameters) => StartNextCommand(CommandType.Text, sql, parameters);
 
 	/// <summary>
-	/// Creates the next command from parameterized SQL.
+	/// Adds a command from parameterized SQL.
 	/// </summary>
 	/// <param name="sql">The parameterized SQL.</param>
 	/// <param name="parameters">Additional parameters.</param>
 	public DbConnectorCommandBatch Command(SqlSource sql, params ReadOnlySpan<SqlParamSource> parameters) => StartNextCommand(CommandType.Text, sql, new SqlParamSourceList(parameters));
 
 	/// <summary>
-	/// Creates the next command from a formatted SQL string.
+	/// Adds a command from a formatted SQL string.
 	/// </summary>
 	/// <param name="sql">The formatted SQL string.</param>
 	/// <remarks>Shorthand for <c>Command(Sql.Format(...))</c>.</remarks>
 	public DbConnectorCommandBatch CommandFormat(SqlFormatStringHandler sql) => Command(Sql.Format(sql));
 
 	/// <summary>
-	/// Creates the next command from a formatted SQL string.
+	/// Adds a command from a formatted SQL string.
 	/// </summary>
 	/// <param name="sql">The formatted SQL string.</param>
 	/// <param name="parameters">Additional parameters.</param>
@@ -335,27 +335,27 @@ public sealed class DbConnectorCommandBatch
 	public DbConnectorCommandBatch CommandFormat(SqlFormatStringHandler sql, SqlParamSource parameters) => Command(Sql.Format(sql), parameters);
 
 	/// <summary>
-	/// Creates the next command from a formatted SQL string.
+	/// Adds a command from a formatted SQL string.
 	/// </summary>
 	/// <param name="sql">The formatted SQL string.</param>
 	/// <param name="parameters">Additional parameters.</param>
 	public DbConnectorCommandBatch CommandFormat(SqlFormatStringHandler sql, params ReadOnlySpan<SqlParamSource> parameters) => Command(Sql.Format(sql), parameters);
 
 	/// <summary>
-	/// Creates the next command to access a stored procedure.
+	/// Adds a command to access a stored procedure.
 	/// </summary>
 	/// <param name="name">The name of the stored procedure.</param>
 	public DbConnectorCommandBatch StoredProcedure(string name) => StartNextCommand(CommandType.StoredProcedure, name);
 
 	/// <summary>
-	/// Creates the next command to access a stored procedure.
+	/// Adds a command to access a stored procedure.
 	/// </summary>
 	/// <param name="name">The name of the stored procedure.</param>
 	/// <param name="parameters">The parameters of the stored procedure.</param>
 	public DbConnectorCommandBatch StoredProcedure(string name, SqlParamSource parameters) => StartNextCommand(CommandType.StoredProcedure, name, parameters);
 
 	/// <summary>
-	/// Creates the next command to access a stored procedure.
+	/// Adds a command to access a stored procedure.
 	/// </summary>
 	/// <param name="name">The name of the stored procedure.</param>
 	/// <param name="parameters">The parameters of the stored procedure.</param>
