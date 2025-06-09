@@ -37,7 +37,7 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
-	public async Task NullableValueTypeParameter()
+	public async Task NullableValueTypeParameter([Values] bool prepare, [Values] bool cache)
 	{
 		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
 
@@ -48,14 +48,16 @@ internal sealed class NpgsqlTests
 			.ExecuteAsync();
 
 		int? value = 1;
-		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").ExecuteAsync()).Should().Be(1);
+		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").Prepare(prepare).Cache(cache).ExecuteAsync()).Should().Be(1);
 		value = null;
-		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").ExecuteAsync()).Should().Be(1);
+		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").Prepare(prepare).Cache(cache).ExecuteAsync()).Should().Be(1);
+		value = 2;
+		(await connector.CommandFormat($"insert into {tableName} (Number) values ({value});").Prepare(prepare).Cache(cache).ExecuteAsync()).Should().Be(1);
 
 		var values = await connector
 			.CommandFormat($"select Number from {tableName} order by ItemId;")
 			.QueryAsync<int?>();
-		values.Should().Equal(1, null);
+		values.Should().Equal(1, null, 2);
 	}
 
 	[Test]
