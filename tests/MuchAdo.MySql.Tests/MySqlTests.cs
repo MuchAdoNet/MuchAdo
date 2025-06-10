@@ -11,42 +11,42 @@ namespace MuchAdo.MySql.Tests;
 internal sealed class MySqlTests
 {
 	[Test]
-	public void PrepareCacheTests()
+	public async Task PrepareCacheTests()
 	{
 		var tableName = Sql.Name($"{nameof(PrepareCacheTests)}_{c_framework}");
 
-		using var connector = CreateConnector();
-		connector
+		await using var connector = CreateConnector();
+		await connector
 			.CommandFormat($"drop table if exists {tableName}")
 			.CommandFormat($"create table {tableName} (Id int not null auto_increment primary key, Name varchar(100) not null)")
-			.Execute();
+			.ExecuteAsync();
 
 		var insertSql = Sql.Format($"insert into {tableName} (Name) values (@itemA); insert into {tableName} (Name) values (@itemB);");
-		connector.Command(insertSql, Sql.NamedParams(("itemA", "one"), ("itemB", "two"))).Prepare().Cache().Execute().Should().Be(2);
-		connector.Command(insertSql, Sql.NamedParams(("itemA", "three"), ("itemB", "four"))).Prepare().Cache().Execute().Should().Be(2);
+		(await connector.Command(insertSql, Sql.NamedParams(("itemA", "one"), ("itemB", "two"))).Prepare().Cache().ExecuteAsync()).Should().Be(2);
+		(await connector.Command(insertSql, Sql.NamedParams(("itemA", "three"), ("itemB", "four"))).Prepare().Cache().ExecuteAsync()).Should().Be(2);
 
-		Invoking(() => connector.Command(insertSql, Sql.NamedParams(("itemA", "five"), ("itemB", "six"), ("itemC", "seven"))).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
-		Invoking(() => connector.Command(insertSql, Sql.NamedParam("itemA", "five")).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
-		Invoking(() => connector.Command(insertSql, Sql.NamedParams(("itemB", "six"), ("itemA", "five"))).Prepare().Cache().Execute()).Should().Throw<InvalidOperationException>();
+		await Invoking(async () => await connector.Command(insertSql, Sql.NamedParams(("itemA", "five"), ("itemB", "six"), ("itemC", "seven"))).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+		await Invoking(async () => await connector.Command(insertSql, Sql.NamedParam("itemA", "five")).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+		await Invoking(async () => await connector.Command(insertSql, Sql.NamedParams(("itemB", "six"), ("itemA", "five"))).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
 
-		connector.CommandFormat($"select Name from {tableName} order by Id").Query<string>().Should().Equal("one", "two", "three", "four");
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "three", "four");
 	}
 
 	[TestCase(false)]
 	[TestCase(true)]
-	public void CancelTest(bool autoCancel)
+	public async Task CancelTest(bool autoCancel)
 	{
 		var tableName = Sql.Name($"{nameof(CancelTest)}_{autoCancel}_{c_framework}");
 
-		using var connector = CreateConnector(cancelUnfinishedCommands: autoCancel);
+		await using var connector = CreateConnector(cancelUnfinishedCommands: autoCancel);
 
 		var stopwatch = Stopwatch.StartNew();
-		foreach (var value in connector
+		await foreach (var value in connector
 			.CommandFormat($"drop table if exists {tableName}")
 			.CommandFormat($"create table {tableName} (Id int not null auto_increment primary key, Value int not null)")
 			.CommandFormat($"insert into {tableName} (Value) values {Sql.List(Enumerable.Range(1, 100).Select(x => Sql.Format($"({x})")))}")
 			.CommandFormat($"select t1.Value from {tableName} t1 join {tableName} t2 join {tableName} t3 join {tableName} t4")
-			.Enumerate<int>())
+			.EnumerateAsync<int>())
 		{
 			if (!autoCancel)
 				connector.Cancel();
@@ -58,74 +58,74 @@ internal sealed class MySqlTests
 	}
 
 	[Test]
-	public void SprocInOutTest()
+	public async Task SprocInOutTest()
 	{
 		var sprocName = $"{nameof(SprocInOutTest)}_{c_framework}";
 
-		using var connector = CreateConnector();
-		connector
+		await using var connector = CreateConnector();
+		await connector
 			.CommandFormat($"drop procedure if exists {Sql.Name(sprocName)}")
 			.CommandFormat($"create procedure {Sql.Name(sprocName)} (inout Value int) begin set Value = Value * Value; end")
-			.Execute();
+			.ExecuteAsync();
 
 		var param = new MySqlParameter("Value", MySqlDbType.Int32) { Direction = ParameterDirection.InputOutput, Value = 11 };
-		connector.StoredProcedure(sprocName, param).Execute();
+		await connector.StoredProcedure(sprocName, param).ExecuteAsync();
 		param.Value.Should().Be(121);
 	}
 
 	[Test]
-	public void SprocInTest()
+	public async Task SprocInTest()
 	{
 		var sprocName = $"{nameof(SprocInTest)}_{c_framework}";
 
-		using var connector = CreateConnector();
-		connector
+		await using var connector = CreateConnector();
+		await connector
 			.CommandFormat($"drop procedure if exists {Sql.Name(sprocName)}")
 			.CommandFormat($"create procedure {Sql.Name(sprocName)} (in Value int) begin select Value, Value * Value; end")
-			.Execute();
+			.ExecuteAsync();
 
-		connector.StoredProcedure(sprocName, Sql.NamedParam("Value", 11)).QuerySingle<(int, long)>().Should().Be((11, 121));
+		(await connector.StoredProcedure(sprocName, Sql.NamedParam("Value", 11)).QuerySingleAsync<(int, long)>()).Should().Be((11, 121));
 	}
 
 	[Test]
-	public void UnnamedParameterTest()
+	public async Task UnnamedParameterTest()
 	{
 		var tableName = Sql.Name($"{nameof(UnnamedParameterTest)}_{c_framework}");
 
-		using var connector = CreateConnector();
+		await using var connector = CreateConnector();
 
 		var lastCommandText = "";
 		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.GetCommand(e.CommandBatch.CommandCount - 1).BuildText(connector.SqlSyntax);
 
-		connector
+		await connector
 			.CommandFormat($"drop table if exists {tableName}")
 			.CommandFormat($"create table {tableName} (Id int not null auto_increment primary key, Name varchar(100) not null)")
 			.CommandFormat($"insert into {tableName} (Name) values (?), (?)", Sql.Param("one"), Sql.Param("two"))
-			.Execute();
+			.ExecuteAsync();
 
 		var three = Sql.Param("three");
 		var four = "four";
-		connector.CommandFormat($"insert into {tableName} (Name) values ({three}), ({four}), ({three}), ({four})").Execute();
+		await connector.CommandFormat($"insert into {tableName} (Name) values ({three}), ({four}), ({three}), ({four})").ExecuteAsync();
 		lastCommandText.Should().Contain("(Name) values (?), (?), (?), (?)");
 
-		connector.CommandFormat($"select Name from {tableName} order by Id").Query<string>().Should().Equal("one", "two", "three", "four", "three", "four");
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "three", "four", "three", "four");
 	}
 
 	[Test]
-	public void MySqlDecimalTest()
+	public async Task MySqlDecimalTest()
 	{
 		var tableName = Sql.Name($"{nameof(MySqlDecimalTest)}_{c_framework}");
 
-		using var connector = CreateConnector();
+		await using var connector = CreateConnector();
 
-		connector
+		await connector
 			.CommandFormat($"drop table if exists {tableName}")
 			.CommandFormat($"create table {tableName} (Id int not null auto_increment primary key, Value decimal(10, 2) not null)")
 			.CommandFormat($"insert into {tableName} (Value) values (?)", Sql.Param(6.875m))
-			.Execute();
+			.ExecuteAsync();
 
-		connector.Command(Sql.Format($"select Value from {tableName}")).QuerySingle<decimal>().Should().Be(6.88m);
-		connector.Command(Sql.Format($"select Value from {tableName}")).QuerySingle<MySqlDecimal>().Value.Should().Be(6.88m);
+		(await connector.Command(Sql.Format($"select Value from {tableName}")).QuerySingleAsync<decimal>()).Should().Be(6.88m);
+		(await connector.Command(Sql.Format($"select Value from {tableName}")).QuerySingleAsync<MySqlDecimal>()).Value.Should().Be(6.88m);
 	}
 
 	private static MySqlDbConnector CreateConnector(bool cancelUnfinishedCommands = false) => new(
