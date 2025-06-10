@@ -17,6 +17,8 @@ var shortWidgets = await connector
     .QueryAsync<(long Id, string Name)>(cancellationToken);
 ```
 
+To use MuchAdo, add a reference to the [NuGet package](https://muchado.net/databases.md) that corresponds to your database. Strongly consider adding a reference to [MuchAdo.Analyzers](https://muchado.net/analyzers.md) as well.
+
 ## Key Features
 
 * open and close [database connections](https://muchado.net/connections.md) automatically
