@@ -17,17 +17,32 @@ public static class Sql
 	/// <summary>
 	/// Intersperses the specified SQL fragments with the AND operator.
 	/// </summary>
-	public static SqlSource And(params IEnumerable<SqlSource> sqls) => new AndOperatorSqlSource(sqls);
+	public static SqlSource And(IEnumerable<SqlSource> sqls) => new AndOperatorSqlSource(sqls);
+
+	/// <summary>
+	/// Intersperses the specified SQL fragments with the AND operator.
+	/// </summary>
+	public static SqlSource And(params SqlSource[] sqls) => And(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Intersperses the specified SQL fragments with newlines.
 	/// </summary>
-	public static SqlSource Clauses(params IEnumerable<SqlSource> sqls) => new ClausesSqlSource(sqls);
+	public static SqlSource Clauses(IEnumerable<SqlSource> sqls) => new ClausesSqlSource(sqls);
+
+	/// <summary>
+	/// Intersperses the specified SQL fragments with newlines.
+	/// </summary>
+	public static SqlSource Clauses(params SqlSource[] sqls) => Clauses(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Concatenates SQL fragments.
 	/// </summary>
-	public static SqlSource Concat(params IEnumerable<SqlSource> sqls) => new ConcatSqlSource(sqls);
+	public static SqlSource Concat(IEnumerable<SqlSource> sqls) => new ConcatSqlSource(sqls);
+
+	/// <summary>
+	/// Concatenates SQL fragments.
+	/// </summary>
+	public static SqlSource Concat(params SqlSource[] sqls) => Concat(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Returns a comma-separated list of column names corresponding to the properties of a DTO of the specified type.
@@ -72,7 +87,12 @@ public static class Sql
 	/// <summary>
 	/// Creates SQL for a GROUP BY clause. If the SQLs are empty, the GROUP BY clause is omitted.
 	/// </summary>
-	public static SqlSource GroupBy(params IEnumerable<SqlSource> sqls) => GroupBy(List(sqls));
+	public static SqlSource GroupBy(IEnumerable<SqlSource> sqls) => GroupBy(List(sqls));
+
+	/// <summary>
+	/// Creates SQL for a GROUP BY clause. If the SQLs are empty, the GROUP BY clause is omitted.
+	/// </summary>
+	public static SqlSource GroupBy(params SqlSource[] sqls) => GroupBy(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for a HAVING clause. If the SQL is empty, the HAVING clause is omitted.
@@ -82,14 +102,25 @@ public static class Sql
 	/// <summary>
 	/// Creates SQL for a HAVING clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the HAVING clause is omitted.
 	/// </summary>
-	public static SqlSource Having(params IEnumerable<SqlSource> sqls) => Having(And(sqls));
+	public static SqlSource Having(IEnumerable<SqlSource> sqls) => Having(And(sqls));
+
+	/// <summary>
+	/// Creates SQL for a HAVING clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the HAVING clause is omitted.
+	/// </summary>
+	public static SqlSource Having(params SqlSource[] sqls) => Having(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Intersperses SQL fragments with the specified raw SQL separator.
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
-	public static SqlSource Intersperse(string separator, params IEnumerable<SqlSource> sqls) =>
+	public static SqlSource Intersperse(string separator, IEnumerable<SqlSource> sqls) =>
 		new IntersperseSqlSource(separator ?? throw new ArgumentNullException(nameof(separator)), sqls);
+
+	/// <summary>
+	/// Intersperses SQL fragments with the specified raw SQL separator.
+	/// </summary>
+	/// <remarks>Empty SQL fragments are ignored.</remarks>
+	public static SqlSource Intersperse(string separator, params SqlSource[] sqls) => Intersperse(separator, sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for an unnamed parameter set to a LIKE pattern ending with <c>%</c>.
@@ -123,7 +154,13 @@ public static class Sql
 	/// Creates SQL for a comma-separated list of SQL fragments.
 	/// </summary>
 	/// <remarks>Empty SQL fragments are ignored.</remarks>
-	public static SqlSource List(params IEnumerable<SqlSource> sqls) => new ListSqlSource(sqls);
+	public static SqlSource List(IEnumerable<SqlSource> sqls) => new ListSqlSource(sqls);
+
+	/// <summary>
+	/// Creates SQL for a comma-separated list of SQL fragments.
+	/// </summary>
+	/// <remarks>Empty SQL fragments are ignored.</remarks>
+	public static SqlSource List(params SqlSource[] sqls) => List(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for a quoted identifier.
@@ -144,8 +181,13 @@ public static class Sql
 	/// <summary>
 	/// Creates named parameters from tuples.
 	/// </summary>
-	public static SqlParamSource NamedParams<T>(params IEnumerable<(string Name, T Value)> parameters) =>
+	public static SqlParamSource NamedParams<T>(IEnumerable<(string Name, T Value)> parameters) =>
 		new TuplesSqlParamSource<T>(parameters);
+
+	/// <summary>
+	/// Creates named parameters from tuples.
+	/// </summary>
+	public static SqlParamSource NamedParams<T>(params (string Name, T Value)[] parameters) => NamedParams(parameters.AsEnumerable());
 
 	/// <summary>
 	/// Creates named parameters from a dictionary.
@@ -156,7 +198,12 @@ public static class Sql
 	/// <summary>
 	/// Intersperses the specified SQL fragments with the OR operator.
 	/// </summary>
-	public static SqlSource Or(params IEnumerable<SqlSource> sqls) => new OrOperatorSqlSource(sqls);
+	public static SqlSource Or(IEnumerable<SqlSource> sqls) => new OrOperatorSqlSource(sqls);
+
+	/// <summary>
+	/// Intersperses the specified SQL fragments with the OR operator.
+	/// </summary>
+	public static SqlSource Or(params SqlSource[] sqls) => Or(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for an ORDER BY clause. If the SQL is empty, the ORDER BY clause is omitted.
@@ -166,7 +213,12 @@ public static class Sql
 	/// <summary>
 	/// Creates SQL for an ORDER BY clause. If the SQLs are empty, the ORDER BY clause is omitted.
 	/// </summary>
-	public static SqlSource OrderBy(params IEnumerable<SqlSource> sqls) => OrderBy(List(sqls));
+	public static SqlSource OrderBy(IEnumerable<SqlSource> sqls) => OrderBy(List(sqls));
+
+	/// <summary>
+	/// Creates SQL for an ORDER BY clause. If the SQLs are empty, the ORDER BY clause is omitted.
+	/// </summary>
+	public static SqlSource OrderBy(params SqlSource[] sqls) => OrderBy(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates an unnamed parameter with the specified value.
@@ -206,12 +258,23 @@ public static class Sql
 	/// Creates SQL for a non-empty comma-separated list of SQL fragments, surrounded by parentheses.
 	/// </summary>
 	/// <remarks>If the set is empty, an exception is thrown.</remarks>
-	public static SqlSource Set(params IEnumerable<SqlSource> sqls) => Format($"({new SetListSqlSource(sqls)})");
+	public static SqlSource Set(IEnumerable<SqlSource> sqls) => Format($"({new SetListSqlSource(sqls)})");
+
+	/// <summary>
+	/// Creates SQL for a non-empty comma-separated list of SQL fragments, surrounded by parentheses.
+	/// </summary>
+	/// <remarks>If the set is empty, an exception is thrown.</remarks>
+	public static SqlSource Set(params SqlSource[] sqls) => Set(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for a comma-separated list of SQL fragments, surrounded by parentheses.
 	/// </summary>
-	public static SqlSource Tuple(params IEnumerable<SqlSource> sqls) => Format($"({List(sqls)})");
+	public static SqlSource Tuple(IEnumerable<SqlSource> sqls) => Format($"({List(sqls)})");
+
+	/// <summary>
+	/// Creates SQL for a comma-separated list of SQL fragments, surrounded by parentheses.
+	/// </summary>
+	public static SqlSource Tuple(params SqlSource[] sqls) => Tuple(sqls.AsEnumerable());
 
 	/// <summary>
 	/// Creates SQL for a WHERE clause. If the SQL is empty, the WHERE clause is omitted.
@@ -221,5 +284,10 @@ public static class Sql
 	/// <summary>
 	/// Creates SQL for an WHERE clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the WHERE clause is omitted.
 	/// </summary>
-	public static SqlSource Where(params IEnumerable<SqlSource> sqls) => Where(And(sqls));
+	public static SqlSource Where(IEnumerable<SqlSource> sqls) => Where(And(sqls));
+
+	/// <summary>
+	/// Creates SQL for an WHERE clause. Multiple SQLs are combined with the AND operator. If the SQLs are empty, the WHERE clause is omitted.
+	/// </summary>
+	public static SqlSource Where(params SqlSource[] sqls) => Where(sqls.AsEnumerable());
 }
