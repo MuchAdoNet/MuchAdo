@@ -90,8 +90,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <param name="text">The text of the command.</param>
 	/// <param name="parameters">The parameters of the command.</param>
-	public DbConnectorCommandBatch Command(string text, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.Text, text ?? throw new ArgumentNullException(nameof(text)), new SqlParamSourceList(parameters));
+	public DbConnectorCommandBatch Command(string text, params SqlParamSource[] parameters) =>
+		new(this, CommandType.Text, text ?? throw new ArgumentNullException(nameof(text)), Sql.Combine(parameters));
 
 	/// <summary>
 	/// Creates a new command from parameterized SQL.
@@ -113,8 +113,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <param name="sql">The parameterized SQL.</param>
 	/// <param name="parameters">The parameters of the command.</param>
-	public DbConnectorCommandBatch Command(SqlSource sql, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.Text, sql ?? throw new ArgumentNullException(nameof(sql)), new SqlParamSourceList(parameters));
+	public DbConnectorCommandBatch Command(SqlSource sql, params SqlParamSource[] parameters) =>
+		new(this, CommandType.Text, sql ?? throw new ArgumentNullException(nameof(sql)), Sql.Combine(parameters));
 
 	/// <summary>
 	/// Creates a new command from a formatted SQL string.
@@ -137,7 +137,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <param name="sql">The formatted SQL string.</param>
 	/// <param name="parameters">The parameters of the command.</param>
-	public DbConnectorCommandBatch CommandFormat(SqlFormatStringHandler sql, params ReadOnlySpan<SqlParamSource> parameters) =>
+	public DbConnectorCommandBatch CommandFormat(SqlFormatStringHandler sql, params SqlParamSource[] parameters) =>
 		Command(Sql.Format(sql), parameters);
 
 	/// <summary>
@@ -160,8 +160,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <param name="name">The name of the stored procedure.</param>
 	/// <param name="parameters">The parameters of the stored procedure.</param>
-	public DbConnectorCommandBatch StoredProcedure(string name, params ReadOnlySpan<SqlParamSource> parameters) =>
-		new(this, CommandType.StoredProcedure, name ?? throw new ArgumentNullException(nameof(name)), new SqlParamSourceList(parameters));
+	public DbConnectorCommandBatch StoredProcedure(string name, params SqlParamSource[] parameters) =>
+		new(this, CommandType.StoredProcedure, name ?? throw new ArgumentNullException(nameof(name)), Sql.Combine(parameters));
 
 	/// <summary>
 	/// Creates an empty command batch. Add one or more commands before executing it.

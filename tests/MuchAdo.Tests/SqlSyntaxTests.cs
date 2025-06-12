@@ -551,7 +551,7 @@ internal sealed class SqlSyntaxTests
 		var target = new ParamTarget();
 		var commandBuilder = new DbConnectorCommandBuilder(syntax ?? SqlSyntax.Default, true, target);
 		sql.Render(commandBuilder);
-		return (commandBuilder.GetText(), target.Params);
+		return (commandBuilder.GetText(), Sql.Combine(target.Params));
 	}
 
 	private sealed class ItemDto
@@ -566,7 +566,7 @@ internal sealed class SqlSyntaxTests
 
 	private sealed class ParamTarget : ISqlParamTarget
 	{
-		public SqlParamSourceList Params { get; } = new();
+		public List<SqlParamSource> Params { get; } = [];
 
 		public void AcceptParameter<T>(string name, T value, SqlParamType? type) => Params.Add(Sql.NamedParam(name, value, type));
 	}

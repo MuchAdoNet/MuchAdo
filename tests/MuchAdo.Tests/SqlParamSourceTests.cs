@@ -1,6 +1,5 @@
 using FluentAssertions;
 using NUnit.Framework;
-using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.Tests;
 
@@ -55,7 +54,7 @@ internal sealed class SqlParamSourceTests
 	[Test]
 	public void CreateFromDto()
 	{
-		var parameters = new SqlParamSourceList(Sql.DtoNamedParams(new { one = 1 }), Sql.DtoNamedParams(new HasTwo()));
+		var parameters = Sql.Combine(Sql.DtoNamedParams(new { one = 1 }), Sql.DtoNamedParams(new HasTwo()));
 		parameters.EnumeratePairs().Should().Equal(("one", 1), ("Two", 2));
 	}
 
@@ -88,12 +87,6 @@ internal sealed class SqlParamSourceTests
 	{
 		var parameters = Sql.DtoNamedParams(new { one = 1, Two = 2, three = 3 }).Renamed(x => x.ToUpperInvariant()).Where(x => x[0] == 'T').Renamed(x => x.ToLowerInvariant()).Where(x => x[0] == 't');
 		parameters.EnumeratePairs().Should().Equal(("two", 2), ("three", 3));
-	}
-
-	[Test]
-	public void Nulls()
-	{
-		Invoking(() => new SqlParamSourceList(default(IEnumerable<SqlParamSource>)!)).Should().Throw<ArgumentNullException>();
 	}
 
 	private sealed class HasTwo

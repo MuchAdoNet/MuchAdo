@@ -35,6 +35,16 @@ public static class Sql
 	public static SqlSource Clauses(params SqlSource[] sqls) => Clauses(sqls.AsEnumerable());
 
 	/// <summary>
+	/// Combines parameter sources.
+	/// </summary>
+	public static SqlParamSource Combine(IEnumerable<SqlParamSource> sources) => new CombineSqlParamSource(sources);
+
+	/// <summary>
+	/// Combines parameter sources.
+	/// </summary>
+	public static SqlParamSource Combine(params SqlParamSource[] sources) => Combine(sources.AsEnumerable());
+
+	/// <summary>
 	/// Concatenates SQL fragments.
 	/// </summary>
 	public static SqlSource Concat(IEnumerable<SqlSource> sqls) => new ConcatSqlSource(sqls);
