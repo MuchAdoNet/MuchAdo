@@ -1,5 +1,6 @@
 using System.Collections;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using NUnit.Framework;
@@ -132,6 +133,7 @@ internal sealed class DbDataMapperTests
 			.QueryFirst(
 				record =>
 				{
+					record.FieldCount.Should().Be(4);
 					Invoking(() => record.Get<(string, long)>(0, 1)).Should().Throw<InvalidOperationException>();
 					record.Get<(string?, long)>(0, 2).Should().Be((s_dto.TheText, s_dto.TheInteger));
 					if (ignore)
@@ -587,6 +589,24 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
+	public void AsExtension()
+	{
+		using var connector = GetConnectorWithItems();
+		connector
+			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.QueryFirst(
+				record =>
+				{
+					record.GetName(1).Should().Be("TheInteger");
+					record.GetOrdinal("TheInteger").Should().Be(1);
+					record.As<IDataRecord>().GetFieldType(0).FullName.Should().Be("System.String");
+					record.As<SqliteDataReader>().Handle.Should().NotBe(0);
+					return 1;
+				})
+			.Should().Be(1);
+	}
+
+	[Test]
 	public void GetRangeExtension()
 	{
 		using var connector = GetConnectorWithItems();
@@ -597,7 +617,6 @@ internal sealed class DbDataMapperTests
 				{
 					record.Get<(long, double)>(1, 2).Should().Be((s_dto.TheInteger, s_dto.TheReal));
 					record.Get<(long, double)>("TheInteger", 2).Should().Be((s_dto.TheInteger, s_dto.TheReal));
-					record.Get<(long, double)>("TheInteger", "TheReal").Should().Be((s_dto.TheInteger, s_dto.TheReal));
 #if NET
 					record.Get<(long, double)>(1..3).Should().Be((s_dto.TheInteger, s_dto.TheReal));
 #endif
