@@ -1450,12 +1450,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			OpenConnectionCore();
 	}
 
-	private async ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
+	private ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
 	{
 		if (Settings.RetryOpenPolicy is { } retryPolicy)
-			await retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken).ConfigureAwait(false);
-		else
-			await OpenConnectionCoreAsync(cancellationToken).ConfigureAwait(false);
+			return retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken);
+
+		return OpenConnectionCoreAsync(cancellationToken);
 	}
 
 	private DbActiveCommandDisposer CreateCommand(DbConnectorCommandBatch commandBatch)

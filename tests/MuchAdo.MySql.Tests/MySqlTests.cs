@@ -1,8 +1,10 @@
 using System.Data;
 using System.Diagnostics;
 using FluentAssertions;
+using MuchAdo.Polly;
 using MySqlConnector;
 using NUnit.Framework;
+using Polly;
 using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.MySql.Tests;
@@ -38,7 +40,7 @@ internal sealed class MySqlTests
 	{
 		var tableName = Sql.Name($"{nameof(CancelTest)}_{autoCancel}_{c_framework}");
 
-		await using var connector = CreateConnector(cancelUnfinishedCommands: autoCancel);
+		await using var connector = CreateConnector(new() { CancelUnfinishedCommands = autoCancel });
 
 		var stopwatch = Stopwatch.StartNew();
 		await foreach (var value in connector
@@ -128,12 +130,31 @@ internal sealed class MySqlTests
 		(await connector.Command(Sql.Format($"select Value from {tableName}")).QuerySingleAsync<MySqlDecimal>()).Value.Should().Be(6.88m);
 	}
 
-	private static MySqlDbConnector CreateConnector(bool cancelUnfinishedCommands = false) => new(
-		new MySqlConnection("Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true"),
-		new MySqlDbConnectorSettings
-		{
-			CancelUnfinishedCommands = cancelUnfinishedCommands,
-		});
+	[Test]
+	public async Task RetryOpenPolicy_NotImplemented()
+	{
+		var settings = new MySqlDbConnectorSettings { RetryOpenPolicy = new FakeDbRetryPolicy() };
+		await using var connector = CreateConnector(settings);
+		await Awaiting(async () => await connector.Command("select 1;").QuerySingleAsync<int>()).Should().ThrowAsync<NotImplementedException>();
+	}
+
+	[Test]
+	public async Task RetryOpenPolicy_EmptyResiliencePipeline()
+	{
+		var settings = new MySqlDbConnectorSettings { RetryOpenPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
+		await using var connector = CreateConnector(settings);
+		(await connector.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
+	}
+
+	private static MySqlDbConnector CreateConnector(MySqlDbConnectorSettings? settings = null) => new(
+		new MySqlConnection("Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true"), settings ?? new());
+
+	private sealed class FakeDbRetryPolicy : DbRetryPolicy
+	{
+		public override void Execute(DbConnector connector, Action action) => throw new NotImplementedException();
+
+		public override async ValueTask ExecuteAsync(DbConnector connector, Func<CancellationToken, ValueTask> action, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+	}
 
 #if NET
 	private const string c_framework = "netc";

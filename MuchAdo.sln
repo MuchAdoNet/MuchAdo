@@ -45,6 +45,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.SqlServer.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.Analyzers", "src\MuchAdo.Analyzers\MuchAdo.Analyzers.csproj", "{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuchAdo.Polly", "src\MuchAdo.Polly\MuchAdo.Polly.csproj", "{5A8EBDB7-5A4A-A679-55EB-91C03CD4B51C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +105,10 @@ Global
 		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4BAABDAA-C9B1-4D56-CF6B-EB8DF6CAEDD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A8EBDB7-5A4A-A679-55EB-91C03CD4B51C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A8EBDB7-5A4A-A679-55EB-91C03CD4B51C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A8EBDB7-5A4A-A679-55EB-91C03CD4B51C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A8EBDB7-5A4A-A679-55EB-91C03CD4B51C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
