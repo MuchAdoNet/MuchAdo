@@ -4,6 +4,7 @@
 [![MuchAdo.Analyzers](https://img.shields.io/nuget/v/MuchAdo.Analyzers.svg?label=MuchAdo.Analyzers)](https://www.nuget.org/packages/MuchAdo.Analyzers)
 [![MuchAdo.MySql](https://img.shields.io/nuget/v/MuchAdo.MySql.svg?label=MuchAdo.MySql)](https://www.nuget.org/packages/MuchAdo.MySql)
 [![MuchAdo.Npgsql](https://img.shields.io/nuget/v/MuchAdo.Npgsql.svg?label=MuchAdo.Npgsql)](https://www.nuget.org/packages/MuchAdo.Npgsql)
+[![MuchAdo.Polly](https://img.shields.io/nuget/v/MuchAdo.Polly.svg?label=MuchAdo.Polly)](https://www.nuget.org/packages/MuchAdo.Polly)
 [![MuchAdo.Sqlite](https://img.shields.io/nuget/v/MuchAdo.Sqlite.svg?label=MuchAdo.Sqlite)](https://www.nuget.org/packages/MuchAdo.Sqlite)
 [![MuchAdo.SqlServer](https://img.shields.io/nuget/v/MuchAdo.SqlServer.svg?label=MuchAdo.SqlServer)](https://www.nuget.org/packages/MuchAdo.SqlServer)
 [![Build](https://github.com/MuchAdoNet/MuchAdo/workflows/Build/badge.svg)](https://github.com/MuchAdoNet/MuchAdo/actions?query=workflow%3ABuild)
