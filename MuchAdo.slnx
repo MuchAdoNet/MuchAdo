@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".github/workflows/build.yaml" />
+    <File Path=".gitignore" />
+    <File Path="build.ps1" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+    <File Path="ReleaseNotes.md" />
+  </Folder>
+  <Project Path="src/MuchAdo.Analyzers/MuchAdo.Analyzers.csproj" />
+  <Project Path="src/MuchAdo.MySql/MuchAdo.MySql.csproj" />
+  <Project Path="src/MuchAdo.Npgsql/MuchAdo.Npgsql.csproj" />
+  <Project Path="src/MuchAdo.Polly/MuchAdo.Polly.csproj" />
+  <Project Path="src/MuchAdo.Sqlite/MuchAdo.Sqlite.csproj" />
+  <Project Path="src/MuchAdo.SqlServer/MuchAdo.SqlServer.csproj" />
+  <Project Path="src/MuchAdo/MuchAdo.csproj" />
+  <Project Path="tests/MuchAdo.MySql.Tests/MuchAdo.MySql.Tests.csproj" />
+  <Project Path="tests/MuchAdo.Npgsql.Tests/MuchAdo.Npgsql.Tests.csproj" />
+  <Project Path="tests/MuchAdo.Sqlite.Tests/MuchAdo.Sqlite.Tests.csproj" />
+  <Project Path="tests/MuchAdo.SqlServer.Tests/MuchAdo.SqlServer.Tests.csproj" />
+  <Project Path="tests/MuchAdo.Tests/MuchAdo.Tests.csproj" />
+  <Project Path="tools/Benchmarks/Benchmarks.csproj" />
+  <Project Path="tools/Build/Build.csproj" />
+</Solution>
