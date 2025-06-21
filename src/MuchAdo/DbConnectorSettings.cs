@@ -58,5 +58,11 @@ public class DbConnectorSettings
 	/// <remarks>If specified, connection opening will be retried according to the policy.</remarks>
 	public DbRetryPolicy? ConnectionRetryPolicy { get; init; }
 
+	/// <summary>
+	/// The retry policy to use when executing automatic transactions.
+	/// </summary>
+	/// <remarks>If specified, automatic transactions will be retried according to the policy.</remarks>
+	public DbRetryPolicy? TransactionRetryPolicy { get; init; }
+
 	internal static DbConnectorSettings Default { get; } = new();
 }

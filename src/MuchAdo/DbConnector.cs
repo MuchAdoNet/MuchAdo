@@ -169,6 +169,50 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	public DbConnectorCommandBatch CreateCommandBatch() => new(this);
 
 	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public void ExecuteInTransaction(Action action)
+	{
+		if (Settings.TransactionRetryPolicy is { } retryPolicy)
+			retryPolicy.Execute(this, () => DoExecuteInTransaction(action));
+		else
+			DoExecuteInTransaction(action);
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public void ExecuteInTransaction(IsolationLevel isolationLevel, Action action)
+	{
+		if (Settings.TransactionRetryPolicy is { } retryPolicy)
+			retryPolicy.Execute(this, () => DoExecuteInTransaction(isolationLevel, action));
+		else
+			DoExecuteInTransaction(isolationLevel, action);
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		if (Settings.TransactionRetryPolicy is { } retryPolicy)
+			await retryPolicy.ExecuteAsync(this, ct => DoExecuteInTransactionAsync(action, ct), cancellationToken).ConfigureAwait(false);
+		else
+			await DoExecuteInTransactionAsync(action, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		if (Settings.TransactionRetryPolicy is { } retryPolicy)
+			await retryPolicy.ExecuteAsync(this, ct => DoExecuteInTransactionAsync(isolationLevel, action, ct), cancellationToken).ConfigureAwait(false);
+		else
+			await DoExecuteInTransactionAsync(isolationLevel, action, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
@@ -1694,6 +1738,38 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 			m_disposables = null;
 		}
+	}
+
+	private void DoExecuteInTransaction(Action action)
+	{
+		using var transaction = BeginTransaction();
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	private void DoExecuteInTransaction(IsolationLevel isolationLevel, Action action)
+	{
+		using var transaction = BeginTransaction(isolationLevel);
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	private async ValueTask DoExecuteInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken)
+	{
+		await using var transaction = (await BeginTransactionAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask DoExecuteInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken)
+	{
+		await using var transaction = (await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
 	}
 
 	private static InvalidOperationException CreateNoRecordsException() => new("No records were found; use 'OrDefault' to permit this.");
