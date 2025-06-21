@@ -388,6 +388,65 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	/// <summary>
+	/// Executes the action with the default retry policy.
+	/// </summary>
+	public void Retry(Action action) => Retry(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action);
+
+	/// <summary>
+	/// Executes the action with the specified retry policy.
+	/// </summary>
+	public void Retry(DbRetryPolicy retryPolicy, Action action) => retryPolicy.Execute(this, action);
+
+	/// <summary>
+	/// Executes the action with the default retry policy.
+	/// </summary>
+	public T Retry<T>(Func<T> action) => Retry(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action);
+
+	/// <summary>
+	/// Executes the action with the specified retry policy.
+	/// </summary>
+	public T Retry<T>(DbRetryPolicy retryPolicy, Func<T> action)
+	{
+		T result = default!;
+		Retry(retryPolicy, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action with the default retry policy.
+	/// </summary>
+	public ValueTask RetryAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryAsync(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action, cancellationToken);
+
+	/// <summary>
+	/// Executes the action with the specified retry policy.
+	/// </summary>
+	public ValueTask RetryAsync(DbRetryPolicy retryPolicy, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		retryPolicy.ExecuteAsync(this, _ => action(), cancellationToken);
+
+	/// <summary>
+	/// Executes the action with the default retry policy.
+	/// </summary>
+	public ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default) =>
+		RetryAsync(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action, cancellationToken);
+
+	/// <summary>
+	/// Executes the action with the specified retry policy.
+	/// </summary>
+	public async ValueTask<T> RetryAsync<T>(DbRetryPolicy retryPolicy, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await RetryAsync(retryPolicy, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
 	/// Cancels the active command or batch.
 	/// </summary>
 	public void Cancel()
@@ -1207,7 +1266,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 				return orDefault ? default(T)! : throw CreateNoRecordsException();
 		}
 
-		var record = new DbConnectorRecord(this, state: null);
+		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 		var value = map is not null ? map(record) : record.Get<T>();
 
 		if (single && await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
@@ -1699,6 +1758,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private static InvalidOperationException CreateNoRecordsException() => new("No records were found; use 'OrDefault' to permit this.");
 
 	private static InvalidOperationException CreateTooManyRecordsException() => new("Additional records were found; use 'First' to permit this.");
+
+	private static InvalidOperationException NoDefaultRetryPolicyException() => new("No default retry policy; set 'DefaultRetryPolicy' setting.");
 
 	private sealed class ParamTarget(DbConnector connector) : ISqlParamTarget
 	{
