@@ -244,8 +244,29 @@ public sealed class DbConnectorCommandBatch
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
+	/// <seealso cref="QueryMultipleAsync" />
+	public T QueryMultiple<T>(Func<DbResultSetReader, T> map)
+	{
+		using var reader = Connector.QueryMultiple(this);
+		return map(reader);
+	}
+
+	/// <summary>
+	/// Executes the query, preparing to read multiple result sets.
+	/// </summary>
 	/// <seealso cref="QueryMultiple" />
 	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
+
+	/// <summary>
+	/// Executes the query, preparing to read multiple result sets.
+	/// </summary>
+	/// <seealso cref="QueryMultiple" />
+	public async ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map)
+	{
+		var reader = await Connector.QueryMultipleAsync(this).ConfigureAwait(false);
+		await using var readerScope = reader.ConfigureAwait(false);
+		return await map(reader).ConfigureAwait(false);
+	}
 
 	/// <summary>
 	/// Sets the timeout.

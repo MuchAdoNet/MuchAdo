@@ -399,6 +399,17 @@ internal sealed class DbConnectorTests
 			id1.Should().Be(id3);
 			Invoking(() => reader.ReadFirst(x => 0)).Should().Throw<InvalidOperationException>();
 		}
+
+		var tuple = connector.Command(sql).QueryMultiple(reader =>
+		{
+			var id1 = reader.ReadFirst<long>();
+			var id2 = reader.ReadSingle(x => x.Get<long>());
+			var id3 = reader.ReadSingle(x => x.Get<long>());
+			Invoking(() => reader.ReadFirst(x => 0)).Should().Throw<InvalidOperationException>();
+			return (id1, id2, id3);
+		});
+		tuple.id1.Should().BeLessThan(tuple.id2);
+		tuple.id1.Should().Be(tuple.id3);
 	}
 
 	[Test]
@@ -443,6 +454,17 @@ internal sealed class DbConnectorTests
 			id1.Should().Be(id3);
 			await Awaiting(async () => await reader.ReadFirstAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
 		}
+
+		var tuple = await connector.Command(sql).QueryMultipleAsync(async reader =>
+		{
+			var id1 = await reader.ReadFirstAsync<long>();
+			var id2 = await reader.ReadSingleAsync(x => x.Get<long>());
+			var id3 = await reader.ReadSingleAsync(x => x.Get<long>());
+			await Awaiting(async () => await reader.ReadFirstAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
+			return (id1, id2, id3);
+		});
+		tuple.id1.Should().BeLessThan(tuple.id2);
+		tuple.id1.Should().Be(tuple.id3);
 	}
 
 	[Test]
