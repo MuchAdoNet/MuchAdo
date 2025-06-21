@@ -343,7 +343,11 @@ internal sealed class DbConnectorTests
 				connector.RollbackTransaction();
 		});
 
-		connector.Command("select count(*) from Items;").QueryFirst<long>().Should().Be(commit != false ? 2 : 0);
+		connector.ExecuteInTransaction(() => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
+
+		connector.ExecuteInTransaction(IsolationLevel.RepeatableRead, () => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
 	}
 
 	[Test]
@@ -370,7 +374,18 @@ internal sealed class DbConnectorTests
 				await connector.RollbackTransactionAsync();
 		});
 
-		(await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()).Should().Be(commit != false ? 2 : 0);
+		await connector.ExecuteInTransactionAsync(async () =>
+		{
+			(await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()).Should().Be(commit != false ? 2 : 0);
+		});
+
+		var count = await connector.ExecuteInTransactionAsync(
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
+
+		count = await connector.ExecuteInTransactionAsync(IsolationLevel.RepeatableRead,
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
 	}
 
 	[Test]

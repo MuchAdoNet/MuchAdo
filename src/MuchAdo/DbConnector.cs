@@ -191,6 +191,32 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(() =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(IsolationLevel isolationLevel, Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(isolationLevel, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
 	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
 	public async ValueTask ExecuteInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default)
@@ -210,6 +236,32 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			await retryPolicy.ExecuteAsync(this, ct => DoExecuteInTransactionAsync(isolationLevel, action, ct), cancellationToken).ConfigureAwait(false);
 		else
 			await DoExecuteInTransactionAsync(isolationLevel, action, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(IsolationLevel isolationLevel, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(isolationLevel, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
 	/// <summary>
@@ -1251,7 +1303,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 				return orDefault ? default(T)! : throw CreateNoRecordsException();
 		}
 
-		var record = new DbConnectorRecord(this, state: null);
+		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 		var value = map is not null ? map(record) : record.Get<T>();
 
 		if (single && await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
