@@ -1194,18 +1194,25 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
-		return ExecuteNonQueryCore();
+		var result = ExecuteNonQueryCore();
+		CommitAutoTransaction(commandBatch);
+		return result;
 	}
 
 	internal async ValueTask<int> ExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-		return await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
+		var result = await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
-	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
+	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch, bool allowInTransaction)
 	{
+		if (commandBatch.IsInTransaction && !allowInTransaction)
+			throw new InvalidOperationException("QueryMultiple with no map argument cannot be used with InTransaction. Use QueryMultiple with a map argument, or call BeginTransaction and CommitTransaction explicitly.");
+
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
 		CreateCommand(commandBatch);
@@ -1213,8 +1220,11 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		return new DbResultSetReader(this);
 	}
 
-	internal async ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
+	internal async ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, bool allowInTransaction, CancellationToken cancellationToken = default)
 	{
+		if (commandBatch.IsInTransaction && !allowInTransaction)
+			throw new InvalidOperationException("QueryMultipleAsync with no map argument cannot be used with InTransaction. Use QueryMultipleAsync with a map argument, or call BeginTransactionAsync and CommitTransactionAsync explicitly.");
+
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
 		await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
@@ -1240,6 +1250,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (NextReaderResultCore());
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return list;
 	}
 
@@ -1261,6 +1272,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (await NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return list;
 	}
 
@@ -1287,6 +1299,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return value;
 	}
 
@@ -1313,11 +1326,15 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return value;
 	}
 
 	internal IEnumerable<T> Enumerate<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
+		if (commandBatch.IsInTransaction)
+			throw new InvalidOperationException("Enumerate after InTransaction is not supported. Call BeginTransaction and CommitTransaction explicitly, or use Query instead.");
+
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
@@ -1336,6 +1353,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async IAsyncEnumerable<T> EnumerateAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
+		if (commandBatch.IsInTransaction)
+			throw new InvalidOperationException("EnumerateAsync after InTransaction is not supported. Call BeginTransactionAsync and CommitTransactionAsync explicitly, or use QueryAsync instead.");
+
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
@@ -1473,8 +1493,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			else
 				DisposeCommandOrBatchCore();
 
+			if (m_activeCommandOrBatchInAutoTransaction)
+				DisposeTransaction();
+
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
+			m_activeCommandOrBatchInAutoTransaction = false;
 		}
 	}
 
@@ -1488,6 +1512,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 				CommandCache.AddCommand(m_activeCommandOrBatchCacheKey, m_activeCommandOrBatch);
 			else
 				await DisposeCommandOrBatchCoreAsync().ConfigureAwait(false);
+
+			if (m_activeCommandOrBatchInAutoTransaction)
+				await DisposeTransactionAsync().ConfigureAwait(false);
 
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
@@ -1558,6 +1585,16 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		OpenConnection();
 
+		if (commandBatch.IsInTransaction)
+		{
+			if (commandBatch.IsolationLevel is { } isolationLevel)
+				BeginTransaction(isolationLevel);
+			else
+				BeginTransaction();
+
+			m_activeCommandOrBatchInAutoTransaction = true;
+		}
+
 		try
 		{
 			DoCreateCommand(commandBatch);
@@ -1576,6 +1613,14 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
+		if (commandBatch.IsInTransaction)
+		{
+			if (commandBatch.IsolationLevel is { } isolationLevel)
+				await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+			else
+				await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+		}
+
 		try
 		{
 			DoCreateCommand(commandBatch);
@@ -1588,6 +1633,17 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			await DisposeActiveCommandOrBatchAsync().ConfigureAwait(false);
 			throw;
 		}
+	}
+
+	internal void CommitAutoTransaction(DbConnectorCommandBatch commandBatch)
+	{
+		if (commandBatch.IsInTransaction)
+			CommitTransaction();
+	}
+
+	internal ValueTask CommitAutoTransactionAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
+	{
+		return commandBatch.IsInTransaction ? CommitTransactionAsync(cancellationToken) : default;
 	}
 
 	private bool ShouldPrepare(DbConnectorCommandBatch commandBatch) => commandBatch.IsPrepared ?? Settings.PrepareCommands;
@@ -1889,4 +1945,5 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private bool m_isDisposed;
 	private bool m_noDisposeTransaction;
 	private bool m_hasReadFirstResultSet;
+	private bool m_activeCommandOrBatchInAutoTransaction;
 }

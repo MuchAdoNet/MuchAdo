@@ -239,7 +239,7 @@ public sealed class DbConnectorCommandBatch
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultipleAsync" />
-	public DbResultSetReader QueryMultiple() => Connector.QueryMultiple(this);
+	public DbResultSetReader QueryMultiple() => Connector.QueryMultiple(this, allowInTransaction: false);
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
@@ -247,25 +247,49 @@ public sealed class DbConnectorCommandBatch
 	/// <seealso cref="QueryMultipleAsync" />
 	public T QueryMultiple<T>(Func<DbResultSetReader, T> map)
 	{
-		using var reader = Connector.QueryMultiple(this);
-		return map(reader);
+		using var reader = Connector.QueryMultiple(this, allowInTransaction: true);
+		var result = map(reader);
+		Connector.CommitAutoTransaction(this);
+		return result;
 	}
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
+	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, allowInTransaction: false, cancellationToken);
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public async ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map)
+	public async ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken = default)
 	{
-		var reader = await Connector.QueryMultipleAsync(this).ConfigureAwait(false);
+		var reader = await Connector.QueryMultipleAsync(this, allowInTransaction: true, cancellationToken).ConfigureAwait(false);
 		await using var readerScope = reader.ConfigureAwait(false);
-		return await map(reader).ConfigureAwait(false);
+		var result = await map(reader).ConfigureAwait(false);
+		await Connector.CommitAutoTransactionAsync(this, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction()
+	{
+		IsInTransaction = true;
+		IsolationLevel = null;
+		return this;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction(IsolationLevel isolationLevel)
+	{
+		IsInTransaction = true;
+		IsolationLevel = isolationLevel;
+		return this;
 	}
 
 	/// <summary>
@@ -433,6 +457,10 @@ public sealed class DbConnectorCommandBatch
 		m_textOrSql = textOrSql;
 		m_paramSource = paramSource;
 	}
+
+	internal bool IsInTransaction { get; private set; }
+
+	internal IsolationLevel? IsolationLevel { get; private set; }
 
 	private DbConnectorCommandBatch StartNextCommand(CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{
