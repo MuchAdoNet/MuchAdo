@@ -15,6 +15,7 @@
     <PackageVersion Include="Npgsql" Version="9.0.3" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
+    <PackageVersion Include="Polly.Core" Version="8.6.1" />
     <PackageVersion Include="System.Configuration.ConfigurationManager" Version="9.0.3" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
