@@ -11,17 +11,17 @@ namespace MuchAdo.Tests;
 internal sealed class DbRetryPolicyTests
 {
 	[Test]
-	public void RetryOpenPolicy_NotImplemented()
+	public void ConnectionRetryPolicy_NotImplemented()
 	{
-		var settings = new DbConnectorSettings { RetryOpenPolicy = new FakeDbRetryPolicy() };
+		var settings = new DbConnectorSettings { OpenConnectionRetryPolicy = new FakeDbRetryPolicy() };
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"), settings);
 		Invoking(() => connector.Command("select 1;").QuerySingle<int>()).Should().Throw<NotImplementedException>();
 	}
 
 	[Test]
-	public void RetryOpenPolicy_EmptyResiliencePipeline()
+	public void ConnectionRetryPolicy_EmptyResiliencePipeline()
 	{
-		var settings = new DbConnectorSettings { RetryOpenPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
+		var settings = new DbConnectorSettings { OpenConnectionRetryPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"), settings);
 		connector.Command("select 1;").QuerySingle<int>().Should().Be(1);
 	}

@@ -56,7 +56,7 @@ public class DbConnectorSettings
 	/// The retry policy to use when opening database connections.
 	/// </summary>
 	/// <remarks>If specified, connection opening will be retried according to the policy.</remarks>
-	public DbRetryPolicy? RetryOpenPolicy { get; init; }
+	public DbRetryPolicy? OpenConnectionRetryPolicy { get; init; }
 
 	internal static DbConnectorSettings Default { get; } = new();
 }

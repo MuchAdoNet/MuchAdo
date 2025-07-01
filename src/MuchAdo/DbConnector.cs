@@ -1444,7 +1444,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private void DoOpenConnection()
 	{
-		if (Settings.RetryOpenPolicy is { } retryPolicy)
+		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
 			retryPolicy.Execute(this, OpenConnectionCore);
 		else
 			OpenConnectionCore();
@@ -1452,7 +1452,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
 	{
-		if (Settings.RetryOpenPolicy is { } retryPolicy)
+		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
 			return retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken);
 
 		return OpenConnectionCoreAsync(cancellationToken);

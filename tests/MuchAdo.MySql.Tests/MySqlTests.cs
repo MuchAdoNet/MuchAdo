@@ -131,17 +131,17 @@ internal sealed class MySqlTests
 	}
 
 	[Test]
-	public async Task RetryOpenPolicy_NotImplemented()
+	public async Task OpenConnectionRetryPolicy_NotImplemented()
 	{
-		var settings = new MySqlDbConnectorSettings { RetryOpenPolicy = new FakeDbRetryPolicy() };
+		var settings = new MySqlDbConnectorSettings { OpenConnectionRetryPolicy = new FakeDbRetryPolicy() };
 		await using var connector = CreateConnector(settings);
 		await Awaiting(async () => await connector.Command("select 1;").QuerySingleAsync<int>()).Should().ThrowAsync<NotImplementedException>();
 	}
 
 	[Test]
-	public async Task RetryOpenPolicy_EmptyResiliencePipeline()
+	public async Task OpenConnectionRetryPolicy_EmptyResiliencePipeline()
 	{
-		var settings = new MySqlDbConnectorSettings { RetryOpenPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
+		var settings = new MySqlDbConnectorSettings { OpenConnectionRetryPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
 		await using var connector = CreateConnector(settings);
 		(await connector.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
 	}
