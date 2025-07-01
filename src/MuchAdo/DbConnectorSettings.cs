@@ -52,5 +52,11 @@ public class DbConnectorSettings
 	/// loop.</remarks>
 	public bool CancelUnfinishedCommands { get; init; }
 
+	/// <summary>
+	/// The retry policy to use when opening database connections.
+	/// </summary>
+	/// <remarks>If specified, connection opening will be retried according to the policy.</remarks>
+	public DbRetryPolicy? OpenConnectionRetryPolicy { get; init; }
+
 	internal static DbConnectorSettings Default { get; } = new();
 }

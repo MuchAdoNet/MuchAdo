@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MuchAdo.MySql\MuchAdo.MySql.csproj" />
+    <ProjectReference Include="..\..\src\MuchAdo.Polly\MuchAdo.Polly.csproj" />
   </ItemGroup>
 
   <ItemGroup>

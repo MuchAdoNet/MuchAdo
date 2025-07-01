@@ -286,7 +286,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (m_isConnectionOpen)
 			return m_connection;
 
-		OpenConnectionCore();
+		DoOpenConnection();
 		m_isConnectionOpen = true;
 		return m_connection;
 	}
@@ -307,7 +307,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 		async ValueTask<IDbConnection> DoAsync()
 		{
-			await OpenConnectionCoreAsync(cancellationToken).ConfigureAwait(false);
+			await DoOpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 			m_isConnectionOpen = true;
 			return m_connection;
 		}
@@ -327,7 +327,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		if (m_isConnectionOpen)
 			return default;
 
-		OpenConnectionCore();
+		DoOpenConnection();
 		m_isConnectionOpen = true;
 		return new DbConnectionCloser(this);
 	}
@@ -346,7 +346,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 		async ValueTask<DbConnectionCloser> DoAsync()
 		{
-			await OpenConnectionCoreAsync(cancellationToken).ConfigureAwait(false);
+			await DoOpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 			m_isConnectionOpen = true;
 			return new DbConnectionCloser(this);
 		}
@@ -1441,6 +1441,22 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private DbCommandCache CommandCache => m_commandCache ??= new();
 
 	private static InvalidOperationException CreateNoMoreResultsException() => new("No more results.");
+
+	private void DoOpenConnection()
+	{
+		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+			retryPolicy.Execute(this, OpenConnectionCore);
+		else
+			OpenConnectionCore();
+	}
+
+	private ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
+	{
+		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+			return retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken);
+
+		return OpenConnectionCoreAsync(cancellationToken);
+	}
 
 	private DbActiveCommandDisposer CreateCommand(DbConnectorCommandBatch commandBatch)
 	{
