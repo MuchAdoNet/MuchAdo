@@ -182,9 +182,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
-	public void ExecuteInTransaction(IsolationLevel isolationLevel, Action action)
+	public void ExecuteInTransaction(DbTransactionSettings settings, Action action)
 	{
-		using var transaction = BeginTransaction(isolationLevel);
+		using var transaction = BeginTransaction(settings);
 		action();
 		if (Transaction is not null)
 			CommitTransaction();
@@ -206,10 +206,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
-	public T ExecuteInTransaction<T>(IsolationLevel isolationLevel, Func<T> action)
+	public T ExecuteInTransaction<T>(DbTransactionSettings settings, Func<T> action)
 	{
 		T result = default!;
-		ExecuteInTransaction(isolationLevel, () =>
+		ExecuteInTransaction(settings, () =>
 		{
 			result = action();
 		});
@@ -230,9 +230,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
-	public async ValueTask ExecuteInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken = default)
+	public async ValueTask ExecuteInTransactionAsync(DbTransactionSettings settings, Func<ValueTask> action, CancellationToken cancellationToken = default)
 	{
-		await using var transaction = (await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await using var transaction = (await BeginTransactionAsync(settings, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		await action().ConfigureAwait(false);
 		if (Transaction is not null)
 			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -254,10 +254,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
-	public async ValueTask<T> ExecuteInTransactionAsync<T>(IsolationLevel isolationLevel, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(DbTransactionSettings settings, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
 	{
 		T result = default!;
-		await ExecuteInTransactionAsync(isolationLevel, async () =>
+		await ExecuteInTransactionAsync(settings, async () =>
 		{
 			result = await action().ConfigureAwait(false);
 		}, cancellationToken).ConfigureAwait(false);
@@ -273,8 +273,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
 	/// </summary>
-	public void RetryInTransaction(IsolationLevel isolationLevel, Action action) =>
-		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(isolationLevel, action));
+	public void RetryInTransaction(DbTransactionSettings settings, Action action) =>
+		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(settings, action));
 
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
@@ -292,10 +292,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
 	/// </summary>
-	public T RetryInTransaction<T>(IsolationLevel isolationLevel, Func<T> action)
+	public T RetryInTransaction<T>(DbTransactionSettings settings, Func<T> action)
 	{
 		T result = default!;
-		RetryInTransaction(isolationLevel, () =>
+		RetryInTransaction(settings, () =>
 		{
 			result = action();
 		});
@@ -311,8 +311,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
 	/// </summary>
-	public ValueTask RetryInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
-		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(isolationLevel, action, ct), cancellationToken);
+	public ValueTask RetryInTransactionAsync(DbTransactionSettings settings, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(settings, action, ct), cancellationToken);
 
 	/// <summary>
 	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
@@ -330,10 +330,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
 	/// </summary>
-	public async ValueTask<T> RetryInTransactionAsync<T>(IsolationLevel isolationLevel, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	public async ValueTask<T> RetryInTransactionAsync<T>(DbTransactionSettings settings, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
 	{
 		T result = default!;
-		await RetryInTransactionAsync(isolationLevel, async () =>
+		await RetryInTransactionAsync(settings, async () =>
 		{
 			result = await action().ConfigureAwait(false);
 		}, cancellationToken).ConfigureAwait(false);
@@ -345,25 +345,19 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
 	/// <seealso cref="BeginTransactionAsync(CancellationToken)" />
-	public DbTransactionDisposer BeginTransaction()
-	{
-		VerifyCanBeginTransaction();
-		OpenConnection();
-		m_transaction = Settings.DefaultIsolationLevel is { } isolationLevel ? BeginTransactionCore(isolationLevel) : BeginTransactionCore();
-		return new DbTransactionDisposer(this);
-	}
+	public DbTransactionDisposer BeginTransaction() => BeginTransaction(Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default);
 
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	/// <param name="isolationLevel">The isolation level.</param>
+	/// <param name="settings">The transaction settings.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
-	/// <seealso cref="BeginTransactionAsync(IsolationLevel, CancellationToken)" />
-	public DbTransactionDisposer BeginTransaction(IsolationLevel isolationLevel)
+	/// <seealso cref="BeginTransactionAsync(DbTransactionSettings, CancellationToken)" />
+	public DbTransactionDisposer BeginTransaction(DbTransactionSettings settings)
 	{
 		VerifyCanBeginTransaction();
 		OpenConnection();
-		m_transaction = BeginTransactionCore(isolationLevel);
+		m_transaction = BeginTransactionCore(settings);
 		return new DbTransactionDisposer(this);
 	}
 
@@ -373,28 +367,21 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <param name="cancellationToken">The cancellation token.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
 	/// <seealso cref="BeginTransaction()" />
-	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(CancellationToken cancellationToken = default)
-	{
-		VerifyCanBeginTransaction();
-		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-		m_transaction = Settings.DefaultIsolationLevel is { } isolationLevel
-			? await BeginTransactionCoreAsync(isolationLevel, cancellationToken).ConfigureAwait(false)
-			: await BeginTransactionCoreAsync(cancellationToken).ConfigureAwait(false);
-		return new DbTransactionDisposer(this);
-	}
+	public ValueTask<DbTransactionDisposer> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+		BeginTransactionAsync(Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default, cancellationToken);
 
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	/// <param name="isolationLevel">The isolation level.</param>
+	/// <param name="settings">The transaction settings.</param>
 	/// <param name="cancellationToken">The cancellation token.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
-	/// <seealso cref="BeginTransaction(IsolationLevel)" />
-	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+	/// <seealso cref="BeginTransaction(DbTransactionSettings)" />
+	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(DbTransactionSettings settings, CancellationToken cancellationToken = default)
 	{
 		VerifyCanBeginTransaction();
 		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-		m_transaction = await BeginTransactionCoreAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+		m_transaction = await BeginTransactionCoreAsync(settings, cancellationToken).ConfigureAwait(false);
 		return new DbTransactionDisposer(this);
 	}
 
@@ -742,47 +729,25 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	protected virtual IDbTransaction BeginTransactionCore() => Connection.BeginTransaction();
+	protected virtual IDbTransaction BeginTransactionCore(DbTransactionSettings settings) =>
+		settings.IsolationLevel is { } isolationLevel ? Connection.BeginTransaction(isolationLevel) : Connection.BeginTransaction();
 
 	/// <summary>
 	/// Begins a transaction asynchronously.
 	/// </summary>
-	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(CancellationToken cancellationToken)
+	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(DbTransactionSettings settings, CancellationToken cancellationToken)
 	{
 #if NET
 		if (Connection is DbConnection dbConnection)
 		{
-			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, CancellationToken ct) =>
-				await c.BeginTransactionAsync(ct).ConfigureAwait(false);
+			async ValueTask<IDbTransaction> DoAsync(DbConnection c, CancellationToken ct) =>
+				await (settings.IsolationLevel is { } isolationLevel ? c.BeginTransactionAsync(isolationLevel, ct).ConfigureAwait(false) : c.BeginTransactionAsync(ct).ConfigureAwait(false));
 
 			return DoAsync(dbConnection, cancellationToken);
 		}
 #endif
 
-		return new ValueTask<IDbTransaction>(BeginTransactionCore());
-	}
-
-	/// <summary>
-	/// Begins a transaction.
-	/// </summary>
-	protected virtual IDbTransaction BeginTransactionCore(IsolationLevel isolationLevel) => Connection.BeginTransaction(isolationLevel);
-
-	/// <summary>
-	/// Begins a transaction asynchronously.
-	/// </summary>
-	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-	{
-#if NET
-		if (Connection is DbConnection dbConnection)
-		{
-			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, IsolationLevel il, CancellationToken ct) =>
-				await c.BeginTransactionAsync(il, ct).ConfigureAwait(false);
-
-			return DoAsync(dbConnection, isolationLevel, cancellationToken);
-		}
-#endif
-
-		return new ValueTask<IDbTransaction>(BeginTransactionCore(isolationLevel));
+		return new ValueTask<IDbTransaction>(BeginTransactionCore(settings));
 	}
 
 	/// <summary>

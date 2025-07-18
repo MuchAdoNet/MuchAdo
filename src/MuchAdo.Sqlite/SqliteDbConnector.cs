@@ -29,14 +29,6 @@ public class SqliteDbConnector : DbConnector
 
 	public new SqliteDataReader? ActiveReader => (SqliteDataReader?) base.ActiveReader;
 
-	public DbTransactionDisposer BeginTransaction(bool deferred) =>
-		AttachTransaction(Settings.DefaultIsolationLevel is { } isolationLevel
-			? GetOpenConnection().BeginTransaction(isolationLevel, deferred)
-			: GetOpenConnection().BeginTransaction(deferred));
-
-	public DbTransactionDisposer BeginTransaction(IsolationLevel isolationLevel, bool deferred) =>
-		AttachTransaction(GetOpenConnection().BeginTransaction(isolationLevel, deferred));
-
 	public new SqliteConnection GetOpenConnection() => (SqliteConnection) base.GetOpenConnection();
 
 	public new ValueTask<SqliteConnection> GetOpenConnectionAsync(CancellationToken cancellationToken = default)
@@ -45,6 +37,21 @@ public class SqliteDbConnector : DbConnector
 		return task.IsCompletedSuccessfully ? new ValueTask<SqliteConnection>((SqliteConnection) task.Result) : DoAsync(task);
 		static async ValueTask<SqliteConnection> DoAsync(ValueTask<IDbConnection> t) => (SqliteConnection) await t.ConfigureAwait(false);
 	}
+
+	protected override IDbTransaction BeginTransactionCore(DbTransactionSettings settings)
+	{
+		if (settings is SqliteDbTransactionSettings sqliteSettings)
+		{
+			return sqliteSettings.IsolationLevel is { } isolationLevel
+				? Connection.BeginTransaction(isolationLevel, sqliteSettings.IsDeferred)
+				: Connection.BeginTransaction(sqliteSettings.IsDeferred);
+		}
+
+		return base.BeginTransactionCore(settings);
+	}
+
+	protected override ValueTask<IDbTransaction> BeginTransactionCoreAsync(DbTransactionSettings settings, CancellationToken cancellationToken) =>
+		new(BeginTransactionCore(settings));
 
 	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new SqliteParameter(name, value);
 }

@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace MuchAdo;
 
 /// <summary>
@@ -18,10 +16,10 @@ public class DbConnectorSettings
 	public DbDataMapper DataMapper { get; init; } = DbDataMapper.Default;
 
 	/// <summary>
-	/// The isolation level used when <c>BeginTransaction(Async)</c> is called without one.
+	/// The transaction settings used when not specified.
 	/// </summary>
-	/// <remarks>If not specified, the behavior is provider-specific.</remarks>
-	public IsolationLevel? DefaultIsolationLevel { get; init; }
+	/// <remarks>If not specified, <c>DbTransactionSettings.Default</c> is used.</remarks>
+	public DbTransactionSettings? DefaultTransactionSettings { get; init; }
 
 	/// <summary>
 	/// The default timeout.

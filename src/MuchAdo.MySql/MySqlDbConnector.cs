@@ -51,11 +51,10 @@ public class MySqlDbConnector : DbConnector
 
 	protected override ValueTask DisposeConnectionCoreAsync() => new(Connection.DisposeAsync());
 
-	protected override async ValueTask<IDbTransaction> BeginTransactionCoreAsync(CancellationToken cancellationToken) =>
-		await Connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-
-	protected override async ValueTask<IDbTransaction> BeginTransactionCoreAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken) =>
-		await Connection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+	protected override async ValueTask<IDbTransaction> BeginTransactionCoreAsync(DbTransactionSettings settings, CancellationToken cancellationToken) =>
+		settings.IsolationLevel is { } isolationLevel
+			? await Connection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false)
+			: await Connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
 	protected override ValueTask CommitTransactionCoreAsync(CancellationToken cancellationToken) => new(Transaction!.CommitAsync(cancellationToken));
 
