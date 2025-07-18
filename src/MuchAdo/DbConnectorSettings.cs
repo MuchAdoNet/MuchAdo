@@ -53,15 +53,12 @@ public class DbConnectorSettings
 	public bool CancelUnfinishedCommands { get; init; }
 
 	/// <summary>
-	/// The retry policy to use when opening database connections.
+	/// The retry policy to use when opening a database connection or calling a <c>Retry</c> method.
 	/// </summary>
-	/// <remarks>If specified, connection opening will be retried according to the policy.</remarks>
-	public DbRetryPolicy? OpenConnectionRetryPolicy { get; init; }
-
-	/// <summary>
-	/// The retry policy to use when calling a <c>Retry</c> method.
-	/// </summary>
-	public DbRetryPolicy? DefaultRetryPolicy { get; init; }
+	/// <remarks><para>When retry requests are nested, only the outermost action is retried.</para>
+	/// <para>If not set, opening a database connection will not be retried, and <c>Retry</c> methods
+	/// will throw an exception.</para></remarks>
+	public DbRetryPolicy? RetryPolicy { get; init; }
 
 	internal static DbConnectorSettings Default { get; } = new();
 }

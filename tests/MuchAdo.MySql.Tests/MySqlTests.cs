@@ -133,7 +133,7 @@ internal sealed class MySqlTests
 	[Test]
 	public async Task OpenConnectionRetryPolicy_NotImplemented()
 	{
-		var settings = new MySqlDbConnectorSettings { OpenConnectionRetryPolicy = new FakeDbRetryPolicy() };
+		var settings = new MySqlDbConnectorSettings { RetryPolicy = new FakeDbRetryPolicy() };
 		await using var connector = CreateConnector(settings);
 		await Awaiting(async () => await connector.Command("select 1;").QuerySingleAsync<int>()).Should().ThrowAsync<NotImplementedException>();
 	}
@@ -141,7 +141,7 @@ internal sealed class MySqlTests
 	[Test]
 	public async Task OpenConnectionRetryPolicy_EmptyResiliencePipeline()
 	{
-		var settings = new MySqlDbConnectorSettings { OpenConnectionRetryPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
+		var settings = new MySqlDbConnectorSettings { RetryPolicy = PollyDbRetryPolicy.Create(ResiliencePipeline.Empty) };
 		await using var connector = CreateConnector(settings);
 		(await connector.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
 	}
@@ -151,9 +151,9 @@ internal sealed class MySqlTests
 
 	private sealed class FakeDbRetryPolicy : DbRetryPolicy
 	{
-		public override void Execute(DbConnector connector, Action action) => throw new NotImplementedException();
+		protected override void ExecuteCore(DbConnector connector, Action action) => throw new NotImplementedException();
 
-		public override async ValueTask ExecuteAsync(DbConnector connector, Func<CancellationToken, ValueTask> action, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+		protected override async ValueTask ExecuteCoreAsync(DbConnector connector, Func<CancellationToken, ValueTask> action, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 	}
 
 #if NET

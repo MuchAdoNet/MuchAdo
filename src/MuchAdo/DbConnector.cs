@@ -388,27 +388,18 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Executes the action with the default retry policy.
+	/// Executes the action with the retry policy.
 	/// </summary>
-	public void Retry(Action action) => Retry(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action);
+	public void Retry(Action action) =>
+		(Settings.RetryPolicy ?? throw NoRetryPolicyException()).Execute(this, action);
 
 	/// <summary>
-	/// Executes the action with the specified retry policy.
+	/// Executes the action with the retry policy.
 	/// </summary>
-	public void Retry(DbRetryPolicy retryPolicy, Action action) => retryPolicy.Execute(this, action);
-
-	/// <summary>
-	/// Executes the action with the default retry policy.
-	/// </summary>
-	public T Retry<T>(Func<T> action) => Retry(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action);
-
-	/// <summary>
-	/// Executes the action with the specified retry policy.
-	/// </summary>
-	public T Retry<T>(DbRetryPolicy retryPolicy, Func<T> action)
+	public T Retry<T>(Func<T> action)
 	{
 		T result = default!;
-		Retry(retryPolicy, () =>
+		Retry(() =>
 		{
 			result = action();
 		});
@@ -416,30 +407,18 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Executes the action with the default retry policy.
+	/// Executes the action with the retry policy.
 	/// </summary>
 	public ValueTask RetryAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
-		RetryAsync(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action, cancellationToken);
+		(Settings.RetryPolicy ?? throw NoRetryPolicyException()).ExecuteAsync(this, _ => action(), cancellationToken);
 
 	/// <summary>
-	/// Executes the action with the specified retry policy.
+	/// Executes the action with the retry policy.
 	/// </summary>
-	public ValueTask RetryAsync(DbRetryPolicy retryPolicy, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
-		retryPolicy.ExecuteAsync(this, _ => action(), cancellationToken);
-
-	/// <summary>
-	/// Executes the action with the default retry policy.
-	/// </summary>
-	public ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default) =>
-		RetryAsync(Settings.DefaultRetryPolicy ?? throw NoDefaultRetryPolicyException(), action, cancellationToken);
-
-	/// <summary>
-	/// Executes the action with the specified retry policy.
-	/// </summary>
-	public async ValueTask<T> RetryAsync<T>(DbRetryPolicy retryPolicy, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	public async ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
 	{
 		T result = default!;
-		await RetryAsync(retryPolicy, async () =>
+		await RetryAsync(async () =>
 		{
 			result = await action().ConfigureAwait(false);
 		}, cancellationToken).ConfigureAwait(false);
@@ -1485,6 +1464,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		}
 	}
 
+	internal bool IsRetrying { get; set; }
+
 	private void CancelNoThrow()
 	{
 		try
@@ -1503,7 +1484,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private void DoOpenConnection()
 	{
-		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+		if (Settings.RetryPolicy is { } retryPolicy)
 			retryPolicy.Execute(this, OpenConnectionCore);
 		else
 			OpenConnectionCore();
@@ -1511,7 +1492,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
 	{
-		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+		if (Settings.RetryPolicy is { } retryPolicy)
 			return retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken);
 
 		return OpenConnectionCoreAsync(cancellationToken);
@@ -1759,7 +1740,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private static InvalidOperationException CreateTooManyRecordsException() => new("Additional records were found; use 'First' to permit this.");
 
-	private static InvalidOperationException NoDefaultRetryPolicyException() => new("No default retry policy; set 'DefaultRetryPolicy' setting.");
+	private static InvalidOperationException NoRetryPolicyException() => new("Set 'RetryPolicy' setting to use 'Retry'.");
 
 	private sealed class ParamTarget(DbConnector connector) : ISqlParamTarget
 	{
