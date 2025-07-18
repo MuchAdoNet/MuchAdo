@@ -320,6 +320,75 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void ExecuteInTransactionTests([Values] bool? commit)
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
+
+		connector.ExecuteInTransaction(() =>
+		{
+			connector.Command("insert into Items (Name) values ('item1');").Execute();
+			if (commit == true)
+				connector.CommitTransaction();
+			else if (commit == false)
+				connector.RollbackTransaction();
+		});
+
+		connector.ExecuteInTransaction(IsolationLevel.RepeatableRead, () =>
+		{
+			connector.Command("insert into Items (Name) values ('item1');").Execute();
+			if (commit == true)
+				connector.CommitTransaction();
+			else if (commit == false)
+				connector.RollbackTransaction();
+		});
+
+		connector.ExecuteInTransaction(() => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
+
+		connector.ExecuteInTransaction(IsolationLevel.RepeatableRead, () => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
+	}
+
+	[Test]
+	public async Task ExecuteInTransactionAsyncTests([Values] bool? commit)
+	{
+		await using var connector = CreateConnector();
+		await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync();
+
+		await connector.ExecuteInTransactionAsync(async () =>
+		{
+			await connector.Command("insert into Items (Name) values ('item1');").ExecuteAsync();
+			if (commit == true)
+				await connector.CommitTransactionAsync();
+			else if (commit == false)
+				await connector.RollbackTransactionAsync();
+		});
+
+		await connector.ExecuteInTransactionAsync(IsolationLevel.RepeatableRead, async () =>
+		{
+			await connector.Command("insert into Items (Name) values ('item1');").ExecuteAsync();
+			if (commit == true)
+				await connector.CommitTransactionAsync();
+			else if (commit == false)
+				await connector.RollbackTransactionAsync();
+		});
+
+		await connector.ExecuteInTransactionAsync(async () =>
+		{
+			(await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()).Should().Be(commit != false ? 2 : 0);
+		});
+
+		var count = await connector.ExecuteInTransactionAsync(
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
+
+		count = await connector.ExecuteInTransactionAsync(IsolationLevel.RepeatableRead,
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
+	}
+
+	[Test]
 	public void CachedWithTransaction()
 	{
 		using var connector = CreateConnector();

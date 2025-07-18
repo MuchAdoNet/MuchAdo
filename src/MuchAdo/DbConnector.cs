@@ -169,6 +169,178 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	public DbConnectorCommandBatch CreateCommandBatch() => new(this);
 
 	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public void ExecuteInTransaction(Action action)
+	{
+		using var transaction = BeginTransaction();
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public void ExecuteInTransaction(IsolationLevel isolationLevel, Action action)
+	{
+		using var transaction = BeginTransaction(isolationLevel);
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(() =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(IsolationLevel isolationLevel, Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(isolationLevel, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		await using var transaction = (await BeginTransactionAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		await using var transaction = (await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(IsolationLevel isolationLevel, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(isolationLevel, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public void RetryInTransaction(Action action) =>
+		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(action));
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public void RetryInTransaction(IsolationLevel isolationLevel, Action action) =>
+		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(isolationLevel, action));
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public T RetryInTransaction<T>(Func<T> action)
+	{
+		T result = default!;
+		RetryInTransaction(() =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public T RetryInTransaction<T>(IsolationLevel isolationLevel, Func<T> action)
+	{
+		T result = default!;
+		RetryInTransaction(isolationLevel, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public ValueTask RetryInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(action, ct), cancellationToken);
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public ValueTask RetryInTransactionAsync(IsolationLevel isolationLevel, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(isolationLevel, action, ct), cancellationToken);
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public async ValueTask<T> RetryInTransactionAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await RetryInTransactionAsync(async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public async ValueTask<T> RetryInTransactionAsync<T>(IsolationLevel isolationLevel, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await RetryInTransactionAsync(isolationLevel, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
@@ -410,7 +582,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// Executes the action with the retry policy.
 	/// </summary>
 	public ValueTask RetryAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
-		(Settings.RetryPolicy ?? throw NoRetryPolicyException()).ExecuteAsync(this, _ => action(), cancellationToken);
+		RetryPolicyOrThrow.ExecuteAsync(this, _ => action(), cancellationToken);
 
 	/// <summary>
 	/// Executes the action with the retry policy.
@@ -1465,6 +1637,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	internal bool IsRetrying { get; set; }
+
+	private DbRetryPolicy RetryPolicyOrThrow => Settings.RetryPolicy ?? throw NoRetryPolicyException();
 
 	private void CancelNoThrow()
 	{
