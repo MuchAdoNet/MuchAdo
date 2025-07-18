@@ -345,7 +345,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// </summary>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
 	/// <seealso cref="BeginTransactionAsync(CancellationToken)" />
-	public DbTransactionDisposer BeginTransaction() => BeginTransaction(Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default);
+	public DbTransactionDisposer BeginTransaction() => BeginTransaction(DefaultTransactionSettings);
 
 	/// <summary>
 	/// Begins a transaction.
@@ -368,7 +368,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
 	/// <seealso cref="BeginTransaction()" />
 	public ValueTask<DbTransactionDisposer> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
-		BeginTransactionAsync(Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default, cancellationToken);
+		BeginTransactionAsync(DefaultTransactionSettings, cancellationToken);
 
 	/// <summary>
 	/// Begins a transaction.
@@ -1267,23 +1267,29 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal DbDataMapper DataMapper => Settings.DataMapper;
 
+	internal DbTransactionSettings DefaultTransactionSettings => Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default;
+
 	internal DbConnectorPool? ConnectorPool { get; set; }
 
 	internal int ExecuteCommand(DbConnectorCommandBatch commandBatch)
 	{
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
-		return ExecuteNonQueryCore();
+		var result = ExecuteNonQueryCore();
+		CommitAutoTransaction(commandBatch);
+		return result;
 	}
 
 	internal async ValueTask<int> ExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-		return await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
+		var result = await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
-	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
+	internal DbResultSetReader CreateResultSetReader(DbConnectorCommandBatch commandBatch)
 	{
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
@@ -1292,7 +1298,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		return new DbResultSetReader(this);
 	}
 
-	internal async ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
+	internal async ValueTask<DbResultSetReader> CreateResultSetReaderAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
 	{
 		OnExecuting(commandBatch);
 		m_hasReadFirstResultSet = false;
@@ -1319,6 +1325,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (NextReaderResultCore());
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return list;
 	}
 
@@ -1340,6 +1347,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (await NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return list;
 	}
 
@@ -1366,6 +1374,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return value;
 	}
 
@@ -1392,11 +1401,15 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return value;
 	}
 
 	internal IEnumerable<T> Enumerate<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
+		if (commandBatch.IsInTransaction)
+			throw new InvalidOperationException("Enumerate after InTransaction is not supported. Call BeginTransaction and CommitTransaction explicitly, or use Query instead.");
+
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
@@ -1415,6 +1428,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async IAsyncEnumerable<T> EnumerateAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
+		if (commandBatch.IsInTransaction)
+			throw new InvalidOperationException("EnumerateAsync after InTransaction is not supported. Call BeginTransactionAsync and CommitTransactionAsync explicitly, or use QueryAsync instead.");
+
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
@@ -1552,8 +1568,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			else
 				DisposeCommandOrBatchCore();
 
+			if (m_activeCommandOrBatchInAutoTransaction)
+				DisposeTransaction();
+
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
+			m_activeCommandOrBatchInAutoTransaction = false;
 		}
 	}
 
@@ -1568,8 +1588,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			else
 				await DisposeCommandOrBatchCoreAsync().ConfigureAwait(false);
 
+			if (m_activeCommandOrBatchInAutoTransaction)
+				await DisposeTransactionAsync().ConfigureAwait(false);
+
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
+			m_activeCommandOrBatchInAutoTransaction = false;
 		}
 	}
 
@@ -1641,6 +1665,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		OpenConnection();
 
+		if (commandBatch.InTransactionSettings is { } transactionSettings)
+		{
+			BeginTransaction(transactionSettings);
+			m_activeCommandOrBatchInAutoTransaction = true;
+		}
+
 		try
 		{
 			DoCreateCommand(commandBatch);
@@ -1659,6 +1689,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
+		if (commandBatch.InTransactionSettings is { } transactionSettings)
+		{
+			await BeginTransactionAsync(transactionSettings, cancellationToken).ConfigureAwait(false);
+			m_activeCommandOrBatchInAutoTransaction = true;
+		}
+
 		try
 		{
 			DoCreateCommand(commandBatch);
@@ -1672,6 +1708,15 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw;
 		}
 	}
+
+	internal void CommitAutoTransaction(DbConnectorCommandBatch commandBatch)
+	{
+		if (commandBatch.IsInTransaction)
+			CommitTransaction();
+	}
+
+	internal ValueTask CommitAutoTransactionAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken) =>
+		commandBatch.IsInTransaction ? CommitTransactionAsync(cancellationToken) : default;
 
 	private bool ShouldPrepare(DbConnectorCommandBatch commandBatch) => commandBatch.IsPrepared ?? Settings.PrepareCommands;
 
@@ -1942,4 +1987,5 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private bool m_isDisposed;
 	private bool m_noDisposeTransaction;
 	private bool m_hasReadFirstResultSet;
+	private bool m_activeCommandOrBatchInAutoTransaction;
 }

@@ -239,7 +239,13 @@ public sealed class DbConnectorCommandBatch
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultipleAsync" />
-	public DbResultSetReader QueryMultiple() => Connector.QueryMultiple(this);
+	public DbResultSetReader QueryMultiple()
+	{
+		if (IsInTransaction)
+			throw new InvalidOperationException("QueryMultiple with no map argument cannot be used with InTransaction. Use QueryMultiple with a map argument, or call BeginTransaction and CommitTransaction explicitly.");
+
+		return Connector.CreateResultSetReader(this);
+	}
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
@@ -247,25 +253,49 @@ public sealed class DbConnectorCommandBatch
 	/// <seealso cref="QueryMultipleAsync" />
 	public T QueryMultiple<T>(Func<DbResultSetReader, T> map)
 	{
-		using var reader = Connector.QueryMultiple(this);
-		return map(reader);
+		using var reader = Connector.CreateResultSetReader(this);
+		var result = map(reader);
+		Connector.CommitAutoTransaction(this);
+		return result;
 	}
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
+	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default)
+	{
+		if (IsInTransaction)
+			throw new InvalidOperationException("QueryMultipleAsync with no map argument cannot be used with InTransaction. Use QueryMultipleAsync with a map argument, or call BeginTransactionAsync and CommitTransactionAsync explicitly.");
+
+		return Connector.CreateResultSetReaderAsync(this, cancellationToken);
+	}
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public async ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map)
+	public async ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken = default)
 	{
-		var reader = await Connector.QueryMultipleAsync(this).ConfigureAwait(false);
+		var reader = await Connector.CreateResultSetReaderAsync(this, cancellationToken).ConfigureAwait(false);
 		await using var readerScope = reader.ConfigureAwait(false);
-		return await map(reader).ConfigureAwait(false);
+		var result = await map(reader).ConfigureAwait(false);
+		await Connector.CommitAutoTransactionAsync(this, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction() => InTransaction(Connector.DefaultTransactionSettings);
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction(DbTransactionSettings settings)
+	{
+		InTransactionSettings = settings;
+		return this;
 	}
 
 	/// <summary>
@@ -433,6 +463,10 @@ public sealed class DbConnectorCommandBatch
 		m_textOrSql = textOrSql;
 		m_paramSource = paramSource;
 	}
+
+	internal DbTransactionSettings? InTransactionSettings { get; private set; }
+
+	internal bool IsInTransaction => InTransactionSettings is not null;
 
 	private DbConnectorCommandBatch StartNextCommand(CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{
