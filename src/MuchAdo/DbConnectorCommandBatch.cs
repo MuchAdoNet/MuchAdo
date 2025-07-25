@@ -239,13 +239,62 @@ public sealed class DbConnectorCommandBatch
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultipleAsync" />
-	public DbResultSetReader QueryMultiple() => Connector.QueryMultiple(this);
+	public DbResultSetReader QueryMultiple() =>
+		Connector.QueryMultiple(this);
+
+	/// <summary>
+	/// Executes the query, preparing to read multiple result sets.
+	/// </summary>
+	/// <seealso cref="QueryMultipleAsync" />
+	public T QueryMultiple<T>(Func<DbResultSetReader, T> map) =>
+		Connector.QueryMultiple(this, map ?? throw new ArgumentNullException(nameof(map)));
 
 	/// <summary>
 	/// Executes the query, preparing to read multiple result sets.
 	/// </summary>
 	/// <seealso cref="QueryMultiple" />
-	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) => Connector.QueryMultipleAsync(this, cancellationToken);
+	public ValueTask<DbResultSetReader> QueryMultipleAsync(CancellationToken cancellationToken = default) =>
+		Connector.QueryMultipleAsync(this, cancellationToken);
+
+	/// <summary>
+	/// Executes the query, preparing to read multiple result sets.
+	/// </summary>
+	/// <seealso cref="QueryMultiple" />
+	public ValueTask<T> QueryMultipleAsync<T>(Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken = default) =>
+		Connector.QueryMultipleAsync(this, map ?? throw new ArgumentNullException(nameof(map)), cancellationToken);
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction() => InTransaction(Connector.DefaultTransactionSettings);
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction.
+	/// </summary>
+	public DbConnectorCommandBatch InTransaction(DbTransactionSettings settings)
+	{
+		InTransactionSettings = settings;
+		return this;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch Retry()
+	{
+		RetryPolicy = Connector.RetryPolicyOrThrow;
+		return this;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction, which will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch RetryInTransaction() => Retry().InTransaction();
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction, which will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch RetryInTransaction(DbTransactionSettings settings) => Retry().InTransaction(settings);
 
 	/// <summary>
 	/// Sets the timeout.
@@ -412,6 +461,10 @@ public sealed class DbConnectorCommandBatch
 		m_textOrSql = textOrSql;
 		m_paramSource = paramSource;
 	}
+
+	internal DbTransactionSettings? InTransactionSettings { get; private set; }
+
+	internal DbRetryPolicy? RetryPolicy { get; private set; }
 
 	private DbConnectorCommandBatch StartNextCommand(CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{

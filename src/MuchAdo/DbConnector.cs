@@ -169,29 +169,195 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	public DbConnectorCommandBatch CreateCommandBatch() => new(this);
 
 	/// <summary>
-	/// Begins a transaction.
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
 	/// </summary>
-	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
-	/// <seealso cref="BeginTransactionAsync(CancellationToken)" />
-	public DbTransactionDisposer BeginTransaction()
+	public void ExecuteInTransaction(Action action)
 	{
-		VerifyCanBeginTransaction();
-		OpenConnection();
-		m_transaction = Settings.DefaultIsolationLevel is { } isolationLevel ? BeginTransactionCore(isolationLevel) : BeginTransactionCore();
-		return new DbTransactionDisposer(this);
+		using var transaction = BeginTransaction();
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public void ExecuteInTransaction(DbTransactionSettings settings, Action action)
+	{
+		using var transaction = BeginTransaction(settings);
+		action();
+		if (Transaction is not null)
+			CommitTransaction();
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(() =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public T ExecuteInTransaction<T>(DbTransactionSettings settings, Func<T> action)
+	{
+		T result = default!;
+		ExecuteInTransaction(settings, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		await using var transaction = (await BeginTransactionAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask ExecuteInTransactionAsync(DbTransactionSettings settings, Func<ValueTask> action, CancellationToken cancellationToken = default)
+	{
+		await using var transaction = (await BeginTransactionAsync(settings, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+		await action().ConfigureAwait(false);
+		if (Transaction is not null)
+			await CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes.
+	/// </summary>
+	public async ValueTask<T> ExecuteInTransactionAsync<T>(DbTransactionSettings settings, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteInTransactionAsync(settings, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public void RetryInTransaction(Action action) =>
+		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(action));
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public void RetryInTransaction(DbTransactionSettings settings, Action action) =>
+		RetryPolicyOrThrow.Execute(this, () => ExecuteInTransaction(settings, action));
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public T RetryInTransaction<T>(Func<T> action)
+	{
+		T result = default!;
+		RetryInTransaction(() =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public T RetryInTransaction<T>(DbTransactionSettings settings, Func<T> action)
+	{
+		T result = default!;
+		RetryInTransaction(settings, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public ValueTask RetryInTransactionAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(action, ct), cancellationToken);
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public ValueTask RetryInTransactionAsync(DbTransactionSettings settings, Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, ct => ExecuteInTransactionAsync(settings, action, ct), cancellationToken);
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public async ValueTask<T> RetryInTransactionAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await RetryInTransactionAsync(async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
+	}
+
+	/// <summary>
+	/// Executes the async action in an automatic transaction, which is commited immediately after the action executes, retrying according to policy.
+	/// </summary>
+	public async ValueTask<T> RetryInTransactionAsync<T>(DbTransactionSettings settings, Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await RetryInTransactionAsync(settings, async () =>
+		{
+			result = await action().ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	/// <param name="isolationLevel">The isolation level.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
-	/// <seealso cref="BeginTransactionAsync(IsolationLevel, CancellationToken)" />
-	public DbTransactionDisposer BeginTransaction(IsolationLevel isolationLevel)
+	/// <seealso cref="BeginTransactionAsync(CancellationToken)" />
+	public DbTransactionDisposer BeginTransaction() => BeginTransaction(DefaultTransactionSettings);
+
+	/// <summary>
+	/// Begins a transaction.
+	/// </summary>
+	/// <param name="settings">The transaction settings.</param>
+	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
+	/// <seealso cref="BeginTransactionAsync(DbTransactionSettings, CancellationToken)" />
+	public DbTransactionDisposer BeginTransaction(DbTransactionSettings settings)
 	{
 		VerifyCanBeginTransaction();
 		OpenConnection();
-		m_transaction = BeginTransactionCore(isolationLevel);
+		m_transaction = BeginTransactionCore(settings);
 		return new DbTransactionDisposer(this);
 	}
 
@@ -201,28 +367,21 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <param name="cancellationToken">The cancellation token.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
 	/// <seealso cref="BeginTransaction()" />
-	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(CancellationToken cancellationToken = default)
-	{
-		VerifyCanBeginTransaction();
-		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-		m_transaction = Settings.DefaultIsolationLevel is { } isolationLevel
-			? await BeginTransactionCoreAsync(isolationLevel, cancellationToken).ConfigureAwait(false)
-			: await BeginTransactionCoreAsync(cancellationToken).ConfigureAwait(false);
-		return new DbTransactionDisposer(this);
-	}
+	public ValueTask<DbTransactionDisposer> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+		BeginTransactionAsync(DefaultTransactionSettings, cancellationToken);
 
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	/// <param name="isolationLevel">The isolation level.</param>
+	/// <param name="settings">The transaction settings.</param>
 	/// <param name="cancellationToken">The cancellation token.</param>
 	/// <returns>An <see cref="IDisposable" /> that should be disposed when the transaction has been committed or should be rolled back.</returns>
-	/// <seealso cref="BeginTransaction(IsolationLevel)" />
-	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+	/// <seealso cref="BeginTransaction(DbTransactionSettings)" />
+	public async ValueTask<DbTransactionDisposer> BeginTransactionAsync(DbTransactionSettings settings, CancellationToken cancellationToken = default)
 	{
 		VerifyCanBeginTransaction();
 		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-		m_transaction = await BeginTransactionCoreAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+		m_transaction = await BeginTransactionCoreAsync(settings, cancellationToken).ConfigureAwait(false);
 		return new DbTransactionDisposer(this);
 	}
 
@@ -388,6 +547,30 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	}
 
 	/// <summary>
+	/// Executes the action with the retry policy.
+	/// </summary>
+	public void Retry(Action action) =>
+		RetryPolicyOrThrow.Execute(this, action);
+
+	/// <summary>
+	/// Executes the action with the retry policy.
+	/// </summary>
+	public T Retry<T>(Func<T> action) =>
+		RetryPolicyOrThrow.Execute(this, action);
+
+	/// <summary>
+	/// Executes the action with the retry policy.
+	/// </summary>
+	public ValueTask RetryAsync(Func<ValueTask> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, _ => action(), cancellationToken);
+
+	/// <summary>
+	/// Executes the action with the retry policy.
+	/// </summary>
+	public ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, _ => action(), cancellationToken);
+
+	/// <summary>
 	/// Cancels the active command or batch.
 	/// </summary>
 	public void Cancel()
@@ -532,47 +715,25 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Begins a transaction.
 	/// </summary>
-	protected virtual IDbTransaction BeginTransactionCore() => Connection.BeginTransaction();
+	protected virtual IDbTransaction BeginTransactionCore(DbTransactionSettings settings) =>
+		settings.IsolationLevel is { } isolationLevel ? Connection.BeginTransaction(isolationLevel) : Connection.BeginTransaction();
 
 	/// <summary>
 	/// Begins a transaction asynchronously.
 	/// </summary>
-	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(CancellationToken cancellationToken)
+	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(DbTransactionSettings settings, CancellationToken cancellationToken)
 	{
 #if NET
 		if (Connection is DbConnection dbConnection)
 		{
-			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, CancellationToken ct) =>
-				await c.BeginTransactionAsync(ct).ConfigureAwait(false);
+			async ValueTask<IDbTransaction> DoAsync(DbConnection c, CancellationToken ct) =>
+				await (settings.IsolationLevel is { } isolationLevel ? c.BeginTransactionAsync(isolationLevel, ct).ConfigureAwait(false) : c.BeginTransactionAsync(ct).ConfigureAwait(false));
 
 			return DoAsync(dbConnection, cancellationToken);
 		}
 #endif
 
-		return new ValueTask<IDbTransaction>(BeginTransactionCore());
-	}
-
-	/// <summary>
-	/// Begins a transaction.
-	/// </summary>
-	protected virtual IDbTransaction BeginTransactionCore(IsolationLevel isolationLevel) => Connection.BeginTransaction(isolationLevel);
-
-	/// <summary>
-	/// Begins a transaction asynchronously.
-	/// </summary>
-	protected virtual ValueTask<IDbTransaction> BeginTransactionCoreAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-	{
-#if NET
-		if (Connection is DbConnection dbConnection)
-		{
-			static async ValueTask<IDbTransaction> DoAsync(DbConnection c, IsolationLevel il, CancellationToken ct) =>
-				await c.BeginTransactionAsync(il, ct).ConfigureAwait(false);
-
-			return DoAsync(dbConnection, isolationLevel, cancellationToken);
-		}
-#endif
-
-		return new ValueTask<IDbTransaction>(BeginTransactionCore(isolationLevel));
+		return new ValueTask<IDbTransaction>(BeginTransactionCore(settings));
 	}
 
 	/// <summary>
@@ -1092,43 +1253,52 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal DbDataMapper DataMapper => Settings.DataMapper;
 
+	internal DbTransactionSettings DefaultTransactionSettings => Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default;
+
 	internal DbConnectorPool? ConnectorPool { get; set; }
 
 	internal int ExecuteCommand(DbConnectorCommandBatch commandBatch)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoExecuteCommand(commandBatch));
+		return DoExecuteCommand(commandBatch);
+	}
+
+	private int DoExecuteCommand(DbConnectorCommandBatch commandBatch)
+	{
 		using var commandScope = CreateCommand(commandBatch);
-		return ExecuteNonQueryCore();
+		var result = ExecuteNonQueryCore();
+		CommitAutoTransaction(commandBatch);
+		return result;
 	}
 
 	internal async ValueTask<int> ExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoExecuteCommandAsync(commandBatch, ct), cancellationToken).ConfigureAwait(false);
+		return await DoExecuteCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<int> DoExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-		return await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
-	}
-
-	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
-	{
-		OnExecuting(commandBatch);
-		m_hasReadFirstResultSet = false;
-		CreateCommand(commandBatch);
-		m_activeReader = ExecuteReaderCore();
-		return new DbResultSetReader(this);
-	}
-
-	internal async ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
-	{
-		OnExecuting(commandBatch);
-		m_hasReadFirstResultSet = false;
-		await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
-		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
-		return new DbResultSetReader(this);
+		var result = await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
 	internal IReadOnlyList<T> Query<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQuery(commandBatch, map));
+		return DoQuery(commandBatch, map);
+	}
+
+	private List<T> DoQuery<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
+	{
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
 		using var readerScope = new DbActiveReaderDisposer(this);
@@ -1144,12 +1314,20 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (NextReaderResultCore());
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return list;
 	}
 
 	internal async ValueTask<IReadOnlyList<T>> QueryAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryAsync(commandBatch, map, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryAsync(commandBatch, map, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<IReadOnlyList<T>> DoQueryAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
 		await using var readerScope = new DbActiveReaderDisposer(this).ConfigureAwait(false);
@@ -1165,12 +1343,20 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (await NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return list;
 	}
 
 	internal T QueryFirst<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQueryFirst(commandBatch, map, single, orDefault));
+		return DoQueryFirst(commandBatch, map, single, orDefault);
+	}
+
+	private T DoQueryFirst<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
+	{
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = single ? ExecuteReaderCore() : ExecuteReaderCore(CommandBehavior.SingleRow);
 		using var readerScope = new DbActiveReaderDisposer(this);
@@ -1191,12 +1377,20 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		CloseReaderCore();
+		CommitAutoTransaction(commandBatch);
 		return value;
 	}
 
 	internal async ValueTask<T> QueryFirstAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryFirstAsync(commandBatch, map, single, orDefault, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryFirstAsync(commandBatch, map, single, orDefault, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<T> DoQueryFirstAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = single ? await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false) : await ExecuteReaderCoreAsync(CommandBehavior.SingleRow, cancellationToken).ConfigureAwait(false);
 		await using var readerScope = new DbActiveReaderDisposer(this).ConfigureAwait(false);
@@ -1217,11 +1411,15 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw CreateTooManyRecordsException();
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		return value;
 	}
 
 	internal IEnumerable<T> Enumerate<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("Enumerate cannot be used with InTransaction or Retry. Call BeginTransaction and CommitTransaction explicitly, or use Query instead.");
+
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
@@ -1240,6 +1438,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async IAsyncEnumerable<T> EnumerateAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("EnumerateAsync cannot be used with InTransaction or Retry. Call BeginTransactionAsync and CommitTransactionAsync explicitly, or use QueryAsync instead.");
+
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
@@ -1254,6 +1455,57 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		while (await NextReaderResultCoreAsync(cancellationToken).ConfigureAwait(false));
 
 		await CloseReaderCoreAsync().ConfigureAwait(false);
+	}
+
+	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
+	{
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("QueryMultiple with no map argument cannot be used with InTransaction or Retry. Use QueryMultiple with a map argument, or call BeginTransaction and CommitTransaction explicitly.");
+
+		OnExecuting(commandBatch);
+		return CreateResultSetReader(commandBatch);
+	}
+
+	internal T QueryMultiple<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, T> map)
+	{
+		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQueryMultiple(commandBatch, map));
+		return DoQueryMultiple(commandBatch, map);
+	}
+
+	private T DoQueryMultiple<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, T> map)
+	{
+		using var reader = CreateResultSetReader(commandBatch);
+		var result = map(reader);
+		CommitAutoTransaction(commandBatch);
+		return result;
+	}
+
+	internal ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
+	{
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("QueryMultipleAsync with no map argument cannot be used with InTransaction or Retry. Use QueryMultipleAsync with a map argument, or call BeginTransactionAsync and CommitTransactionAsync explicitly.");
+
+		OnExecuting(commandBatch);
+		return CreateResultSetReaderAsync(commandBatch, cancellationToken);
+	}
+
+	internal async ValueTask<T> QueryMultipleAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken = default)
+	{
+		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryMultipleAsync(commandBatch, map, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryMultipleAsync(commandBatch, map, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<T> DoQueryMultipleAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken)
+	{
+		var reader = await CreateResultSetReaderAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		await using var readerScope = reader.ConfigureAwait(false);
+		var result = await map(reader).ConfigureAwait(false);
+		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 
 	internal List<T> ReadResultSet<T>(Func<DbConnectorRecord, T>? map)
@@ -1377,8 +1629,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			else
 				DisposeCommandOrBatchCore();
 
+			if (m_activeCommandOrBatchInAutoTransaction)
+				DisposeTransaction();
+
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
+			m_activeCommandOrBatchInAutoTransaction = false;
 		}
 	}
 
@@ -1393,8 +1649,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			else
 				await DisposeCommandOrBatchCoreAsync().ConfigureAwait(false);
 
+			if (m_activeCommandOrBatchInAutoTransaction)
+				await DisposeTransactionAsync().ConfigureAwait(false);
+
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
+			m_activeCommandOrBatchInAutoTransaction = false;
 		}
 	}
 
@@ -1426,6 +1686,10 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		}
 	}
 
+	internal bool IsRetrying { get; set; }
+
+	internal DbRetryPolicy RetryPolicyOrThrow => Settings.RetryPolicy ?? throw new InvalidOperationException("Set 'RetryPolicy' setting to use 'Retry'.");
+
 	private void CancelNoThrow()
 	{
 		try
@@ -1444,7 +1708,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private void DoOpenConnection()
 	{
-		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+		if (Settings.RetryPolicy is { } retryPolicy)
 			retryPolicy.Execute(this, OpenConnectionCore);
 		else
 			OpenConnectionCore();
@@ -1452,7 +1716,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	private ValueTask DoOpenConnectionAsync(CancellationToken cancellationToken)
 	{
-		if (Settings.OpenConnectionRetryPolicy is { } retryPolicy)
+		if (Settings.RetryPolicy is { } retryPolicy)
 			return retryPolicy.ExecuteAsync(this, OpenConnectionCoreAsync, cancellationToken);
 
 		return OpenConnectionCoreAsync(cancellationToken);
@@ -1461,6 +1725,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private DbActiveCommandDisposer CreateCommand(DbConnectorCommandBatch commandBatch)
 	{
 		OpenConnection();
+
+		if (commandBatch.InTransactionSettings is { } transactionSettings)
+		{
+			BeginTransaction(transactionSettings);
+			m_activeCommandOrBatchInAutoTransaction = true;
+		}
 
 		try
 		{
@@ -1480,6 +1750,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	{
 		await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
+		if (commandBatch.InTransactionSettings is { } transactionSettings)
+		{
+			await BeginTransactionAsync(transactionSettings, cancellationToken).ConfigureAwait(false);
+			m_activeCommandOrBatchInAutoTransaction = true;
+		}
+
 		try
 		{
 			DoCreateCommand(commandBatch);
@@ -1493,6 +1769,15 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			throw;
 		}
 	}
+
+	private void CommitAutoTransaction(DbConnectorCommandBatch commandBatch)
+	{
+		if (commandBatch.InTransactionSettings is not null)
+			CommitTransaction();
+	}
+
+	private ValueTask CommitAutoTransactionAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken) =>
+		commandBatch.InTransactionSettings is not null ? CommitTransactionAsync(cancellationToken) : default;
 
 	private bool ShouldPrepare(DbConnectorCommandBatch commandBatch) => commandBatch.IsPrepared ?? Settings.PrepareCommands;
 
@@ -1696,6 +1981,22 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		}
 	}
 
+	private DbResultSetReader CreateResultSetReader(DbConnectorCommandBatch commandBatch)
+	{
+		m_hasReadFirstResultSet = false;
+		CreateCommand(commandBatch);
+		m_activeReader = ExecuteReaderCore();
+		return new DbResultSetReader(this);
+	}
+
+	private async ValueTask<DbResultSetReader> CreateResultSetReaderAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
+	{
+		m_hasReadFirstResultSet = false;
+		await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
+		return new DbResultSetReader(this);
+	}
+
 	private static InvalidOperationException CreateNoRecordsException() => new("No records were found; use 'OrDefault' to permit this.");
 
 	private static InvalidOperationException CreateTooManyRecordsException() => new("Additional records were found; use 'First' to permit this.");
@@ -1761,4 +2062,5 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private bool m_isDisposed;
 	private bool m_noDisposeTransaction;
 	private bool m_hasReadFirstResultSet;
+	private bool m_activeCommandOrBatchInAutoTransaction;
 }

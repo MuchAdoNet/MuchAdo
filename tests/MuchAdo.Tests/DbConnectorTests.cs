@@ -169,6 +169,32 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void CommandInTransactionTests()
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute().Should().Be(0);
+		connector.Command("insert into Items (Name) values ('item1');").InTransaction().Execute().Should().Be(1);
+		connector.Command("insert into Items (Name) values ('item2'); select last_insert_rowid();").InTransaction().QuerySingle<int>().Should().BeGreaterThan(0);
+		connector.Command("insert into Items (Name) values ('item3'); select last_insert_rowid(); insert into Items (Name) values ('item4'); select last_insert_rowid();").InTransaction().Query<int>().Should().HaveCount(2);
+		connector.Command("insert into Items (Name) values ('item5'); select last_insert_rowid(); insert into Items (Name) values ('item6'); select last_insert_rowid();").InTransaction().QueryMultiple(x => x.ReadSingle<int>() + x.ReadSingle<int>()).Should().BeGreaterThan(0);
+		Invoking(() => connector.Command("insert into Items (Name) values ('item3'); select last_insert_rowid();").InTransaction().Enumerate<int>().Single()).Should().Throw<InvalidOperationException>();
+		connector.Command("select Name from Items order by ItemId;").Query<string>().Should().HaveCount(6);
+	}
+
+	[Test]
+	public async Task CommandInTransactionAsyncTests()
+	{
+		await using var connector = CreateConnector();
+		(await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync()).Should().Be(0);
+		(await connector.Command("insert into Items (Name) values ('item1');").InTransaction().ExecuteAsync()).Should().Be(1);
+		(await connector.Command("insert into Items (Name) values ('item2'); select last_insert_rowid();").InTransaction().QuerySingleAsync<int>()).Should().BeGreaterThan(0);
+		(await connector.Command("insert into Items (Name) values ('item3'); select last_insert_rowid(); insert into Items (Name) values ('item4'); select last_insert_rowid();").InTransaction().QueryAsync<int>()).Should().HaveCount(2);
+		(await connector.Command("insert into Items (Name) values ('item5'); select last_insert_rowid(); insert into Items (Name) values ('item6'); select last_insert_rowid();").InTransaction().QueryMultipleAsync(async x => await x.ReadSingleAsync<int>() + await x.ReadSingleAsync<int>())).Should().BeGreaterThan(0);
+		await Awaiting(async () => await ToListAsync(connector.Command("insert into Items (Name) values ('item3'); select last_insert_rowid();").InTransaction().EnumerateAsync<int>())).Should().ThrowAsync<InvalidOperationException>();
+		(await connector.Command("select Name from Items order by ItemId;").QueryAsync<string>()).Should().HaveCount(6);
+	}
+
+	[Test]
 	public void ParametersTests()
 	{
 		using var connector = CreateConnector();
@@ -320,6 +346,75 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void ExecuteInTransactionTests([Values] bool? commit)
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
+
+		connector.ExecuteInTransaction(() =>
+		{
+			connector.Command("insert into Items (Name) values ('item1');").Execute();
+			if (commit == true)
+				connector.CommitTransaction();
+			else if (commit == false)
+				connector.RollbackTransaction();
+		});
+
+		connector.ExecuteInTransaction(IsolationLevel.RepeatableRead, () =>
+		{
+			connector.Command("insert into Items (Name) values ('item1');").Execute();
+			if (commit == true)
+				connector.CommitTransaction();
+			else if (commit == false)
+				connector.RollbackTransaction();
+		});
+
+		connector.ExecuteInTransaction(() => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
+
+		connector.ExecuteInTransaction(IsolationLevel.RepeatableRead, () => connector.Command("select count(*) from Items;").QueryFirst<long>())
+			.Should().Be(commit != false ? 2 : 0);
+	}
+
+	[Test]
+	public async Task ExecuteInTransactionAsyncTests([Values] bool? commit)
+	{
+		await using var connector = CreateConnector();
+		await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync();
+
+		await connector.ExecuteInTransactionAsync(async () =>
+		{
+			await connector.Command("insert into Items (Name) values ('item1');").ExecuteAsync();
+			if (commit == true)
+				await connector.CommitTransactionAsync();
+			else if (commit == false)
+				await connector.RollbackTransactionAsync();
+		});
+
+		await connector.ExecuteInTransactionAsync(IsolationLevel.RepeatableRead, async () =>
+		{
+			await connector.Command("insert into Items (Name) values ('item1');").ExecuteAsync();
+			if (commit == true)
+				await connector.CommitTransactionAsync();
+			else if (commit == false)
+				await connector.RollbackTransactionAsync();
+		});
+
+		await connector.ExecuteInTransactionAsync(async () =>
+		{
+			(await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()).Should().Be(commit != false ? 2 : 0);
+		});
+
+		var count = await connector.ExecuteInTransactionAsync(
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
+
+		count = await connector.ExecuteInTransactionAsync(IsolationLevel.RepeatableRead,
+			async () => (await connector.Command("select count(*) from Items;").QueryFirstAsync<long>()));
+		count.Should().Be(commit != false ? 2 : 0);
+	}
+
+	[Test]
 	public void CachedWithTransaction()
 	{
 		using var connector = CreateConnector();
@@ -399,6 +494,17 @@ internal sealed class DbConnectorTests
 			id1.Should().Be(id3);
 			Invoking(() => reader.ReadFirst(x => 0)).Should().Throw<InvalidOperationException>();
 		}
+
+		var tuple = connector.Command(sql).QueryMultiple(reader =>
+		{
+			var id1 = reader.ReadFirst<long>();
+			var id2 = reader.ReadSingle(x => x.Get<long>());
+			var id3 = reader.ReadSingle(x => x.Get<long>());
+			Invoking(() => reader.ReadFirst(x => 0)).Should().Throw<InvalidOperationException>();
+			return (id1, id2, id3);
+		});
+		tuple.id1.Should().BeLessThan(tuple.id2);
+		tuple.id1.Should().Be(tuple.id3);
 	}
 
 	[Test]
@@ -443,6 +549,17 @@ internal sealed class DbConnectorTests
 			id1.Should().Be(id3);
 			await Awaiting(async () => await reader.ReadFirstAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
 		}
+
+		var tuple = await connector.Command(sql).QueryMultipleAsync(async reader =>
+		{
+			var id1 = await reader.ReadFirstAsync<long>();
+			var id2 = await reader.ReadSingleAsync(x => x.Get<long>());
+			var id3 = await reader.ReadSingleAsync(x => x.Get<long>());
+			await Awaiting(async () => await reader.ReadFirstAsync(x => 0)).Should().ThrowAsync<InvalidOperationException>();
+			return (id1, id2, id3);
+		});
+		tuple.id1.Should().BeLessThan(tuple.id2);
+		tuple.id1.Should().Be(tuple.id3);
 	}
 
 	[Test]
