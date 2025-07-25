@@ -550,20 +550,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// Executes the action with the retry policy.
 	/// </summary>
 	public void Retry(Action action) =>
-		(Settings.RetryPolicy ?? throw NoRetryPolicyException()).Execute(this, action);
+		RetryPolicyOrThrow.Execute(this, action);
 
 	/// <summary>
 	/// Executes the action with the retry policy.
 	/// </summary>
-	public T Retry<T>(Func<T> action)
-	{
-		T result = default!;
-		Retry(() =>
-		{
-			result = action();
-		});
-		return result;
-	}
+	public T Retry<T>(Func<T> action) =>
+		RetryPolicyOrThrow.Execute(this, action);
 
 	/// <summary>
 	/// Executes the action with the retry policy.
@@ -574,15 +567,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <summary>
 	/// Executes the action with the retry policy.
 	/// </summary>
-	public async ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default)
-	{
-		T result = default!;
-		await RetryAsync(async () =>
-		{
-			result = await action().ConfigureAwait(false);
-		}, cancellationToken).ConfigureAwait(false);
-		return result;
-	}
+	public ValueTask<T> RetryAsync<T>(Func<ValueTask<T>> action, CancellationToken cancellationToken = default) =>
+		RetryPolicyOrThrow.ExecuteAsync(this, _ => action(), cancellationToken);
 
 	/// <summary>
 	/// Cancels the active command or batch.
@@ -1274,6 +1260,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal int ExecuteCommand(DbConnectorCommandBatch commandBatch)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoExecuteCommand(commandBatch));
+		return DoExecuteCommand(commandBatch);
+	}
+
+	private int DoExecuteCommand(DbConnectorCommandBatch commandBatch)
+	{
 		using var commandScope = CreateCommand(commandBatch);
 		var result = ExecuteNonQueryCore();
 		CommitAutoTransaction(commandBatch);
@@ -1283,6 +1276,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal async ValueTask<int> ExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoExecuteCommandAsync(commandBatch, ct), cancellationToken).ConfigureAwait(false);
+		return await DoExecuteCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<int> DoExecuteCommandAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		var result = await ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);
 		await CommitAutoTransactionAsync(commandBatch, cancellationToken).ConfigureAwait(false);
@@ -1292,6 +1292,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal IReadOnlyList<T> Query<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQuery(commandBatch, map));
+		return DoQuery(commandBatch, map);
+	}
+
+	private List<T> DoQuery<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
+	{
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
 		using var readerScope = new DbActiveReaderDisposer(this);
@@ -1314,6 +1321,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal async ValueTask<IReadOnlyList<T>> QueryAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryAsync(commandBatch, map, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryAsync(commandBatch, map, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<IReadOnlyList<T>> DoQueryAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
 		await using var readerScope = new DbActiveReaderDisposer(this).ConfigureAwait(false);
@@ -1336,6 +1350,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal T QueryFirst<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQueryFirst(commandBatch, map, single, orDefault));
+		return DoQueryFirst(commandBatch, map, single, orDefault);
+	}
+
+	private T DoQueryFirst<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault)
+	{
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = single ? ExecuteReaderCore() : ExecuteReaderCore(CommandBehavior.SingleRow);
 		using var readerScope = new DbActiveReaderDisposer(this);
@@ -1363,6 +1384,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal async ValueTask<T> QueryFirstAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryFirstAsync(commandBatch, map, single, orDefault, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryFirstAsync(commandBatch, map, single, orDefault, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<T> DoQueryFirstAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, bool single, bool orDefault, CancellationToken cancellationToken)
+	{
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = single ? await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false) : await ExecuteReaderCoreAsync(CommandBehavior.SingleRow, cancellationToken).ConfigureAwait(false);
 		await using var readerScope = new DbActiveReaderDisposer(this).ConfigureAwait(false);
@@ -1389,8 +1417,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal IEnumerable<T> Enumerate<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map)
 	{
-		if (commandBatch.InTransactionSettings is not null)
-			throw new InvalidOperationException("Enumerate cannot be used with InTransaction. Call BeginTransaction and CommitTransaction explicitly, or use Query instead.");
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("Enumerate cannot be used with InTransaction or Retry. Call BeginTransaction and CommitTransaction explicitly, or use Query instead.");
 
 		OnExecuting(commandBatch);
 		using var commandScope = CreateCommand(commandBatch);
@@ -1410,8 +1438,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal async IAsyncEnumerable<T> EnumerateAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbConnectorRecord, T>? map, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
-		if (commandBatch.InTransactionSettings is not null)
-			throw new InvalidOperationException("EnumerateAsync cannot be used with InTransaction. Call BeginTransactionAsync and CommitTransactionAsync explicitly, or use QueryAsync instead.");
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("EnumerateAsync cannot be used with InTransaction or Retry. Call BeginTransactionAsync and CommitTransactionAsync explicitly, or use QueryAsync instead.");
 
 		OnExecuting(commandBatch);
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
@@ -1431,8 +1459,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal DbResultSetReader QueryMultiple(DbConnectorCommandBatch commandBatch)
 	{
-		if (commandBatch.InTransactionSettings is not null)
-			throw new InvalidOperationException("QueryMultiple with no map argument cannot be used with InTransaction. Use QueryMultiple with a map argument, or call BeginTransaction and CommitTransaction explicitly.");
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("QueryMultiple with no map argument cannot be used with InTransaction or Retry. Use QueryMultiple with a map argument, or call BeginTransaction and CommitTransaction explicitly.");
 
 		OnExecuting(commandBatch);
 		return CreateResultSetReader(commandBatch);
@@ -1441,6 +1469,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal T QueryMultiple<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, T> map)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return retryPolicy.Execute(this, () => DoQueryMultiple(commandBatch, map));
+		return DoQueryMultiple(commandBatch, map);
+	}
+
+	private T DoQueryMultiple<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, T> map)
+	{
 		using var reader = CreateResultSetReader(commandBatch);
 		var result = map(reader);
 		CommitAutoTransaction(commandBatch);
@@ -1449,8 +1484,8 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal ValueTask<DbResultSetReader> QueryMultipleAsync(DbConnectorCommandBatch commandBatch, CancellationToken cancellationToken = default)
 	{
-		if (commandBatch.InTransactionSettings is not null)
-			throw new InvalidOperationException("QueryMultipleAsync with no map argument cannot be used with InTransaction. Use QueryMultipleAsync with a map argument, or call BeginTransactionAsync and CommitTransactionAsync explicitly.");
+		if (commandBatch.InTransactionSettings is not null || commandBatch.RetryPolicy is not null)
+			throw new InvalidOperationException("QueryMultipleAsync with no map argument cannot be used with InTransaction or Retry. Use QueryMultipleAsync with a map argument, or call BeginTransactionAsync and CommitTransactionAsync explicitly.");
 
 		OnExecuting(commandBatch);
 		return CreateResultSetReaderAsync(commandBatch, cancellationToken);
@@ -1459,6 +1494,13 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal async ValueTask<T> QueryMultipleAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken = default)
 	{
 		OnExecuting(commandBatch);
+		if (commandBatch.RetryPolicy is { } retryPolicy)
+			return await retryPolicy.ExecuteAsync(this, ct => DoQueryMultipleAsync(commandBatch, map, ct), cancellationToken).ConfigureAwait(false);
+		return await DoQueryMultipleAsync(commandBatch, map, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async ValueTask<T> DoQueryMultipleAsync<T>(DbConnectorCommandBatch commandBatch, Func<DbResultSetReader, ValueTask<T>> map, CancellationToken cancellationToken)
+	{
 		var reader = await CreateResultSetReaderAsync(commandBatch, cancellationToken).ConfigureAwait(false);
 		await using var readerScope = reader.ConfigureAwait(false);
 		var result = await map(reader).ConfigureAwait(false);
@@ -1646,7 +1688,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 	internal bool IsRetrying { get; set; }
 
-	private DbRetryPolicy RetryPolicyOrThrow => Settings.RetryPolicy ?? throw NoRetryPolicyException();
+	internal DbRetryPolicy RetryPolicyOrThrow => Settings.RetryPolicy ?? throw new InvalidOperationException("Set 'RetryPolicy' setting to use 'Retry'.");
 
 	private void CancelNoThrow()
 	{
@@ -1958,8 +2000,6 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private static InvalidOperationException CreateNoRecordsException() => new("No records were found; use 'OrDefault' to permit this.");
 
 	private static InvalidOperationException CreateTooManyRecordsException() => new("Additional records were found; use 'First' to permit this.");
-
-	private static InvalidOperationException NoRetryPolicyException() => new("Set 'RetryPolicy' setting to use 'Retry'.");
 
 	private sealed class ParamTarget(DbConnector connector) : ISqlParamTarget
 	{

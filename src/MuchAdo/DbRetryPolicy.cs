@@ -35,6 +35,16 @@ public abstract class DbRetryPolicy
 		}
 	}
 
+	internal T Execute<T>(DbConnector connector, Func<T> action)
+	{
+		T result = default!;
+		Execute(connector, () =>
+		{
+			result = action();
+		});
+		return result;
+	}
+
 	internal async ValueTask ExecuteAsync(DbConnector connector, Func<CancellationToken, ValueTask> action, CancellationToken cancellationToken = default)
 	{
 		if (connector.IsRetrying)
@@ -53,5 +63,15 @@ public abstract class DbRetryPolicy
 				connector.IsRetrying = false;
 			}
 		}
+	}
+
+	internal async ValueTask<T> ExecuteAsync<T>(DbConnector connector, Func<CancellationToken, ValueTask<T>> action, CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await ExecuteAsync(connector, async ct =>
+		{
+			result = await action(ct).ConfigureAwait(false);
+		}, cancellationToken).ConfigureAwait(false);
+		return result;
 	}
 }

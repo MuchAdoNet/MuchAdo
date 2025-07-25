@@ -278,6 +278,25 @@ public sealed class DbConnectorCommandBatch
 	}
 
 	/// <summary>
+	/// Specifies that the query will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch Retry()
+	{
+		RetryPolicy = Connector.RetryPolicyOrThrow;
+		return this;
+	}
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction, which will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch RetryInTransaction() => Retry().InTransaction();
+
+	/// <summary>
+	/// Specifies that the query will be executed within an automatic transaction, which will be retried with the default retry policy.
+	/// </summary>
+	public DbConnectorCommandBatch RetryInTransaction(DbTransactionSettings settings) => Retry().InTransaction(settings);
+
+	/// <summary>
 	/// Sets the timeout.
 	/// </summary>
 	/// <remarks>Use <see cref="System.Threading.Timeout.InfiniteTimeSpan" /> (not <see cref="TimeSpan.Zero" />) for infinite timeout.</remarks>
@@ -444,6 +463,8 @@ public sealed class DbConnectorCommandBatch
 	}
 
 	internal DbTransactionSettings? InTransactionSettings { get; private set; }
+
+	internal DbRetryPolicy? RetryPolicy { get; private set; }
 
 	private DbConnectorCommandBatch StartNextCommand(CommandType commandType, object textOrSql, SqlParamSource? paramSource = null)
 	{
