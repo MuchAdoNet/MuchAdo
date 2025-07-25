@@ -1401,7 +1401,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 				return orDefault ? default(T)! : throw CreateNoRecordsException();
 		}
 
-		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
+		var record = new DbConnectorRecord(this, state: null);
 		var value = map is not null ? map(record) : record.Get<T>();
 
 		if (single && await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
