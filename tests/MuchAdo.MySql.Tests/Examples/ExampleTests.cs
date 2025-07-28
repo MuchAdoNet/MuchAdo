@@ -153,6 +153,24 @@ internal sealed class ExampleTests
 
         widgetId.Should().BeGreaterThan(0);
 
+        await connector
+            .CommandFormat($"delete from widgets where id = {widgetId}")
+            .ExecuteAsync();
+
+        widgetId = await connector.ExecuteInTransactionAsync(async () =>
+        {
+            var existingWidgetId = await connector
+                .CommandFormat($"select id from widgets where name = {name}")
+                .QuerySingleOrDefaultAsync<long?>();
+            return existingWidgetId ?? await connector
+                .CommandFormat(
+                    $"insert into widgets (name, height) values ({name}, {height})")
+                .Command("select last_insert_id()")
+                .QuerySingleAsync<long>();
+        });
+
+        widgetId.Should().BeGreaterThan(0);
+
         var shortWidgetNames = new List<string>();
         var longWidgetIds = new List<long>();
 
@@ -167,6 +185,16 @@ internal sealed class ExampleTests
 
         shortWidgetNames.Should().HaveCount(3);
         longWidgetIds.Should().HaveCount(2);
+
+        var (moreWidgetNames, moreWidgetIds) = await connector
+            .Command("select name from widgets where height < 5")
+            .Command("select id from widgets where height >= 5")
+            .QueryMultipleAsync(async reader =>
+                (ShortWidgetNames: await reader.ReadAsync<string>(),
+                    LongWidgetIds: await reader.ReadAsync<long>()));
+
+        moreWidgetNames.Should().HaveCount(3);
+        moreWidgetIds.Should().HaveCount(2);
 
         await connector
             .Command("""
@@ -384,6 +412,25 @@ internal sealed class ExampleTests
             .QueryAsync<long>();
 
         widgetIds.Should().HaveCount(3);
+
+        var widgetsToCreate = new List<Widget>
+        {
+            new Widget(0, "Eleventh", 11.0),
+            new Widget(0, "Twelfth", 12.0),
+        };
+
+        var batch = connector.CreateCommandBatch();
+        foreach (var widget in widgetsToCreate)
+        {
+            batch.CommandFormat($"""
+                insert into widgets (name, height)
+                    values ({widget.Name}, {widget.Height})
+                """);
+            batch.Command("select last_insert_id()");
+        }
+        var newWidgetIds = await batch.QueryAsync<long>();
+
+        newWidgetIds.Should().HaveCount(2);
     }
 
     private async Task<long?> GetNextWidgetId(DbConnector connector, long id, bool reverse)

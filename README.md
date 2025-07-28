@@ -25,10 +25,11 @@ To use MuchAdo, add a reference to the [NuGet package](https://muchado.net/datab
 * open and close [database connections](https://muchado.net/connections) automatically
 * use a fluent API to [execute commands](https://muchado.net/commands) and read data
 * read multiple result sets from [command batches](https://muchado.net/command-batches)
-* track the [current transaction](https://muchado.net/transactions) for correct command execution
+* leverage [transactions](https://muchado.net/transactions) simply and correctly
 * [map data records](https://muchado.net/data-mapping) into simple types, tuples, and DTOs
 * use [formatted SQL](https://muchado.net/formatted-sql) to build SQL statements
-* use [parameters](https://muchado.net/parameters) with commands and stored procedures
+* specify [parameters](https://muchado.net/parameters) for commands and stored procedures
+* support [resilience](https://muchado.net/resilience) by retrying transient failures
 * [improve performance](https://muchado.net/optimizations) by preparing, caching, and pooling
 * provide [analyzers](https://muchado.net/analyzers) to help ensure proper use of the library
 
