@@ -88,10 +88,9 @@ internal sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
 			return (DbTypeMapper<T>) (object) new TextReaderMapper(dataMapper);
 
 		if (Nullable.GetUnderlyingType(typeof(T)) is { } nonNullType)
-			return (DbTypeMapper<T>) (Activator.CreateInstance(typeof(NullableValueMapper<>).MakeGenericType(nonNullType), dataMapper, dataMapper.GetTypeMapper(nonNullType))!);
+			return (DbTypeMapper<T>) Activator.CreateInstance(typeof(NullableValueMapper<>).MakeGenericType(nonNullType), dataMapper.GetTypeMapper(nonNullType))!;
 
-		var typeName = typeof(T).FullName ?? "";
-		if (typeName.StartsWith("System.ValueTuple`", StringComparison.Ordinal))
+		if (IsValueTupleType(typeof(T)))
 		{
 			var tupleTypes = typeof(T).GetGenericArguments();
 			var tupleMapperType = tupleTypes.Length switch
@@ -106,6 +105,22 @@ internal sealed class DefaultDbTypeMapperFactory : DbTypeMapperFactory
 				_ => typeof(ValueTupleMapperRest<,,,,,,,>),
 			};
 			return (DbTypeMapper<T>) Activator.CreateInstance(tupleMapperType.MakeGenericType(tupleTypes), [dataMapper, .. tupleTypes.Select(dataMapper.GetTypeMapper)])!;
+		}
+
+		static bool IsValueTupleType(Type type)
+		{
+			if (!type.IsGenericType)
+				return false;
+
+			var genericType = type.GetGenericTypeDefinition();
+			return genericType == typeof(ValueTuple<>) ||
+				genericType == typeof(ValueTuple<,>) ||
+				genericType == typeof(ValueTuple<,,>) ||
+				genericType == typeof(ValueTuple<,,,>) ||
+				genericType == typeof(ValueTuple<,,,,>) ||
+				genericType == typeof(ValueTuple<,,,,,>) ||
+				genericType == typeof(ValueTuple<,,,,,,>) ||
+				genericType == typeof(ValueTuple<,,,,,,,>);
 		}
 
 		return null;
