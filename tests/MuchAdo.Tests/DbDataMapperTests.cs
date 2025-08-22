@@ -261,6 +261,59 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
+	public void NullableTuples()
+	{
+		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		const int fieldCount = 3;
+		var columns = string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => $"Item{x}"));
+#pragma warning disable MUCH0001
+		connector
+			.Command($"""
+				create table Tuples ({columns});
+				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => x))});
+				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(_ => "null"))});
+				""")
+			.Execute();
+#pragma warning restore MUCH0001
+
+		var index = 0;
+		connector
+			.Command("select * from Tuples;")
+			.Query(
+				record =>
+				{
+					if (index++ == 0)
+					{
+						record.Get<(int, int, int)>().Should().Be((1, 2, 3));
+						record.Get<(int, int, int)?>().Should().Be((1, 2, 3));
+					}
+					else
+					{
+						record.Get<(int?, int?, int?)>().Should().Be((null, null, null));
+						record.Get<(int?, int?, int?)?>().Should().Be(null);
+					}
+					return 1;
+				})
+			.Sum().Should().Be(2);
+	}
+
+	[Test]
+	public void ReadonlyStructs()
+	{
+		var item = new NameValue("one", "two");
+
+		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.Command("create table Items (ItemId integer primary key, Name text not null, Value text not null)").Execute();
+		connector.CommandFormat($"insert into Items (Name, Value) values ({item.Name}, {item.Value})").Execute();
+
+		connector.CommandFormat($"select Name, Value from Items where Name = {item.Name}").QueryFirstOrDefault<NameValue>().Should().Be(item);
+		connector.CommandFormat($"select Name, Value from Items where Name = {item.Value}").QueryFirstOrDefault<NameValue>().Should().Be(default(NameValue));
+
+		connector.CommandFormat($"select Name, Value from Items where Name = {item.Name}").QueryFirstOrDefault<NameValue?>().Should().Be(item);
+		connector.CommandFormat($"select Name, Value from Items where Name = {item.Value}").QueryFirstOrDefault<NameValue?>().Should().Be(null);
+	}
+
+	[Test]
 	public void DtoTests()
 	{
 		using var connector = GetConnectorWithItems();
@@ -688,6 +741,13 @@ internal sealed class DbDataMapperTests
 	private enum Answer
 	{
 		FortyTwo = 42,
+	}
+
+	private readonly struct NameValue
+	{
+		public NameValue(string name, string value) => (Name, Value) = (name, value);
+		public string Name { get; init; }
+		public string Value { get; init; }
 	}
 
 	private static readonly ItemDto s_dto = new("hey")

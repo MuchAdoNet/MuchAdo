@@ -2,9 +2,11 @@ using System.Data;
 
 namespace MuchAdo.Mappers;
 
-internal sealed class NullableValueMapper<T>(DbDataMapper dataMapper, SingleFieldValueMapper<T> mapper) : SingleFieldMapper<T?>(dataMapper)
+internal sealed class NullableValueMapper<T>(DbTypeMapper<T> mapper) : DbTypeMapper<T?>
 	where T : struct
 {
-	protected override T? MapField(IDataRecord record, int index, DbConnectorRecordState? state) =>
-		!record.IsDBNull(index) ? mapper.MapNotNullField(record, index, state) : null;
+	public override int? FieldCount => mapper.FieldCount;
+
+	protected override T? MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state) =>
+		!record.IsDBNull(index) ? mapper.Map(record, index, count, state) : null;
 }
