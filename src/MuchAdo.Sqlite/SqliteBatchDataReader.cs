@@ -3,6 +3,23 @@ using Microsoft.Data.Sqlite;
 
 namespace MuchAdo.Sqlite;
 
+/// <summary>
+/// <para>
+/// Wraps multiple <see cref="SqliteCommand"/> executions and exposes them as a single <see cref="IDataReader"/>
+/// with usable <see cref="IDataReader.NextResult"/> semantics.
+/// </para>
+/// <para>
+/// Why this exists: MuchAdo represents a chained <c>CommandFormat</c> sequence as multiple commands. Providers that
+/// support <c>DbBatch</c> can execute those as a true batch; however, Microsoft.Data.Sqlite does not support
+/// <c>DbConnection.CreateBatch()</c>. While Microsoft.Data.Sqlite supports <em>multi-statement</em> command text
+/// batching (where <see cref="SqliteDataReader.NextResult"/> advances to the next statement), that behavior does
+/// not apply when the batch is modeled as multiple separate <see cref="SqliteCommand"/> instances.
+/// </para>
+/// <para>
+/// This type bridges that gap by switching the inner <see cref="SqliteDataReader"/> to the next command when the
+/// current reader has no more result sets.
+/// </para>
+/// </summary>
 internal sealed class SqliteBatchDataReader : IDataReader
 {
 	public SqliteBatchDataReader(SqliteBatch batch, CommandBehavior behavior)
@@ -13,7 +30,6 @@ internal sealed class SqliteBatchDataReader : IDataReader
 		if (batch.Commands.Count == 0)
 			throw new InvalidOperationException("The batch is empty.");
 
-		m_commandIndex = 0;
 		m_inner = batch.Commands[0].ExecuteReader(behavior);
 	}
 
@@ -84,7 +100,7 @@ internal sealed class SqliteBatchDataReader : IDataReader
 		if (m_isDisposed)
 			throw new ObjectDisposedException(nameof(SqliteBatchDataReader));
 
-		return m_inner!.Read();
+		return Inner.Read();
 	}
 
 	private SqliteDataReader Inner => m_inner ?? throw new ObjectDisposedException(nameof(SqliteBatchDataReader));

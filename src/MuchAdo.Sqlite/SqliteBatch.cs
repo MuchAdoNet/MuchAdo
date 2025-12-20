@@ -3,6 +3,9 @@ using Microsoft.Data.Sqlite;
 
 namespace MuchAdo.Sqlite;
 
+/// <summary>
+/// Emulates a multi-command batch for Microsoft.Data.Sqlite, which doesn't support <c>DbBatch</c>/<c>CreateBatch</c>.
+/// </summary>
 internal sealed class SqliteBatch
 {
 	public SqliteBatch(SqliteConnection connection) => Connection = connection;

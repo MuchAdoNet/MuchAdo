@@ -125,7 +125,10 @@ public class SqliteDbConnector : DbConnector
 	protected override IDataReader ExecuteReaderCore()
 	{
 		if (ActiveCommandOrBatch is SqliteBatch batch)
+		{
+			// Sqlite doesn't support DbBatch/CreateBatch; SqliteBatchDataReader emulates NextResult() across commands.
 			return new SqliteBatchDataReader(batch, CommandBehavior.Default);
+		}
 
 		return base.ExecuteReaderCore();
 	}
