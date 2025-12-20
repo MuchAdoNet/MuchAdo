@@ -69,6 +69,27 @@ internal sealed class SqliteTests
 			.Query<NameValue>().Should().Equal(items);
 	}
 
+	[Test]
+	public void ChainedCommandFormatBatch()
+	{
+		var tableName = Sql.Name(nameof(ChainedCommandFormatBatch));
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+
+		var affected = connector
+			.CommandFormat($"drop table if exists {tableName};")
+			.CommandFormat($"create table {tableName} (Id integer primary key, Name text not null);")
+			.CommandFormat($"insert into {tableName} (Name) values ({"one"});")
+			.Execute();
+
+		affected.Should().Be(1);
+
+		var newId = connector
+			.CommandFormat($"insert into {tableName} (Name) values ({"two"});")
+			.Command("select last_insert_rowid();")
+			.QuerySingle<long>();
+		newId.Should().BeGreaterThan(0);
+	}
+
 	private static DbConnector CreateConnector() =>
 		new(new SqliteConnection("Data Source=:memory:"), new DbConnectorSettings { SqlSyntax = SqlSyntax.Sqlite });
 

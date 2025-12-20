@@ -1,0 +1,97 @@
+using System.Data;
+using Microsoft.Data.Sqlite;
+
+namespace MuchAdo.Sqlite;
+
+internal sealed class SqliteBatchDataReader : IDataReader
+{
+	public SqliteBatchDataReader(SqliteBatch batch, CommandBehavior behavior)
+	{
+		m_batch = batch;
+		m_behavior = behavior;
+
+		if (batch.Commands.Count == 0)
+			throw new InvalidOperationException("The batch is empty.");
+
+		m_commandIndex = 0;
+		m_inner = batch.Commands[0].ExecuteReader(behavior);
+	}
+
+	public void Dispose()
+	{
+		if (m_isDisposed)
+			return;
+
+		m_isDisposed = true;
+		m_inner?.Dispose();
+		m_inner = null;
+	}
+
+	public string GetName(int i) => Inner.GetName(i);
+	public string GetDataTypeName(int i) => Inner.GetDataTypeName(i);
+	public Type GetFieldType(int i) => Inner.GetFieldType(i);
+	public object GetValue(int i) => Inner.GetValue(i);
+	public int GetValues(object[] values) => Inner.GetValues(values);
+	public int GetOrdinal(string name) => Inner.GetOrdinal(name);
+	public bool GetBoolean(int i) => Inner.GetBoolean(i);
+	public byte GetByte(int i) => Inner.GetByte(i);
+	public long GetBytes(int i, long fieldOffset, byte[]? buffer, int bufferoffset, int length) => Inner.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
+	public char GetChar(int i) => Inner.GetChar(i);
+	public long GetChars(int i, long fieldoffset, char[]? buffer, int bufferoffset, int length) => Inner.GetChars(i, fieldoffset, buffer, bufferoffset, length);
+	public Guid GetGuid(int i) => Inner.GetGuid(i);
+	public short GetInt16(int i) => Inner.GetInt16(i);
+	public int GetInt32(int i) => Inner.GetInt32(i);
+	public long GetInt64(int i) => Inner.GetInt64(i);
+	public float GetFloat(int i) => Inner.GetFloat(i);
+	public double GetDouble(int i) => Inner.GetDouble(i);
+	public string GetString(int i) => Inner.GetString(i);
+	public decimal GetDecimal(int i) => Inner.GetDecimal(i);
+	public DateTime GetDateTime(int i) => Inner.GetDateTime(i);
+	public IDataReader GetData(int i) => Inner.GetData(i);
+	public bool IsDBNull(int i) => Inner.IsDBNull(i);
+
+	public object this[int i] => Inner[i];
+	public object this[string name] => Inner[name];
+
+	public int Depth => Inner.Depth;
+	public bool IsClosed => m_isDisposed || Inner.IsClosed;
+	public int RecordsAffected => Inner.RecordsAffected;
+	public int FieldCount => Inner.FieldCount;
+
+	public void Close() => Dispose();
+
+	public DataTable GetSchemaTable() => Inner.GetSchemaTable();
+
+	public bool NextResult()
+	{
+		if (m_isDisposed)
+			throw new ObjectDisposedException(nameof(SqliteBatchDataReader));
+
+		if (m_inner!.NextResult())
+			return true;
+
+		if (m_commandIndex + 1 >= m_batch.Commands.Count)
+			return false;
+
+		m_inner.Dispose();
+		m_commandIndex++;
+		m_inner = m_batch.Commands[m_commandIndex].ExecuteReader(m_behavior);
+		return true;
+	}
+
+	public bool Read()
+	{
+		if (m_isDisposed)
+			throw new ObjectDisposedException(nameof(SqliteBatchDataReader));
+
+		return m_inner!.Read();
+	}
+
+	private SqliteDataReader Inner => m_inner ?? throw new ObjectDisposedException(nameof(SqliteBatchDataReader));
+
+	private readonly SqliteBatch m_batch;
+	private readonly CommandBehavior m_behavior;
+	private int m_commandIndex;
+	private SqliteDataReader? m_inner;
+	private bool m_isDisposed;
+}
