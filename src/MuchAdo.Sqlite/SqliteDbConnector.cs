@@ -53,5 +53,5 @@ public class SqliteDbConnector : DbConnector
 	protected override ValueTask<IDbTransaction> BeginTransactionCoreAsync(DbTransactionSettings settings, CancellationToken cancellationToken) =>
 		new(BeginTransactionCore(settings));
 
-	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new SqliteParameter(name, value);
+	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new SqliteParameter(name, value is null ? DBNull.Value : value);
 }
