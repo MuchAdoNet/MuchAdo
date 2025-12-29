@@ -90,6 +90,28 @@ internal sealed class MySqlTests
 	}
 
 	[Test]
+	public async Task NullParameter()
+	{
+		var tableName = Sql.Name($"{nameof(NullParameter)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id int not null auto_increment primary key, Value int null)")
+			.ExecuteAsync();
+
+		int? value1 = null;
+		await connector.CommandFormat($"""
+			insert into {tableName} (Value)
+			values ({value1})
+			""").ExecuteAsync();
+
+		(await connector.CommandFormat($"select count(*) from {tableName} where Value is null")
+			.QuerySingleAsync<long>())
+			.Should().Be(1);
+	}
+
+	[Test]
 	public async Task UnnamedParameterTest()
 	{
 		var tableName = Sql.Name($"{nameof(UnnamedParameterTest)}_{c_framework}");
