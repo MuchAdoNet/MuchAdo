@@ -61,6 +61,28 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
+	public async Task NullParameter()
+	{
+		var tableName = Sql.Name($"{nameof(NullParameter)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (ItemId serial primary key, Value integer null)")
+			.ExecuteAsync();
+
+		int? value1 = null;
+		await connector.CommandFormat($"""
+			insert into {tableName} (Value)
+			values ({value1})
+			""").ExecuteAsync();
+
+		(await connector.CommandFormat($"select count(*) from {tableName} where Value is null")
+			.QuerySingleAsync<long>())
+			.Should().Be(1);
+	}
+
+	[Test]
 	public async Task RepeatParameter()
 	{
 		var tableName = Sql.Name($"{nameof(RepeatParameter)}_{c_framework}");

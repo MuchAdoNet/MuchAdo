@@ -90,6 +90,23 @@ internal sealed class SqliteTests
 		newId.Should().BeGreaterThan(0);
 	}
 
+	[Test]
+	public void NullParameter()
+	{
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.Command("create table Items (Id integer primary key, Value integer null);").Execute();
+
+		int? value1 = null;
+		connector.CommandFormat($"""
+			insert into Items (Value)
+			values ({value1})
+			""").Execute();
+
+		connector.Command("select count(*) from Items where Value is null;")
+			.QuerySingle<long>()
+			.Should().Be(1);
+	}
+
 	private static DbConnector CreateConnector() =>
 		new(new SqliteConnection("Data Source=:memory:"), new DbConnectorSettings { SqlSyntax = SqlSyntax.Sqlite });
 

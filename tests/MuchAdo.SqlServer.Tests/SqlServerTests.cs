@@ -30,6 +30,26 @@ internal sealed class SqlServerTests
 		SqlParameter CreateStringParameter(string value) => new SqlParameter { Value = value, DbType = DbType.String, Size = 100 };
 	}
 
+	[Test]
+	public async Task NullParameter()
+	{
+		var tableName = Sql.Name($"{nameof(NullParameter)}{c_suffix}");
+
+		await using var connector = CreateConnector();
+		await connector.Command(Sql.Format($"drop table if exists {tableName};")).ExecuteAsync();
+		await connector.Command(Sql.Format($"create table {tableName} (Id int not null identity primary key, Value int null);")).ExecuteAsync();
+
+		int? value1 = null;
+		await connector.CommandFormat($"""
+			insert into {tableName} (Value)
+			values ({value1})
+			""").ExecuteAsync();
+
+		(await connector.CommandFormat($"select count(*) from {tableName} where Value is null")
+			.QuerySingleAsync<int>())
+			.Should().Be(1);
+	}
+
 	private static DbConnector CreateConnector() => new(
 		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"),
 		new DbConnectorSettings { SqlSyntax = SqlSyntax.SqlServer });
