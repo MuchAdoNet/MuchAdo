@@ -30,7 +30,7 @@ internal sealed class SqliteBatchDataReader : IDataReader
 		if (batch.Commands.Count == 0)
 			throw new InvalidOperationException("The batch is empty.");
 
-		m_inner = batch.Commands[0].ExecuteReader(behavior);
+		NextResult();
 	}
 
 	public void Dispose()
@@ -83,16 +83,26 @@ internal sealed class SqliteBatchDataReader : IDataReader
 		if (m_isDisposed)
 			throw new ObjectDisposedException(nameof(SqliteBatchDataReader));
 
-		if (m_inner!.NextResult())
-			return true;
+		while (m_commandIndex < m_batch.Commands.Count)
+		{
+			while (true)
+			{
+				if (m_inner is null)
+					m_inner = m_batch.Commands[m_commandIndex].ExecuteReader(m_behavior);
+				else if (!m_inner.NextResult())
+					break;
 
-		if (m_commandIndex + 1 >= m_batch.Commands.Count)
-			return false;
+				// only read from commands with fields
+				if (m_inner.FieldCount > 0)
+					return true;
+			}
 
-		m_inner.Dispose();
-		m_commandIndex++;
-		m_inner = m_batch.Commands[m_commandIndex].ExecuteReader(m_behavior);
-		return true;
+			m_inner.Dispose();
+			m_inner = null;
+			m_commandIndex++;
+		}
+
+		return false;
 	}
 
 	public bool Read()

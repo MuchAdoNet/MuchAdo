@@ -70,24 +70,49 @@ internal sealed class SqliteTests
 	}
 
 	[Test]
-	public void ChainedCommandFormatBatch()
+	public void BatchDataReader()
 	{
-		var tableName = Sql.Name(nameof(ChainedCommandFormatBatch));
+		var tableName = Sql.Name(nameof(BatchDataReader));
 		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
 
 		var affected = connector
-			.CommandFormat($"drop table if exists {tableName};")
-			.CommandFormat($"create table {tableName} (Id integer primary key, Name text not null);")
-			.CommandFormat($"insert into {tableName} (Name) values ({"one"});")
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id integer primary key, Name text not null)")
+			.CommandFormat($"insert into {tableName} (Name) values ({"one"})")
+			.CommandFormat($"insert into {tableName} (Name) values ({"two"})")
 			.Execute();
-
-		affected.Should().Be(1);
+		affected.Should().Be(2);
 
 		var newId = connector
-			.CommandFormat($"insert into {tableName} (Name) values ({"two"});")
-			.Command("select last_insert_rowid();")
+			.CommandFormat($"insert into {tableName} (Name) values ({"three"})")
+			.Command("select last_insert_rowid()")
 			.QuerySingle<long>();
 		newId.Should().BeGreaterThan(0);
+
+		var reader = connector
+			.CommandFormat($"""
+				select count(*) from {tableName} where Name like 'o%';
+				insert into {tableName} (Name) values ({"four"});
+				select count(*) from {tableName} where Name like 'z%';
+				select count(*) from {tableName} where Name like 't%';
+				""")
+			.QueryMultiple();
+		reader.ReadSingle<int>().Should().Be(1);
+		reader.ReadSingle<int>().Should().Be(0);
+		reader.ReadSingle<int>().Should().Be(2);
+		Invoking(() => reader.Read<object>()).Should().Throw<InvalidOperationException>();
+
+		// ensure behavior of batch matches behavior of delimited commands
+		reader = connector
+			.CommandFormat($"select count(*) from {tableName} where Name like 'o%'")
+			.CommandFormat($"insert into {tableName} (Name) values ({"five"})")
+			.CommandFormat($"select count(*) from {tableName} where Name like 'z%'")
+			.CommandFormat($"select count(*) from {tableName} where Name like 't%'")
+			.QueryMultiple();
+		reader.ReadSingle<int>().Should().Be(1);
+		reader.ReadSingle<int>().Should().Be(0);
+		reader.ReadSingle<int>().Should().Be(2);
+		Invoking(() => reader.Read<object>()).Should().Throw<InvalidOperationException>();
 	}
 
 	[Test]
