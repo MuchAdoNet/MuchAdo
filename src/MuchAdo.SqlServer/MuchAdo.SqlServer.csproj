@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net462;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net462;net8.0;net9.0;net10.0</TargetFrameworks>
     <Description>A fluent, powerful, efficient library for querying with Microsoft.Data.SqlClient.</Description>
     <PackageTags>ado.net sql database orm micro-orm sql-server</PackageTags>
     <IsPackable>true</IsPackable>
