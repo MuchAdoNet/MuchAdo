@@ -12,6 +12,8 @@ internal sealed class SqliteBatch(SqliteConnection connection)
 
 	public List<SqliteCommand> Commands { get; } = [];
 
+	public int? Timeout { get; set; }
+
 	public SqliteCommand AddCommand(CommandType commandType)
 	{
 		var command = Connection.CreateCommand();
@@ -19,12 +21,6 @@ internal sealed class SqliteBatch(SqliteConnection connection)
 			command.CommandType = commandType;
 		Commands.Add(command);
 		return command;
-	}
-
-	public void SetTimeout(int timeout)
-	{
-		foreach (var command in Commands)
-			command.CommandTimeout = timeout;
 	}
 
 	public void SetTransaction(SqliteTransaction? transaction)
