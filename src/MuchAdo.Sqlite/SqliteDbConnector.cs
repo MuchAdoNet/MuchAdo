@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 
 namespace MuchAdo.Sqlite;
@@ -101,16 +100,13 @@ public class SqliteDbConnector : DbConnector
 	{
 		if (ActiveCommandOrBatch is SqliteBatch batch)
 		{
-			var stopwatch = Stopwatch.StartNew();
-			var timeoutRemaining = batch.Timeout;
+			var timeout = new SqliteBatchTimeout(batch.Timeout);
 			var affected = 0;
 			foreach (var command in batch.Commands)
 			{
-				if (timeoutRemaining is not null)
-					command.CommandTimeout = timeoutRemaining.Value;
+				timeout.ApplyTimeout(command);
 				affected += command.ExecuteNonQuery();
-				if (timeoutRemaining > 0)
-					timeoutRemaining = Math.Max(1, timeoutRemaining.Value - (int) (stopwatch.ElapsedMilliseconds / 1000));
+				timeout.UpdateAfterExecution();
 			}
 			return affected;
 		}
@@ -122,16 +118,13 @@ public class SqliteDbConnector : DbConnector
 	{
 		if (ActiveCommandOrBatch is SqliteBatch batch)
 		{
-			var stopwatch = Stopwatch.StartNew();
-			var timeoutRemaining = batch.Timeout;
+			var timeout = new SqliteBatchTimeout(batch.Timeout);
 			var affected = 0;
 			foreach (var command in batch.Commands)
 			{
-				if (timeoutRemaining is not null)
-					command.CommandTimeout = timeoutRemaining.Value;
+				timeout.ApplyTimeout(command);
 				affected += await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-				if (timeoutRemaining > 0)
-					timeoutRemaining = Math.Max(1, timeoutRemaining.Value - (int) (stopwatch.ElapsedMilliseconds / 1000));
+				timeout.UpdateAfterExecution();
 			}
 			return affected;
 		}

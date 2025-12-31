@@ -1,5 +1,4 @@
 using System.Data;
-using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 
 namespace MuchAdo.Sqlite;
@@ -27,10 +26,7 @@ internal sealed class SqliteBatchDataReader : IDataReader
 	{
 		m_batch = batch;
 		m_behavior = behavior;
-		m_timeoutRemaining = batch.Timeout;
-
-		if (m_timeoutRemaining is not null)
-			m_stopwatch = Stopwatch.StartNew();
+		m_timeout = new SqliteBatchTimeout(batch.Timeout);
 
 		if (batch.Commands.Count == 0)
 			throw new InvalidOperationException("The batch is empty.");
@@ -95,11 +91,9 @@ internal sealed class SqliteBatchDataReader : IDataReader
 				if (m_inner is null)
 				{
 					var command = m_batch.Commands[m_commandIndex];
-					if (m_timeoutRemaining is not null)
-						command.CommandTimeout = m_timeoutRemaining.Value;
+					m_timeout.ApplyTimeout(command);
 					m_inner = command.ExecuteReader(m_behavior);
-					if (m_timeoutRemaining > 0)
-						m_timeoutRemaining = Math.Max(1, m_timeoutRemaining.Value - (int) (m_stopwatch!.ElapsedMilliseconds / 1000));
+					m_timeout.UpdateAfterExecution();
 				}
 				else if (!m_inner.NextResult())
 				{
@@ -131,8 +125,7 @@ internal sealed class SqliteBatchDataReader : IDataReader
 
 	private readonly SqliteBatch m_batch;
 	private readonly CommandBehavior m_behavior;
-	private readonly Stopwatch? m_stopwatch;
-	private int? m_timeoutRemaining;
+	private SqliteBatchTimeout m_timeout;
 	private int m_commandIndex;
 	private SqliteDataReader? m_inner;
 	private bool m_isDisposed;
