@@ -100,10 +100,10 @@ public class SqliteDbConnector : DbConnector
 	{
 		if (ActiveCommandOrBatch is SqliteBatch batch)
 		{
-			var total = 0;
-			foreach (var cmd in batch.Commands)
-				total += cmd.ExecuteNonQuery();
-			return total;
+			var affected = 0;
+			foreach (var command in batch.Commands)
+				affected += command.ExecuteNonQuery();
+			return affected;
 		}
 
 		return base.ExecuteNonQueryCore();
@@ -113,10 +113,10 @@ public class SqliteDbConnector : DbConnector
 	{
 		if (ActiveCommandOrBatch is SqliteBatch batch)
 		{
-			var total = 0;
-			foreach (var cmd in batch.Commands)
-				total += await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-			return total;
+			var affected = 0;
+			foreach (var command in batch.Commands)
+				affected += await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+			return affected;
 		}
 
 		return await base.ExecuteNonQueryCoreAsync(cancellationToken).ConfigureAwait(false);

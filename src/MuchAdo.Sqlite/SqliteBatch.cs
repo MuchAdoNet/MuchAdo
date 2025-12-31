@@ -6,39 +6,37 @@ namespace MuchAdo.Sqlite;
 /// <summary>
 /// Emulates a multi-command batch for Microsoft.Data.Sqlite, which doesn't support <c>DbBatch</c>/<c>CreateBatch</c>.
 /// </summary>
-internal sealed class SqliteBatch
+internal sealed class SqliteBatch(SqliteConnection connection)
 {
-	public SqliteBatch(SqliteConnection connection) => Connection = connection;
-
-	public SqliteConnection Connection { get; }
+	public SqliteConnection Connection { get; } = connection;
 
 	public List<SqliteCommand> Commands { get; } = [];
 
 	public SqliteCommand AddCommand(CommandType commandType)
 	{
-		var cmd = Connection.CreateCommand();
+		var command = Connection.CreateCommand();
 		if (commandType != CommandType.Text)
-			cmd.CommandType = commandType;
-		Commands.Add(cmd);
-		return cmd;
+			command.CommandType = commandType;
+		Commands.Add(command);
+		return command;
 	}
 
 	public void SetTimeout(int timeout)
 	{
-		foreach (var cmd in Commands)
-			cmd.CommandTimeout = timeout;
+		foreach (var command in Commands)
+			command.CommandTimeout = timeout;
 	}
 
 	public void SetTransaction(SqliteTransaction? transaction)
 	{
-		foreach (var cmd in Commands)
-			cmd.Transaction = transaction;
+		foreach (var command in Commands)
+			command.Transaction = transaction;
 	}
 
 	public void Prepare()
 	{
-		foreach (var cmd in Commands)
-			cmd.Prepare();
+		foreach (var command in Commands)
+			command.Prepare();
 	}
 
 	public ValueTask PrepareAsync(CancellationToken cancellationToken)
@@ -51,8 +49,8 @@ internal sealed class SqliteBatch
 
 		async ValueTask DoAsync()
 		{
-			foreach (var cmd in Commands)
-				await cmd.PrepareAsync(cancellationToken).ConfigureAwait(false);
+			foreach (var command in Commands)
+				await command.PrepareAsync(cancellationToken).ConfigureAwait(false);
 		}
 #else
 		Prepare();
@@ -62,25 +60,25 @@ internal sealed class SqliteBatch
 
 	public void Cancel()
 	{
-		foreach (var cmd in Commands)
-			cmd.Cancel();
+		foreach (var command in Commands)
+			command.Cancel();
 	}
 
 	public void Dispose()
 	{
-		foreach (var cmd in Commands)
-			cmd.Dispose();
+		foreach (var command in Commands)
+			command.Dispose();
 		Commands.Clear();
 	}
 
 	public async ValueTask DisposeAsync()
 	{
 #if NET
-		foreach (var cmd in Commands)
-			await cmd.DisposeAsync().ConfigureAwait(false);
+		foreach (var command in Commands)
+			await command.DisposeAsync().ConfigureAwait(false);
 #else
-		foreach (var cmd in Commands)
-			cmd.Dispose();
+		foreach (var command in Commands)
+			command.Dispose();
 #endif
 		Commands.Clear();
 	}
