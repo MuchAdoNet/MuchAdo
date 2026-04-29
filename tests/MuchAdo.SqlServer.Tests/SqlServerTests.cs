@@ -50,9 +50,8 @@ internal sealed class SqlServerTests
 			.Should().Be(1);
 	}
 
-	private static DbConnector CreateConnector() => new(
-		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"),
-		new DbConnectorSettings { SqlSyntax = SqlSyntax.SqlServer });
+	private static SqlServerDbConnector CreateConnector() => new(
+		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"));
 
 #if NET
 	private const string c_suffix = "_netc";

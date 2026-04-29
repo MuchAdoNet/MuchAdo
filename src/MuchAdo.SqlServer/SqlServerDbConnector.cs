@@ -42,5 +42,5 @@ public class SqlServerDbConnector : DbConnector
 		static async ValueTask<SqlConnection> DoAsync(ValueTask<IDbConnection> t) => (SqlConnection) await t.ConfigureAwait(false);
 	}
 
-	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new SqlParameter(name, value);
+	protected override IDataParameter CreateParameterCore<T>(string name, T value) => new SqlParameter(name, value is null ? DBNull.Value : value);
 }
