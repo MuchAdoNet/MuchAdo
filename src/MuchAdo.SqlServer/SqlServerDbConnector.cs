@@ -1,5 +1,4 @@
 using System.Data;
-using System.Data.Common;
 using Microsoft.Data.SqlClient;
 
 namespace MuchAdo.SqlServer;
@@ -9,16 +8,14 @@ namespace MuchAdo.SqlServer;
 /// </summary>
 public class SqlServerDbConnector : DbConnector
 {
-	public SqlServerDbConnector(DbConnection connection)
+	public SqlServerDbConnector(SqlConnection connection)
 		: this(connection, SqlServerDbConnectorSettings.Default)
 	{
 	}
 
-	public SqlServerDbConnector(DbConnection connection, SqlServerDbConnectorSettings settings)
+	public SqlServerDbConnector(SqlConnection connection, SqlServerDbConnectorSettings settings)
 		: base(connection, settings)
 	{
-		if (connection is not SqlConnection)
-			throw new ArgumentException("The connection must be a SqlConnection.", nameof(connection));
 	}
 
 	public new SqlConnection Connection => (SqlConnection) base.Connection;

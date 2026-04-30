@@ -1,5 +1,4 @@
 using System.Data;
-using System.Data.Common;
 using MySqlConnector;
 
 namespace MuchAdo.MySql;
@@ -9,16 +8,14 @@ namespace MuchAdo.MySql;
 /// </summary>
 public class MySqlDbConnector : DbConnector
 {
-	public MySqlDbConnector(DbConnection connection)
+	public MySqlDbConnector(MySqlConnection connection)
 		: this(connection, MySqlDbConnectorSettings.Default)
 	{
 	}
 
-	public MySqlDbConnector(DbConnection connection, MySqlDbConnectorSettings settings)
+	public MySqlDbConnector(MySqlConnection connection, MySqlDbConnectorSettings settings)
 		: base(connection, settings)
 	{
-		if (connection is not MySqlConnection)
-			throw new ArgumentException("The connection must be a MySqlConnection.", nameof(connection));
 	}
 
 	public new MySqlConnection Connection => (MySqlConnection) base.Connection;
