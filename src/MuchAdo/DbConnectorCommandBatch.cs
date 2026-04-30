@@ -419,7 +419,7 @@ public sealed class DbConnectorCommandBatch
 			throw new ArgumentOutOfRangeException(nameof(index));
 
 		if (index == (m_batchedCommands?.Count ?? 0))
-			return new DbConnectorCommand(m_commandType, m_textOrSql, m_paramSource ?? Sql.Empty);
+			return new DbConnectorCommand(m_commandType, m_textOrSql, m_paramSource ?? Sql.NoParams);
 
 		if (m_batchedCommands is null)
 			throw new ArgumentOutOfRangeException(nameof(index));
