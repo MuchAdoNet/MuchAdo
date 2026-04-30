@@ -10,9 +10,14 @@ namespace MuchAdo;
 public static class Sql
 {
 	/// <summary>
-	/// Empty SQL/parameters.
+	/// Empty SQL.
 	/// </summary>
-	public static readonly SqlParamSource Empty = new EmptySqlParamSource();
+	public static readonly SqlSource Empty = new EmptySqlParamSource();
+
+	/// <summary>
+	/// An empty parameter source.
+	/// </summary>
+	public static readonly SqlParamSource NoParams = new EmptySqlParamSource();
 
 	/// <summary>
 	/// Intersperses the specified SQL fragments with the AND operator.

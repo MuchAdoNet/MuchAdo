@@ -7,9 +7,9 @@ namespace MuchAdo.Tests;
 internal sealed class SqlParamSourceTests
 {
 	[Test]
-	public void Empty()
+	public void NoParams()
 	{
-		Sql.Empty.Enumerate().Should().Equal();
+		Sql.NoParams.Enumerate().Should().Equal();
 	}
 
 	[Test]
