@@ -33,9 +33,10 @@ jobs:
       run: .\build.ps1 build --skip restore
     - name: Test
       run: .\build.ps1 test --skip build
+    - name: Package
+      run: .\build.ps1 package --skip test
     - name: Publish
       if: runner.os == 'Windows' && github.repository_owner == 'MuchAdoNet' && github.ref == 'refs/heads/master'
       env:
-        BUILD_BOT_PASSWORD: ${{ secrets.BUILD_BOT_PASSWORD }}
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      run: .\build.ps1 publish --skip test
+      run: .\build.ps1 publish --skip package
