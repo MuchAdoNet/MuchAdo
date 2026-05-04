@@ -11,3 +11,5 @@ If explicitly requested, treat a breaking change as a minor package version bump
 ## C# Code Style
 
 For expression-bodied members, keep the lambda arrow token (`=>`) on the same line as the member declaration. If the expression body needs to wrap, put the wrapped expression on the following line.
+
+Place private fields at the bottom of the class.
