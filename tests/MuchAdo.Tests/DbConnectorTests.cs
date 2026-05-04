@@ -211,6 +211,48 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void EnumerateDtoMultipleResultSetsWithDifferentFieldOrder()
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null, Value integer not null);").Execute();
+		connector.Command("insert into Items (Name, Value) values ('item1', 10), ('item2', 20);").Execute();
+
+		const string sql = """
+			select Name, Value from Items where Name = 'item1';
+			select Value, Name from Items where Name = 'item2';
+			""";
+
+		var results = connector.Command(sql).Enumerate<QueryItemDto>().ToList();
+
+		results.Should().HaveCount(2);
+		results[0].Name.Should().Be("item1");
+		results[0].Value.Should().Be(10);
+		results[1].Name.Should().Be("item2");
+		results[1].Value.Should().Be(20);
+	}
+
+	[Test]
+	public async Task EnumerateDtoMultipleResultSetsWithDifferentFieldOrderAsync()
+	{
+		await using var connector = CreateConnector();
+		await connector.Command("create table Items (ItemId integer primary key, Name text not null, Value integer not null);").ExecuteAsync();
+		await connector.Command("insert into Items (Name, Value) values ('item1', 10), ('item2', 20);").ExecuteAsync();
+
+		const string sql = """
+			select Name, Value from Items where Name = 'item1';
+			select Value, Name from Items where Name = 'item2';
+			""";
+
+		var results = await ToListAsync(connector.Command(sql).EnumerateAsync<QueryItemDto>());
+
+		results.Should().HaveCount(2);
+		results[0].Name.Should().Be("item1");
+		results[0].Value.Should().Be(10);
+		results[1].Name.Should().Be("item2");
+		results[1].Value.Should().Be(20);
+	}
+
+	[Test]
 	public void CommandInTransactionTests()
 	{
 		using var connector = CreateConnector();
