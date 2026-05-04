@@ -10,7 +10,7 @@ internal abstract class InterspersingSqlSource(IEnumerable<SqlSource> sqls) : Sq
 	{
 		var oldTextLength = builder.TextLength;
 
-		foreach (var sql in sqls)
+		foreach (var sql in m_sqls)
 		{
 			using var scope = builder.Prefix(builder.TextLength != oldTextLength ? Separator : "");
 			sql.Render(builder);
@@ -19,4 +19,6 @@ internal abstract class InterspersingSqlSource(IEnumerable<SqlSource> sqls) : Sq
 		if (builder.TextLength == oldTextLength)
 			builder.AppendText(TextOnEmpty);
 	}
+
+	private readonly IEnumerable<SqlSource> m_sqls = sqls.Memoize();
 }

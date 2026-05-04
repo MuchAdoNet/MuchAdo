@@ -12,7 +12,7 @@ internal abstract class BinaryOperatorSqlSource(IEnumerable<SqlSource> sqls) : S
 		SqlSource? firstSql = null;
 		var firstSqlRendered = false;
 
-		foreach (var sql in sqls)
+		foreach (var sql in m_sqls)
 		{
 			if (firstSql is null)
 			{
@@ -35,4 +35,6 @@ internal abstract class BinaryOperatorSqlSource(IEnumerable<SqlSource> sqls) : S
 		if (firstSql is not null && !firstSqlRendered)
 			firstSql.Render(builder);
 	}
+
+	private readonly IEnumerable<SqlSource> m_sqls = sqls.Memoize();
 }
