@@ -40,6 +40,36 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
+	public void NamedUnnamedParameterStrategyValidatesNamePrefix()
+	{
+		Invoking(() => SqlUnnamedParameterStrategy.Named(null!)).Should().Throw<ArgumentNullException>().WithParameterName("namePrefix");
+		Invoking(() => SqlUnnamedParameterStrategy.Named(""))
+			.Should().Throw<ArgumentException>()
+			.WithParameterName("namePrefix")
+			.WithMessage("Name prefix cannot be empty.*");
+	}
+
+	[Test]
+	public void NumberedUnnamedParameterStrategyValidatesPlaceholderPrefix()
+	{
+		Invoking(() => SqlUnnamedParameterStrategy.Numbered(null!)).Should().Throw<ArgumentNullException>().WithParameterName("placeholderPrefix");
+		Invoking(() => SqlUnnamedParameterStrategy.Numbered(""))
+			.Should().Throw<ArgumentException>()
+			.WithParameterName("placeholderPrefix")
+			.WithMessage("Placeholder prefix cannot be empty.*");
+	}
+
+	[Test]
+	public void UnnumberedUnnamedParameterStrategyValidatesPlaceholder()
+	{
+		Invoking(() => SqlUnnamedParameterStrategy.Unnumbered(null!)).Should().Throw<ArgumentNullException>().WithParameterName("placeholder");
+		Invoking(() => SqlUnnamedParameterStrategy.Unnumbered(""))
+			.Should().Throw<ArgumentException>()
+			.WithParameterName("placeholder")
+			.WithMessage("Placeholder cannot be empty.*");
+	}
+
+	[Test]
 	public void NamedParamSql()
 	{
 		var (text, parameters) = Render(Sql.NamedParam("abccb", "xyzzy"));
