@@ -54,14 +54,14 @@ public sealed class DbDataMapper
 	/// <summary>
 	/// Gets a type mapper for the specified type.
 	/// </summary>
-	public DbTypeMapper<T> GetTypeMapper<T>()
-		=> (DbTypeMapper<T>) GetTypeMapper(typeof(T), CreateTypeMapper<T>);
+	public DbTypeMapper<T> GetTypeMapper<T>() =>
+		(DbTypeMapper<T>) GetTypeMapper(typeof(T), CreateTypeMapper<T>);
 
 	/// <summary>
 	/// Gets a type mapper for the specified type.
 	/// </summary>
-	public DbTypeMapper GetTypeMapper(Type type)
-		=> GetTypeMapper(type, () => CreateTypeMapper(type));
+	public DbTypeMapper GetTypeMapper(Type type) =>
+		GetTypeMapper(type, () => CreateTypeMapper(type));
 
 	private DbTypeMapper GetTypeMapper(Type type, Func<DbTypeMapper> createTypeMapper)
 	{
