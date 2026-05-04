@@ -1,5 +1,15 @@
 # Release Notes
 
+## 1.2.1
+
+* Fix construction of DTO mappers for self-referential and mutually referential DTO types, allowing selected non-circular properties to map successfully and reporting selected circular properties with a meaningful exception.
+* Stabilize repeated rendering of SQL sources created from deferred enumerables.
+* Fix DTO mapping across multiple result sets with different field orders.
+* Fix nullable multi-field mapping for nullable value tuples and all-null rows.
+* Fix field-count validation for variable-length `ValueTuple` mappings.
+* Fix double disposal of pooled connectors so disposing twice doesn't return the same connector to the pool twice.
+* Validate unnamed parameter strategy strings so null and empty values fail at configuration time instead of producing invalid or misleading SQL.
+
 ## 1.2.0
 
 * Change platform-specific connector constructors to require their provider-specific connection types instead of `DbConnection`. (This is a breaking change, but we're sticking with a minor version bump due to limited impact.)
