@@ -146,6 +146,29 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
+	public void BadVariableLengthTupleFieldCount()
+	{
+		using var connector = GetConnectorWithItems();
+		connector
+			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.QueryFirst(
+				record =>
+				{
+					Invoking(() => record.Get<(object, string)>(0, 1))
+						.Should().Throw<InvalidOperationException>()
+						.WithMessage("Not enough fields for tuple item 0 in System.ValueTuple`2*");
+					Invoking(() => record.Get<(object, string, int)>(0, 1))
+						.Should().Throw<InvalidOperationException>()
+						.WithMessage("Not enough fields for tuple item 0 in System.ValueTuple`3*");
+					Invoking(() => record.Get<(string, int)>(0, 1))
+						.Should().Throw<InvalidOperationException>()
+						.WithMessage("System.ValueTuple`2* must be read from 2 fields but is being read from 1 fields.");
+					return 1;
+				})
+			.Should().Be(1);
+	}
+
+	[Test]
 	public void ByteArrayTests()
 	{
 		using var connector = GetConnectorWithItems();
@@ -606,6 +629,10 @@ internal sealed class DbDataMapperTests
 						tuple2.Item1.Should().Be(s_dto.TheText);
 						tuple2.Item2.Should().Be(s_dto.TheInteger);
 						tuple2.Item3.Should().Be(s_dto.TheReal);
+
+						var tuple3 = record.Get<(object, double)>(1, 2);
+						tuple3.Item1.Should().Be(s_dto.TheInteger);
+						tuple3.Item2.Should().Be(s_dto.TheReal);
 					}
 					else
 					{
