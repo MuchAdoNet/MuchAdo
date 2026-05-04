@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.2.1
+
+* Validate unnamed parameter strategy strings so null and empty values fail at configuration time instead of producing invalid or misleading SQL.
+
 ## 1.2.0
 
 * Change platform-specific connector constructors to require their provider-specific connection types instead of `DbConnection`. (This is a breaking change, but we're sticking with a minor version bump due to limited impact.)
