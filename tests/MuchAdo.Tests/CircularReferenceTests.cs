@@ -52,16 +52,6 @@ internal sealed class CircularReferenceTests
 			.WithMessage("*Circular reference*Parent*TreeNode*");
 	}
 
-	[Test]
-	public void RecursiveMapperConstructionThrowsMeaningfulException()
-	{
-		var dataMapper = DbDataMapper.Default.WithTypeMapperFactories([new RecursiveTypeMapperFactory()]);
-
-		Invoking(dataMapper.GetTypeMapper<RecursiveFactoryDto>)
-			.Should().Throw<InvalidOperationException>()
-			.WithMessage("*Circular reference*RecursiveFactoryDto*");
-	}
-
 	private sealed class TreeNode
 	{
 		public string? Name { get; set; }
@@ -78,15 +68,5 @@ internal sealed class CircularReferenceTests
 	{
 		public long CustomerId { get; set; }
 		public OrderDto? LastOrder { get; set; }
-	}
-
-	private sealed class RecursiveFactoryDto
-	{
-	}
-
-	private sealed class RecursiveTypeMapperFactory : DbTypeMapperFactory
-	{
-		public override DbTypeMapper<T>? TryCreateTypeMapper<T>(DbDataMapper dataMapper) =>
-			typeof(T) == typeof(RecursiveFactoryDto) ? dataMapper.GetTypeMapper<T>() : null;
 	}
 }

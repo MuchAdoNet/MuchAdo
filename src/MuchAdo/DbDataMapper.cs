@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using MuchAdo.Mappers;
 
 namespace MuchAdo;
@@ -54,60 +53,23 @@ public sealed class DbDataMapper
 	/// <summary>
 	/// Gets a type mapper for the specified type.
 	/// </summary>
-	public DbTypeMapper<T> GetTypeMapper<T>() =>
-		(DbTypeMapper<T>) GetTypeMapper(typeof(T), CreateTypeMapper<T>);
+	public DbTypeMapper<T> GetTypeMapper<T>()
+	{
+		DbTypeMapper? mapper;
+		while (!m_typeMappers.TryGetValue(typeof(T), out mapper))
+			m_typeMappers.TryAdd(typeof(T), CreateTypeMapper<T>());
+		return (DbTypeMapper<T>) mapper;
+	}
 
 	/// <summary>
 	/// Gets a type mapper for the specified type.
 	/// </summary>
-	public DbTypeMapper GetTypeMapper(Type type) =>
-		GetTypeMapper(type, () => CreateTypeMapper(type));
-
-	private DbTypeMapper GetTypeMapper(Type type, Func<DbTypeMapper> createTypeMapper)
+	public DbTypeMapper GetTypeMapper(Type type)
 	{
-		while (true)
-		{
-			if (m_typeMappers.TryGetValue(type, out var mapper))
-			{
-				if (mapper is not InProgressTypeMapper)
-					return mapper;
-
-				lock (m_typeMappersLock)
-				{
-					if (!m_typeMappers.TryGetValue(type, out mapper))
-						continue;
-
-					if (mapper is InProgressTypeMapper)
-						throw CircularReference(type);
-
-					return mapper;
-				}
-			}
-
-			lock (m_typeMappersLock)
-			{
-				if (m_typeMappers.TryGetValue(type, out var existingMapper))
-				{
-					if (existingMapper is InProgressTypeMapper)
-						throw CircularReference(type);
-
-					return existingMapper;
-				}
-
-				m_typeMappers[type] = new InProgressTypeMapper(type);
-				try
-				{
-					mapper = createTypeMapper();
-				}
-				catch
-				{
-					m_typeMappers.TryRemove(type, out _);
-					throw;
-				}
-				m_typeMappers[type] = mapper;
-				return mapper;
-			}
-		}
+		DbTypeMapper? mapper;
+		while (!m_typeMappers.TryGetValue(type, out mapper))
+			m_typeMappers.TryAdd(type, (DbTypeMapper) s_createTypeMapper.MakeGenericMethod(type).Invoke(this, [])!);
+		return mapper;
 	}
 
 	private DbTypeMapper<T> CreateTypeMapper<T>()
@@ -120,22 +82,6 @@ public sealed class DbDataMapper
 
 		return new DtoMapper<T>(this);
 	}
-
-	private DbTypeMapper CreateTypeMapper(Type type)
-	{
-		try
-		{
-			return (DbTypeMapper) s_createTypeMapper.MakeGenericMethod(type).Invoke(this, [])!;
-		}
-		catch (TargetInvocationException exception) when (exception.InnerException is not null)
-		{
-			ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-			throw;
-		}
-	}
-
-	private static InvalidOperationException CircularReference(Type type) =>
-		new($"Circular reference detected while creating a type mapper for {type.FullName}.");
 
 	private DbDataMapper()
 	{
@@ -154,16 +100,4 @@ public sealed class DbDataMapper
 	private static readonly MethodInfo s_createTypeMapper = typeof(DbDataMapper).GetMethod(nameof(CreateTypeMapper), BindingFlags.NonPublic | BindingFlags.Instance, null, [], null)!;
 
 	private readonly ConcurrentDictionary<Type, DbTypeMapper> m_typeMappers = new();
-#if NET
-	private readonly Lock m_typeMappersLock = new();
-#else
-	private readonly object m_typeMappersLock = new();
-#endif
-
-	private sealed class InProgressTypeMapper(Type type) : DbTypeMapper
-	{
-		public override Type Type => type;
-
-		public override int? FieldCount => null;
-	}
 }
