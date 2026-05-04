@@ -38,7 +38,7 @@ public sealed class DbConnectorPool : IDisposable, IAsyncDisposable
 		}
 
 		connector ??= m_create();
-		connector.ConnectorPool = this;
+		connector.ReuseFromPool(this);
 		return connector;
 	}
 
@@ -59,7 +59,7 @@ public sealed class DbConnectorPool : IDisposable, IAsyncDisposable
 		if (connectors is not null)
 		{
 			foreach (var connector in connectors)
-				connector.Dispose();
+				connector.DisposeFromPool();
 		}
 	}
 
@@ -80,7 +80,7 @@ public sealed class DbConnectorPool : IDisposable, IAsyncDisposable
 		if (connectors is not null)
 		{
 			foreach (var connector in connectors)
-				await connector.DisposeAsync().ConfigureAwait(false);
+				await connector.DisposeFromPoolAsync().ConfigureAwait(false);
 		}
 	}
 
@@ -91,7 +91,7 @@ public sealed class DbConnectorPool : IDisposable, IAsyncDisposable
 			if (m_idleConnectors is null)
 				throw new InvalidOperationException($"{nameof(DbConnectorPool)} was disposed.");
 			m_idleConnectors.Push(connector);
-			connector.ConnectorPool = null;
+			connector.ReturnToPool();
 		}
 	}
 

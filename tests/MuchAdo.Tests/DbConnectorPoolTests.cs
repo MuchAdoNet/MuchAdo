@@ -69,4 +69,38 @@ internal sealed class DbConnectorPoolTests
 			return new DbConnector(new SqliteConnection("Data Source=:memory:"));
 		}
 	}
+
+	[Test]
+	public void DoubleDisposeSync()
+	{
+		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+
+		var connector = pool.Get();
+		connector.Command("select 1;").QuerySingle<int>().Should().Be(1);
+		connector.Dispose();
+		connector.Dispose();
+
+		using var connector2 = pool.Get();
+		connector2.Should().BeSameAs(connector);
+		connector2.Command("select 1;").QuerySingle<int>().Should().Be(1);
+
+		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+	}
+
+	[Test]
+	public async Task DoubleDisposeAsync()
+	{
+		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+
+		var connector = pool.Get();
+		(await connector.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
+		await connector.DisposeAsync();
+		await connector.DisposeAsync();
+
+		await using var connector2 = pool.Get();
+		connector2.Should().BeSameAs(connector);
+		(await connector2.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
+
+		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+	}
 }

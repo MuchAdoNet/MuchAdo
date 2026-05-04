@@ -610,6 +610,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <seealso cref="DisposeAsync" />
 	public void Dispose()
 	{
+		if (m_isDisposed)
+			return;
+
 		if (ConnectorPool is not null)
 		{
 			DisposeTransaction();
@@ -617,15 +620,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-		if (m_isDisposed)
-			return;
-
-		DisposeTransaction();
-		DisposeCachedCommands();
-		if (!Settings.NoDisposeConnection)
-			DisposeConnectionCore();
-		DisposeDisposables();
-		m_isDisposed = true;
+		DisposeCore();
 	}
 
 	/// <summary>
@@ -634,6 +629,9 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	/// <seealso cref="Dispose" />
 	public async ValueTask DisposeAsync()
 	{
+		if (m_isDisposed)
+			return;
+
 		if (ConnectorPool is not null)
 		{
 			await DisposeTransactionAsync().ConfigureAwait(false);
@@ -641,15 +639,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			return;
 		}
 
-		if (m_isDisposed)
-			return;
-
-		await DisposeTransactionAsync().ConfigureAwait(false);
-		await DisposeCachedCommandsAsync().ConfigureAwait(false);
-		if (!Settings.NoDisposeConnection)
-			await DisposeConnectionCoreAsync().ConfigureAwait(false);
-		await DisposeDisposablesAsync().ConfigureAwait(false);
-		m_isDisposed = true;
+		await DisposeCoreAsync().ConfigureAwait(false);
 	}
 
 	/// <summary>
@@ -1256,6 +1246,32 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	internal DbTransactionSettings DefaultTransactionSettings => Settings.DefaultTransactionSettings ?? DbTransactionSettings.Default;
 
 	internal DbConnectorPool? ConnectorPool { get; set; }
+
+	internal void ReuseFromPool(DbConnectorPool connectorPool)
+	{
+		ConnectorPool = connectorPool;
+		m_isDisposed = false;
+	}
+
+	internal void ReturnToPool()
+	{
+		ConnectorPool = null;
+		m_isDisposed = true;
+	}
+
+	internal void DisposeFromPool()
+	{
+		ConnectorPool = null;
+		m_isDisposed = false;
+		DisposeCore();
+	}
+
+	internal async ValueTask DisposeFromPoolAsync()
+	{
+		ConnectorPool = null;
+		m_isDisposed = false;
+		await DisposeCoreAsync().ConfigureAwait(false);
+	}
 
 	internal int ExecuteCommand(DbConnectorCommandBatch commandBatch)
 	{
@@ -1921,6 +1937,26 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			}
 			m_activeCommandOrBatch = null;
 		}
+	}
+
+	private void DisposeCore()
+	{
+		DisposeTransaction();
+		DisposeCachedCommands();
+		if (!Settings.NoDisposeConnection)
+			DisposeConnectionCore();
+		DisposeDisposables();
+		m_isDisposed = true;
+	}
+
+	private async ValueTask DisposeCoreAsync()
+	{
+		await DisposeTransactionAsync().ConfigureAwait(false);
+		await DisposeCachedCommandsAsync().ConfigureAwait(false);
+		if (!Settings.NoDisposeConnection)
+			await DisposeConnectionCoreAsync().ConfigureAwait(false);
+		await DisposeDisposablesAsync().ConfigureAwait(false);
+		m_isDisposed = true;
 	}
 
 	private void VerifyNotDisposed()
