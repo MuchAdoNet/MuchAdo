@@ -40,7 +40,7 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 
 	protected override T MapCore(IDataRecord record, int index, int count, DbConnectorRecordState? state)
 	{
-		if (IsAllNull(record, index, count))
+		if (Utility.IsAllNull(record, index, count))
 			return default!;
 
 		if (state?.Get(this, index, count) is not Func<IDataRecord, int, DbConnectorRecordState?, T> func)
@@ -53,16 +53,6 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 		}
 
 		return func(record, index, state);
-	}
-
-	private static bool IsAllNull(IDataRecord record, int index, int count)
-	{
-		for (var i = 0; i < count; i++)
-		{
-			if (!record.IsDBNull(index + i))
-				return false;
-		}
-		return true;
 	}
 
 	private Func<IDataRecord, int, DbConnectorRecordState?, T> CreateFunc(DtoMapper.FieldNameSet fieldNameSet)

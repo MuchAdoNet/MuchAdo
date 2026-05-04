@@ -11,13 +11,13 @@ internal sealed class ValueTupleMapperRest<T1, T2, T3, T4, T5, T6, T7, TRest>(Db
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[8];
 		GetValueRanges(record, index, count, valueRanges);
 		return new ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>(
-			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
-			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
-			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state),
-			mapper4.Map(record, valueRanges[3].Index, valueRanges[3].Count, state),
-			mapper5.Map(record, valueRanges[4].Index, valueRanges[4].Count, state),
-			mapper6.Map(record, valueRanges[5].Index, valueRanges[5].Count, state),
-			mapper7.Map(record, valueRanges[6].Index, valueRanges[6].Count, state),
-			mapperRest.Map(record, valueRanges[7].Index, valueRanges[7].Count, state));
+			MapValue(mapper1, record, valueRanges[0], state),
+			MapValue(mapper2, record, valueRanges[1], state),
+			MapValue(mapper3, record, valueRanges[2], state),
+			MapValue(mapper4, record, valueRanges[3], state),
+			MapValue(mapper5, record, valueRanges[4], state),
+			MapValue(mapper6, record, valueRanges[5], state),
+			MapValue(mapper7, record, valueRanges[6], state),
+			MapValue(mapperRest, record, valueRanges[7], state));
 	}
 }

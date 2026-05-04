@@ -1,3 +1,4 @@
+using System.Data;
 #if !NET
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -40,6 +41,16 @@ internal static class Utility
 #else
 		return value1 * 397 ^ value2;
 #endif
+	}
+
+	public static bool IsAllNull(IDataRecord record, int index, int count)
+	{
+		for (var i = 0; i < count; i++)
+		{
+			if (!record.IsDBNull(index + i))
+				return false;
+		}
+		return true;
 	}
 
 	public static IEnumerable<T> Memoize<T>(this IEnumerable<T> items) =>

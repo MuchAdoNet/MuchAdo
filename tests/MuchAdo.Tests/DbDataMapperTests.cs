@@ -272,6 +272,7 @@ internal sealed class DbDataMapperTests
 				create table Tuples ({columns});
 				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => x))});
 				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(_ => "null"))});
+				insert into Tuples ({columns}) values (null, 2, 3);
 				""")
 			.Execute();
 #pragma warning restore MUCH0001
@@ -289,12 +290,22 @@ internal sealed class DbDataMapperTests
 					}
 					else
 					{
-						record.Get<(int?, int?, int?)>().Should().Be((null, null, null));
-						record.Get<(int?, int?, int?)?>().Should().Be(null);
+						if (index == 2)
+						{
+							record.Get<(int?, int?, int?)>().Should().Be((null, null, null));
+							record.Get<(int?, int?, int?)?>().Should().Be(null);
+						}
+						else
+						{
+							record.Get<(int, int, int)?>().Should().Be((0, 2, 3));
+							(int?, int?, int?) expected = (null, 2, 3);
+							record.Get<(int?, int?, int?)>().Should().Be(expected);
+							record.Get<(int?, int?, int?)?>().Should().Be(expected);
+						}
 					}
 					return 1;
 				})
-			.Sum().Should().Be(2);
+			.Sum().Should().Be(3);
 	}
 
 	[Test]
