@@ -42,6 +42,9 @@ internal static class Utility
 #endif
 	}
 
+	public static IEnumerable<T> Memoize<T>(this IEnumerable<T> items) =>
+		items is IReadOnlyCollection<T> or ICollection<T> ? items : [.. items];
+
 #if !NET
 	public static TValue? GetValueOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> dictionary, TKey key) =>
 		dictionary.TryGetValue(key, out var obj) ? obj : default;

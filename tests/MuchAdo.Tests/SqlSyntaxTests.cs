@@ -329,6 +329,30 @@ internal sealed class SqlSyntaxTests
 	}
 
 	[Test]
+	public void SqlSourceEnumerableRenderedTwice()
+	{
+		AssertRendersTwice(Sql.List, "one1, two1");
+		AssertRendersTwice(Sql.Concat, "one1two1");
+		AssertRendersTwice(Sql.And, "(one1) AND (two1)");
+
+		static void AssertRendersTwice(Func<IEnumerable<SqlSource>, SqlSource> createSql, string expected)
+		{
+			var enumeration = 0;
+			var sql = createSql(GetSqls());
+
+			sql.ToString().Should().Be(expected);
+			sql.ToString().Should().Be(expected);
+
+			IEnumerable<SqlSource> GetSqls()
+			{
+				enumeration++;
+				yield return Sql.Raw($"one{enumeration}");
+				yield return Sql.Raw($"two{enumeration}");
+			}
+		}
+	}
+
+	[Test]
 	public void LikeParamStartsWithSql()
 	{
 		var (text, parameters) = Render(Sql.LikeParamStartsWith("xy_zy"));

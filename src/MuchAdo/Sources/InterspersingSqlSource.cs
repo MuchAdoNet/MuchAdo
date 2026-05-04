@@ -2,6 +2,8 @@ namespace MuchAdo.Sources;
 
 internal abstract class InterspersingSqlSource(IEnumerable<SqlSource> sqls) : SqlSource
 {
+	private readonly IEnumerable<SqlSource> m_sqls = sqls.Memoize();
+
 	public abstract string Separator { get; }
 
 	public virtual string TextOnEmpty => "";
@@ -10,7 +12,7 @@ internal abstract class InterspersingSqlSource(IEnumerable<SqlSource> sqls) : Sq
 	{
 		var oldTextLength = builder.TextLength;
 
-		foreach (var sql in sqls)
+		foreach (var sql in m_sqls)
 		{
 			using var scope = builder.Prefix(builder.TextLength != oldTextLength ? Separator : "");
 			sql.Render(builder);
