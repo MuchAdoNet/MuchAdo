@@ -30,9 +30,9 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 	{
 		m_dataMapper = dataMapper;
 		var properties = DbDtoInfo.GetInfo<T>().Properties;
-		var propertiesByNormalizedFieldName = new Dictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>(capacity: properties.Count, StringComparer.OrdinalIgnoreCase);
+		var propertiesByNormalizedFieldName = new Dictionary<string, DbDtoProperty<T>>(capacity: properties.Count, StringComparer.OrdinalIgnoreCase);
 		foreach (var property in properties)
-			propertiesByNormalizedFieldName.Add(NormalizeFieldName(property.ColumnName ?? property.Name), (property, m_dataMapper.GetTypeMapper(property.ValueType)));
+			propertiesByNormalizedFieldName.Add(NormalizeFieldName(property.ColumnName ?? property.Name), property);
 		m_propertiesByNormalizedFieldName = propertiesByNormalizedFieldName;
 	}
 
@@ -85,12 +85,13 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 						throw new InvalidOperationException($"Type does not have a property for '{fieldName}': {Type.FullName}");
 				}
 
-				if (creator?.GetPropertyParameterIndex(property.Property) is { } parameterIndex)
+				if (creator?.GetPropertyParameterIndex(property) is { } parameterIndex)
 				{
+					var mapper = GetPropertyMapper(property);
 					constructorParameters![parameterIndex] =
 						Expression.Call(
-							Expression.Constant(property.Mapper),
-							property.Mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
+							Expression.Constant(mapper),
+							mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
 							DtoMapper.RecordParam,
 							Expression.Add(DtoMapper.IndexParam, Expression.Constant(index)),
 							Expression.Constant(1),
@@ -98,18 +99,19 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 				}
 				else
 				{
-					if (property.Property.IsReadOnly)
+					if (property.IsReadOnly)
 					{
 						canCreate = false;
 						break;
 					}
 
+					var mapper = GetPropertyMapper(property);
 					memberBindings.Add(
 						Expression.Bind(
-							property.Property.MemberInfo,
+							property.MemberInfo,
 							Expression.Call(
-								Expression.Constant(property.Mapper),
-								property.Mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
+								Expression.Constant(mapper),
+								mapper.GetType().GetMethod("Map", [typeof(IDataRecord), typeof(int), typeof(int), typeof(DbConnectorRecordState)])!,
 								DtoMapper.RecordParam,
 								Expression.Add(DtoMapper.IndexParam, Expression.Constant(index)),
 								Expression.Constant(1),
@@ -144,7 +146,15 @@ internal sealed class DtoMapper<T> : DbTypeMapper<T>
 
 	private static string NormalizeFieldName(string text) => text.ReplaceOrdinal("_", "");
 
+	private DbTypeMapper GetPropertyMapper(DbDtoProperty<T> property)
+	{
+		if (property.ValueType == Type)
+			throw new InvalidOperationException($"Circular reference detected while mapping property '{property.Name}' on type {Type.FullName}.");
+
+		return m_dataMapper.GetTypeMapper(property.ValueType);
+	}
+
 	private readonly DbDataMapper m_dataMapper;
-	private readonly Dictionary<string, (DbDtoProperty<T> Property, DbTypeMapper Mapper)>? m_propertiesByNormalizedFieldName;
+	private readonly Dictionary<string, DbDtoProperty<T>>? m_propertiesByNormalizedFieldName;
 	private readonly ConcurrentDictionary<DtoMapper.FieldNameSet, Func<IDataRecord, int, DbConnectorRecordState?, T>> m_funcsByFieldNameSet = new();
 }
