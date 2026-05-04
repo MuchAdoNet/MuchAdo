@@ -1302,12 +1302,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		using var commandScope = CreateCommand(commandBatch);
 		m_activeReader = ExecuteReaderCore();
 		using var readerScope = new DbActiveReaderDisposer(this);
-		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 
 		var list = new List<T>();
 
 		do
 		{
+			var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 			while (ReadReaderCore())
 				list.Add(map is not null ? map(record) : record.Get<T>());
 		}
@@ -1331,12 +1331,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		await using var commandScope = (await CreateCommandAsync(commandBatch, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 		m_activeReader = await ExecuteReaderCoreAsync(cancellationToken).ConfigureAwait(false);
 		await using var readerScope = new DbActiveReaderDisposer(this).ConfigureAwait(false);
-		var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 
 		var list = new List<T>();
 
 		do
 		{
+			var record = new DbConnectorRecord(this, new DbConnectorRecordState());
 			while (await ReadReaderCoreAsync(cancellationToken).ConfigureAwait(false))
 				list.Add(map is not null ? map(record) : record.Get<T>());
 		}
