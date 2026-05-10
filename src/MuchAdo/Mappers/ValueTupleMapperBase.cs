@@ -18,7 +18,6 @@ internal abstract class ValueTupleMapperBase<T> : DbTypeMapper<T>
 		if (FieldCount is { } requiredFieldCount && !(count == requiredFieldCount || (count > requiredFieldCount && m_dataMapper.IgnoreUnusedFields)))
 			throw BadFieldCount(count);
 
-		var endRecordIndex = index + count;
 		var valueCount = m_typeMappers.Length;
 		var recordIndex = index;
 		for (var valueIndex = 0; valueIndex < valueCount; valueIndex++)
@@ -48,13 +47,11 @@ internal abstract class ValueTupleMapperBase<T> : DbTypeMapper<T>
 
 				if (remainingFieldCount is not null)
 				{
-					fieldCount = endRecordIndex - recordIndex - remainingFieldCount.Value;
-					if (fieldCount < 1)
-						throw new InvalidOperationException($"Not enough fields for tuple item {valueIndex} in {Type.FullName}.");
+					fieldCount = count - recordIndex - remainingFieldCount.Value;
 				}
 				else
 				{
-					for (var nextRecordIndex = recordIndex + 1; nextRecordIndex < endRecordIndex; nextRecordIndex++)
+					for (var nextRecordIndex = recordIndex + 1; nextRecordIndex < count; nextRecordIndex++)
 					{
 						if (record.GetName(nextRecordIndex).Equals("NULL", StringComparison.OrdinalIgnoreCase))
 						{
@@ -67,7 +64,7 @@ internal abstract class ValueTupleMapperBase<T> : DbTypeMapper<T>
 					{
 						fieldCount = nullIndex.Value - recordIndex;
 					}
-					else if (endRecordIndex - (recordIndex + 1) == minimumRemainingFieldCount)
+					else if (count - (recordIndex + 1) == minimumRemainingFieldCount)
 					{
 						fieldCount = 1;
 					}
@@ -86,9 +83,6 @@ internal abstract class ValueTupleMapperBase<T> : DbTypeMapper<T>
 			recordIndex = nullIndex + 1 ?? recordIndex + fieldCount;
 		}
 	}
-
-	protected static TItem MapValue<TItem>(DbTypeMapper<TItem> mapper, IDataRecord record, (int Index, int Count) valueRange, DbConnectorRecordState? state) =>
-		Utility.IsAllNull(record, valueRange.Index, valueRange.Count) ? default! : mapper.Map(record, valueRange.Index, valueRange.Count, state);
 
 	private int? CalculateFieldCount()
 	{
