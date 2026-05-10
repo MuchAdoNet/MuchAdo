@@ -1619,6 +1619,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			if (!m_noDisposeTransaction)
 				DisposeTransactionCore();
 			m_transaction = null;
+			m_noDisposeTransaction = false;
 		}
 	}
 
@@ -1631,6 +1632,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			if (!m_noDisposeTransaction)
 				await DisposeTransactionCoreAsync().ConfigureAwait(false);
 			m_transaction = null;
+			m_noDisposeTransaction = false;
 		}
 	}
 
