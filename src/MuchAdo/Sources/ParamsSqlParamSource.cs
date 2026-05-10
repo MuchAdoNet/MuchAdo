@@ -4,7 +4,7 @@ internal sealed class ParamsSqlParamSource<T>(IEnumerable<T> items) : SqlParamSo
 {
 	internal override void SubmitParameters(ISqlParamTarget target)
 	{
-		foreach (var item in items)
+		foreach (var item in m_items)
 		{
 			if (item is SqlParamSource paramSource)
 				paramSource.SubmitParameters(target);
@@ -12,4 +12,6 @@ internal sealed class ParamsSqlParamSource<T>(IEnumerable<T> items) : SqlParamSo
 				target.AcceptParameter("", item, type: null);
 		}
 	}
+
+	private readonly IEnumerable<T> m_items = items.Memoize();
 }
