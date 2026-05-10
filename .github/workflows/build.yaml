@@ -15,6 +15,9 @@ defaults:
   run:
     shell: pwsh
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
