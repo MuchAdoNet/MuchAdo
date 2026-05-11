@@ -45,3 +45,5 @@ services:
       MSSQL_SA_PASSWORD: P@ssw0rd
     depends_on:
       - mssql
+      - mysql
+      - postgres

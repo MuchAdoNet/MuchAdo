@@ -37,4 +37,33 @@ done
 
 echo 'setup.sh: create mssql test database'
 run_sqlcmd -Q "if db_id(N'test') is null create database [test];"
+
+echo 'setup.sh: waiting for mysql'
+for attempt in {1..60}; do
+	if MYSQL_PWD=test mysql -h mysql -uroot -e 'select 1' >/dev/null 2>&1; then
+		break
+	fi
+
+	if [[ $attempt -eq 60 ]]; then
+		echo 'setup.sh: mysql did not become ready' >&2
+		exit 1
+	fi
+
+	sleep 2
+done
+
+echo 'setup.sh: waiting for postgres'
+for attempt in {1..60}; do
+	if PGPASSWORD=test psql -h postgres -U root -d postgres -c 'select 1' >/dev/null 2>&1; then
+		break
+	fi
+
+	if [[ $attempt -eq 60 ]]; then
+		echo 'setup.sh: postgres did not become ready' >&2
+		exit 1
+	fi
+
+	sleep 2
+done
+
 echo 'done'
