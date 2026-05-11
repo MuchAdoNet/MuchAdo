@@ -10,7 +10,7 @@ internal sealed class ValueTupleMapper<T1>(DbDataMapper dataMapper, DbTypeMapper
 	{
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[1];
 		GetValueRanges(record, index, count, valueRanges);
-		return new ValueTuple<T1>(MapValue(mapper1, record, valueRanges[0], state));
+		return new ValueTuple<T1>(mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state));
 	}
 }
 
@@ -23,8 +23,8 @@ internal sealed class ValueTupleMapper<T1, T2>(DbDataMapper dataMapper, DbTypeMa
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[2];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state));
 	}
 }
 
@@ -37,9 +37,9 @@ internal sealed class ValueTupleMapper<T1, T2, T3>(DbDataMapper dataMapper, DbTy
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[3];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state),
-			MapValue(mapper3, record, valueRanges[2], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
+			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state));
 	}
 }
 
@@ -52,10 +52,10 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4>(DbDataMapper dataMapper, 
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[4];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state),
-			MapValue(mapper3, record, valueRanges[2], state),
-			MapValue(mapper4, record, valueRanges[3], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
+			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state),
+			mapper4.Map(record, valueRanges[3].Index, valueRanges[3].Count, state));
 	}
 }
 
@@ -68,11 +68,11 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5>(DbDataMapper dataMapp
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[5];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state),
-			MapValue(mapper3, record, valueRanges[2], state),
-			MapValue(mapper4, record, valueRanges[3], state),
-			MapValue(mapper5, record, valueRanges[4], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
+			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state),
+			mapper4.Map(record, valueRanges[3].Index, valueRanges[3].Count, state),
+			mapper5.Map(record, valueRanges[4].Index, valueRanges[4].Count, state));
 	}
 }
 
@@ -85,12 +85,12 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6>(DbDataMapper data
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[6];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state),
-			MapValue(mapper3, record, valueRanges[2], state),
-			MapValue(mapper4, record, valueRanges[3], state),
-			MapValue(mapper5, record, valueRanges[4], state),
-			MapValue(mapper6, record, valueRanges[5], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
+			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state),
+			mapper4.Map(record, valueRanges[3].Index, valueRanges[3].Count, state),
+			mapper5.Map(record, valueRanges[4].Index, valueRanges[4].Count, state),
+			mapper6.Map(record, valueRanges[5].Index, valueRanges[5].Count, state));
 	}
 }
 
@@ -103,12 +103,12 @@ internal sealed class ValueTupleMapper<T1, T2, T3, T4, T5, T6, T7>(DbDataMapper 
 		Span<(int Index, int Count)> valueRanges = stackalloc (int Index, int Count)[7];
 		GetValueRanges(record, index, count, valueRanges);
 		return (
-			MapValue(mapper1, record, valueRanges[0], state),
-			MapValue(mapper2, record, valueRanges[1], state),
-			MapValue(mapper3, record, valueRanges[2], state),
-			MapValue(mapper4, record, valueRanges[3], state),
-			MapValue(mapper5, record, valueRanges[4], state),
-			MapValue(mapper6, record, valueRanges[5], state),
-			MapValue(mapper7, record, valueRanges[6], state));
+			mapper1.Map(record, valueRanges[0].Index, valueRanges[0].Count, state),
+			mapper2.Map(record, valueRanges[1].Index, valueRanges[1].Count, state),
+			mapper3.Map(record, valueRanges[2].Index, valueRanges[2].Count, state),
+			mapper4.Map(record, valueRanges[3].Index, valueRanges[3].Count, state),
+			mapper5.Map(record, valueRanges[4].Index, valueRanges[4].Count, state),
+			mapper6.Map(record, valueRanges[5].Index, valueRanges[5].Count, state),
+			mapper7.Map(record, valueRanges[6].Index, valueRanges[6].Count, state));
 	}
 }

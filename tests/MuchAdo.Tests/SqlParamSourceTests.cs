@@ -89,6 +89,87 @@ internal sealed class SqlParamSourceTests
 		parameters.EnumeratePairs().Should().Equal(("two", 2), ("three", 3));
 	}
 
+	[Test]
+	public void DeferredParamsAreMemoized()
+	{
+		var nextValue = 0;
+		var parameters = Sql.Params(GenerateValues());
+
+		parameters.EnumeratePairs().Should().Equal(("", 1), ("", 2));
+		parameters.EnumeratePairs().Should().Equal(("", 1), ("", 2));
+
+		IEnumerable<int> GenerateValues()
+		{
+			yield return ++nextValue;
+			yield return ++nextValue;
+		}
+	}
+
+	[Test]
+	public void DeferredNamedParamsAreMemoized()
+	{
+		var nextValue = 0;
+		var parameters = Sql.NamedParams(GeneratePairs());
+
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+
+		IEnumerable<(string Name, int Value)> GeneratePairs()
+		{
+			yield return ("one", ++nextValue);
+			yield return ("two", ++nextValue);
+		}
+	}
+
+	[Test]
+	public void DeferredDictionaryParamsAreMemoized()
+	{
+		var nextValue = 0;
+		var parameters = Sql.NamedParams(GeneratePairs());
+
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+
+		IEnumerable<KeyValuePair<string, int>> GeneratePairs()
+		{
+			yield return new("one", ++nextValue);
+			yield return new("two", ++nextValue);
+		}
+	}
+
+	[Test]
+	public void DeferredCombinedParamsAreMemoized()
+	{
+		var nextValue = 0;
+		var parameters = Sql.Combine(GenerateSources());
+
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+
+		IEnumerable<SqlParamSource> GenerateSources()
+		{
+			yield return Sql.NamedParam("one", ++nextValue);
+			yield return Sql.NamedParam("two", ++nextValue);
+		}
+	}
+
+	[Test]
+	public void DeferredNamedParamsToStringIsMemoized()
+	{
+		var nextValue = 0;
+		var parameters = Sql.NamedParams(GeneratePairs());
+
+		parameters.ToString().Should().Be("@one, @two");
+		parameters.ToString().Should().Be("@one, @two");
+		parameters.EnumeratePairs().Should().Equal(("one", 1), ("two", 2));
+
+		IEnumerable<(string Name, int Value)> GeneratePairs()
+		{
+			yield return ("one", ++nextValue);
+			yield return ("two", ++nextValue);
+		}
+	}
+
 	private sealed class HasTwo
 	{
 		public int Two { get; } = 2;

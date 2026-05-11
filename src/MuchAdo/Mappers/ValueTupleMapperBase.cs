@@ -87,9 +87,6 @@ internal abstract class ValueTupleMapperBase<T> : DbTypeMapper<T>
 		}
 	}
 
-	protected static TItem MapValue<TItem>(DbTypeMapper<TItem> mapper, IDataRecord record, (int Index, int Count) valueRange, DbConnectorRecordState? state) =>
-		Utility.IsAllNull(record, valueRange.Index, valueRange.Count) ? default! : mapper.Map(record, valueRange.Index, valueRange.Count, state);
-
 	private int? CalculateFieldCount()
 	{
 		var totalFieldCount = 0;

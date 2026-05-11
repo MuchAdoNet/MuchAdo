@@ -15,7 +15,7 @@ internal sealed class DbConnectorPoolTests
 	}
 
 	[Test]
-	public void NoCreate()
+	public void NoCreateConnector()
 	{
 		Invoking(() => new DbConnectorPool(new DbConnectorPoolSettings())).Should().Throw<ArgumentException>();
 	}
@@ -25,7 +25,7 @@ internal sealed class DbConnectorPoolTests
 	{
 		var createCount = 0;
 
-		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		using (var connector1 = pool.Get())
 		using (var connector2 = pool.Get())
@@ -38,7 +38,7 @@ internal sealed class DbConnectorPoolTests
 
 		createCount.Should().Be(2);
 
-		DbConnector CreateConnection()
+		DbConnector CreateConnector()
 		{
 			createCount++;
 			return new DbConnector(new SqliteConnection("Data Source=:memory:"));
@@ -50,7 +50,7 @@ internal sealed class DbConnectorPoolTests
 	{
 		var createCount = 0;
 
-		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		await using (var connector1 = pool.Get())
 		await using (var connector2 = pool.Get())
@@ -63,7 +63,7 @@ internal sealed class DbConnectorPoolTests
 
 		createCount.Should().Be(2);
 
-		DbConnector CreateConnection()
+		DbConnector CreateConnector()
 		{
 			createCount++;
 			return new DbConnector(new SqliteConnection("Data Source=:memory:"));
@@ -73,7 +73,7 @@ internal sealed class DbConnectorPoolTests
 	[Test]
 	public void DoubleDisposeSync()
 	{
-		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		var connector = pool.Get();
 		connector.Command("select 1;").QuerySingle<int>().Should().Be(1);
@@ -84,13 +84,13 @@ internal sealed class DbConnectorPoolTests
 		connector2.Should().BeSameAs(connector);
 		connector2.Command("select 1;").QuerySingle<int>().Should().Be(1);
 
-		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+		static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 	}
 
 	[Test]
 	public async Task DoubleDisposeAsync()
 	{
-		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		var connector = pool.Get();
 		(await connector.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
@@ -101,13 +101,13 @@ internal sealed class DbConnectorPoolTests
 		connector2.Should().BeSameAs(connector);
 		(await connector2.Command("select 1;").QuerySingleAsync<int>()).Should().Be(1);
 
-		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+		static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 	}
 
 	[Test]
 	public void AttachTransactionNoDisposeFlagDoesNotPersistAcrossPoolReuse()
 	{
-		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		var connector = pool.Get();
 		connector.Command("create table Items (Id int);").Execute();
@@ -130,18 +130,18 @@ internal sealed class DbConnectorPoolTests
 		connector3.Should().BeSameAs(connector2);
 		transaction2!.Connection.Should().BeNull("transaction should be disposed");
 
-		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+		static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 	}
 
 	[Test]
 	public async Task AttachTransactionNoDisposeFlagDoesNotPersistAcrossPoolReuseAsync()
 	{
-		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnection });
+		await using var pool = new DbConnectorPool(new DbConnectorPoolSettings { CreateConnector = CreateConnector });
 
 		var connector = pool.Get();
 		(await connector.Command("create table Items (Id int);").ExecuteAsync()).Should().Be(0);
 
-		var transaction = ((SqliteConnection) connector.GetOpenConnection()).BeginTransaction();
+		var transaction = ((SqliteConnection) await connector.GetOpenConnectionAsync()).BeginTransaction();
 		connector.AttachTransaction(transaction, noDispose: true);
 		await connector.DisposeAsync();
 		transaction.Dispose();
@@ -159,6 +159,6 @@ internal sealed class DbConnectorPoolTests
 		connector3.Should().BeSameAs(connector2);
 		transaction2!.Connection.Should().BeNull("transaction should be disposed");
 
-		DbConnector CreateConnection() => new(new SqliteConnection("Data Source=:memory:"));
+		static DbConnector CreateConnector() => new(new SqliteConnection("Data Source=:memory:"));
 	}
 }
