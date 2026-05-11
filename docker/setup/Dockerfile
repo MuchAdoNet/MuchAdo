@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/mssql-tools
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends default-mysql-client postgresql-client \
+    && apt-get install -y --no-install-recommends mysql-client postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY setup.sh /setup.sh
