@@ -9,12 +9,12 @@
 
 ## Current State
 
-* Coverage is not currently configured in the repository.
+* Coverage is configured through `coverlet.collector`, `coverage.runsettings`, and the `coverage` build target.
 * Package versions are centralized in `Directory.Packages.props`.
 * The test suite uses NUnit through five test projects under `tests`.
 * Test projects target `net10.0` on every OS, plus `net462` or `net481` on Windows.
 * GitHub Actions runs `restore`, `build`, `test`, `package`, and conditional `publish` through `build.ps1` on Ubuntu, Windows, and macOS.
-* `build.ps1` delegates to the `Faithlife.Build` standard .NET targets, so coverage should be added in a way that does not disrupt the existing build pipeline.
+* `build.ps1` delegates to the `Faithlife.Build` standard .NET targets, and coverage is implemented as an additional C# build target.
 
 ## Phase 1: Add Reproducible Coverage Collection
 
@@ -26,20 +26,21 @@
   * exclude test assemblies and generated/compiler-generated code;
   * avoid broad exclusions until the first report has been reviewed.
 * Prefer `coverlet.collector` as the default collection path because it works naturally with `dotnet test --collect:"XPlat Code Coverage"` and the existing NUnit/VSTest setup.
+* Run the full test suite for coverage, including Docker-categorized MySQL, PostgreSQL, and SQL Server tests, so provider assemblies contribute to the baseline.
 * Keep `coverlet.msbuild` as an optional second step only if the project wants MSBuild-native threshold enforcement. Do not add both modes until the baseline report proves that the collection shape is correct.
 
 Suggested local command for the first implementation:
 
 ```powershell
-dotnet test .\MuchAdo.slnx --configuration Release --framework net10.0 --collect:"XPlat Code Coverage" --settings .\coverage.runsettings --results-directory .\artifacts\TestResults\Coverage
+.\build.ps1 coverage
 ```
 
 Use `net10.0` as the primary coverage target so each test project contributes once. Continue running legacy .NET Framework targets for correctness, but do not include them in the first coverage gate because multi-targeted runs can duplicate coverage counts and make trends harder to read.
 
 ## Phase 2: Generate Human-Readable Reports
 
-* Add a repo-local `dotnet-reportgenerator-globaltool` tool manifest or a small coverage script that restores/uses ReportGenerator.
-* Generate reports from all `coverage.cobertura.xml` files into `artifacts/Coverage/Report`.
+* Add a `coverage` build target that runs ReportGenerator through `dotnet dnx dotnet-reportgenerator-globaltool`.
+* Generate reports from the direct Coverlet `coverage.cobertura.xml` files into `artifacts/Coverage/Report`.
 * Produce at least these outputs:
   * HTML for local inspection;
   * Cobertura for services that can ingest coverage;
@@ -49,7 +50,7 @@ Use `net10.0` as the primary coverage target so each test project contributes on
 Suggested report command:
 
 ```powershell
-dotnet reportgenerator -reports:.\artifacts\TestResults\Coverage\**\coverage.cobertura.xml -targetdir:.\artifacts\Coverage\Report -reporttypes:Html;Cobertura;MarkdownSummaryGithub
+dotnet dnx dotnet-reportgenerator-globaltool -reports:.\artifacts\TestResults\Coverage\*\coverage.cobertura.xml -targetdir:.\artifacts\Coverage\Report -reporttypes:Html;Cobertura;MarkdownSummaryGithub
 ```
 
 ## Phase 3: Establish the Baseline

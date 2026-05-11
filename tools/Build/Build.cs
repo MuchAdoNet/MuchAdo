@@ -26,6 +26,11 @@ internal static class Build
 
 	public static void AddTargets(BuildApp build, DotNetBuildSettings settings)
 	{
+		build.Target("coverage")
+			.DependsOn("build")
+			.Describe("Runs all tests with Coverlet and generates coverage reports")
+			.Does(() => RunCoverage(settings));
+
 		build.Target("test-docker")
 			.DependsOn("build")
 			.Describe("Runs Docker-backed database tests")
@@ -44,6 +49,57 @@ internal static class Build
 		}
 
 		RunTestProject(settings, path, framework: null, filter: "TestCategory!=Docker", logger: null, resultsDirectory: null);
+	}
+
+	private static void RunCoverage(DotNetBuildSettings settings)
+	{
+		DeleteDirectoryIfExists(c_coverageTestResultsDirectory);
+		DeleteDirectoryIfExists(c_coverageReportDirectory);
+		Directory.CreateDirectory(c_coverageTestResultsDirectory);
+
+		RunDockerCompose("up", "-d", "--build", "mssql", "mysql", "postgres");
+		RunDockerCompose("build", "setup");
+
+		var completed = false;
+		try
+		{
+			RunDockerCompose("run", "--rm", "setup");
+
+			foreach (var project in FindFiles("tests/**/*.csproj").Order(StringComparer.OrdinalIgnoreCase))
+			{
+				var projectName = Path.GetFileNameWithoutExtension(project);
+				RunTestProject(
+					settings,
+					project,
+					framework: "net10.0",
+					filter: null,
+					logger: $"trx;LogFileName={projectName}.coverage.trx",
+					resultsDirectory: c_coverageTestResultsDirectory,
+					extraArguments:
+					[
+						"--collect", "XPlat Code Coverage",
+						"--settings", c_coverageRunSettings,
+					]);
+			}
+
+			RunCoverageReport();
+			completed = true;
+		}
+		catch
+		{
+			WriteDockerLogs();
+			throw;
+		}
+		finally
+		{
+			try
+			{
+				RunDockerCompose("down", "-v");
+			}
+			catch when (!completed)
+			{
+			}
+		}
 	}
 
 	private static void RunDockerTests(DotNetBuildSettings settings)
@@ -89,7 +145,14 @@ internal static class Build
 		}
 	}
 
-	private static void RunTestProject(DotNetBuildSettings settings, string? path, string? framework, string? filter, string? logger, string? resultsDirectory)
+	private static void RunTestProject(
+		DotNetBuildSettings settings,
+		string? path,
+		string? framework,
+		string? filter,
+		string? logger,
+		string? resultsDirectory,
+		IEnumerable<string?>? extraArguments = null)
 	{
 		var arguments = new List<string?>
 		{
@@ -130,10 +193,40 @@ internal static class Build
 			arguments.Add(logger);
 		}
 
+		if (extraArguments is not null)
+		{
+			arguments.AddRange(extraArguments);
+		}
+
 		arguments.Add("--");
 		arguments.Add("RunConfiguration.TreatNoTestsAsError=true");
 
 		RunDotNet(arguments);
+	}
+
+	private static void RunCoverageReport()
+	{
+		Directory.CreateDirectory(c_coverageReportDirectory);
+		RunDotNet(
+		[
+			"dnx",
+			"dotnet-reportgenerator-globaltool",
+			"--yes",
+			$"-reports:{c_coverageTestResultsDirectory}/*/coverage.cobertura.xml",
+			$"-targetdir:{c_coverageReportDirectory}",
+			"-reporttypes:Html;Cobertura;MarkdownSummaryGithub",
+			"-assemblyfilters:+MuchAdo*;-*.Tests",
+		]);
+
+		Console.WriteLine($"Coverage report: {Path.GetFullPath(c_coverageReportDirectory)}");
+	}
+
+	private static void DeleteDirectoryIfExists(string path)
+	{
+		if (Directory.Exists(path))
+		{
+			Directory.Delete(path, recursive: true);
+		}
 	}
 
 	private static void RunDockerCompose(params string?[] args) =>
@@ -162,6 +255,9 @@ internal static class Build
 	private static string NormalizePath(string path) => path.Replace('\\', '/');
 
 	private const string c_composeFile = "docker/docker-compose.yml";
+	private const string c_coverageReportDirectory = "artifacts/Coverage/Report";
+	private const string c_coverageRunSettings = "coverage.runsettings";
+	private const string c_coverageTestResultsDirectory = "artifacts/TestResults/Coverage";
 	private const string c_testResultsDirectory = "release/TestResults";
 	private const string c_dockerLogPath = "release/TestResults/docker-compose.log";
 
