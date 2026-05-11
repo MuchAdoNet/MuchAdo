@@ -80,6 +80,49 @@ internal sealed class SqlServerTests
 		SqlParameter CreateStringParameter(string value) => new SqlParameter { Value = value, DbType = DbType.String, Size = 100 };
 	}
 
+#if NET
+	[Test]
+	public async Task BatchWithTextAndStoredProcedureCommands()
+	{
+		var sprocName = $"{nameof(BatchWithTextAndStoredProcedureCommands)}{c_suffix}";
+
+		await using var connector = CreateConnector();
+		await connector.CommandFormat($"create or alter procedure {Sql.Name(sprocName)} @Value int as select @Value, @Value * @Value;").ExecuteAsync();
+
+		var values = await connector
+			.Command("select cast(7 as int);")
+			.StoredProcedure(sprocName, Sql.NamedParam("Value", 11))
+			.QueryMultipleAsync(
+				async reader =>
+				{
+					connector.ActiveBatch.Should().BeOfType<SqlBatch>();
+					return (await reader.ReadSingleAsync<int>(), await reader.ReadSingleAsync<(int, int)>());
+				});
+
+		values.Should().Be((7, (11, 121)));
+	}
+#endif
+
+	[Test]
+	public async Task NamedParametersWithSameValueRemainDistinct()
+	{
+		var tableName = Sql.Name($"{nameof(NamedParametersWithSameValueRemainDistinct)}{c_suffix}");
+
+		await using var connector = CreateConnector();
+		var lastCommandText = "";
+		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.GetCommand(e.CommandBatch.CommandCount - 1).BuildText(connector.SqlSyntax);
+
+		await connector.CommandFormat($"drop table if exists {tableName};").ExecuteAsync();
+		await connector.CommandFormat($"create table {tableName} (Id int not null identity primary key, Name nvarchar(100) not null);").ExecuteAsync();
+
+		var first = "same";
+		var second = "same";
+		await connector.CommandFormat($"insert into {tableName} (Name) values ({first}), ({second});").ExecuteAsync();
+		lastCommandText.Should().Contain("values (@ado1), (@ado2)");
+
+		(await connector.CommandFormat($"select Name from {tableName} order by Id;").QueryAsync<string>()).Should().Equal("same", "same");
+	}
+
 	[Test]
 	public async Task NullParameter()
 	{

@@ -95,6 +95,48 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
+	public async Task PrepareCacheTests()
+	{
+		var tableName = Sql.Name($"{nameof(PrepareCacheTests)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.ExecuteAsync();
+
+		var insertSql = Sql.Raw($"insert into {tableName} (Name) values ($1), ($2);");
+		(await connector.Command(insertSql, Sql.Params(["one", "two"])).Prepare().Cache().ExecuteAsync()).Should().Be(2);
+		(await connector.Command(insertSql, Sql.Params(["three", "four"])).Prepare().Cache().ExecuteAsync()).Should().Be(2);
+
+		await FluentActions.Awaiting(async () => await connector.Command(insertSql, Sql.Params(["five", "six", "seven"])).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+		await FluentActions.Awaiting(async () => await connector.Command(insertSql, Sql.Param("five")).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "three", "four");
+	}
+
+	[Test]
+	public async Task NumberedRepeatParameterWithCache()
+	{
+		var tableName = Sql.Name($"{nameof(NumberedRepeatParameterWithCache)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		var lastCommandText = "";
+		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.GetCommand(e.CommandBatch.CommandCount - 1).BuildText(connector.SqlSyntax);
+
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.ExecuteAsync();
+
+		var repeated = Sql.RepeatParam("one");
+		await connector.CommandFormat($"insert into {tableName} (Name) values ({repeated}), ({"two"}), ({repeated})").Cache().ExecuteAsync();
+		lastCommandText.Should().Contain("values ($1), ($2), ($1)");
+
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "one");
+	}
+
+	[Test]
 	public async Task NullableValueTypeParameter([Values] bool prepare, [Values] bool cache)
 	{
 		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");

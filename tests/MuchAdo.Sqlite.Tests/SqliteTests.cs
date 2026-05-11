@@ -101,6 +101,32 @@ internal sealed class SqliteTests
 	}
 
 	[Test]
+	public void TypedAndRepeatTypedParametersApplyType()
+	{
+		var appliedSizes = new List<int>();
+		var type = SqlParamType.Create(
+			parameter =>
+			{
+				parameter.Size = 12;
+				appliedSizes.Add(parameter.Size);
+			});
+
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector.Command("create table Items (Id integer primary key, Value text not null);").Execute();
+
+		var repeated = Sql.RepeatParam("repeat", type);
+		connector
+			.CommandFormat($"insert into Items (Value) values ({Sql.Param("unnamed", type)})")
+			.CommandFormat($"insert into Items (Value) values ({Sql.NamedParam("named", "named", type)})")
+			.CommandFormat($"insert into Items (Value) values ({repeated}), ({repeated})")
+			.Execute()
+			.Should().Be(4);
+
+		appliedSizes.Should().Equal(12, 12, 12);
+		connector.Command("select Value from Items order by Id;").Query<string>().Should().Equal("unnamed", "named", "repeat", "repeat");
+	}
+
+	[Test]
 	public void InsertAndSelectNameValue()
 	{
 		var tableName = Sql.Name(nameof(InsertAndSelectNameValue));
