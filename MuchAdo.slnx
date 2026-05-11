@@ -22,6 +22,7 @@
   <Project Path="src/MuchAdo.Sqlite/MuchAdo.Sqlite.csproj" />
   <Project Path="src/MuchAdo.SqlServer/MuchAdo.SqlServer.csproj" />
   <Project Path="src/MuchAdo/MuchAdo.csproj" />
+  <Project Path="tests/MuchAdo.Analyzers.Tests/MuchAdo.Analyzers.Tests.csproj" />
   <Project Path="tests/MuchAdo.MySql.Tests/MuchAdo.MySql.Tests.csproj" />
   <Project Path="tests/MuchAdo.Npgsql.Tests/MuchAdo.Npgsql.Tests.csproj" />
   <Project Path="tests/MuchAdo.Sqlite.Tests/MuchAdo.Sqlite.Tests.csproj" />
