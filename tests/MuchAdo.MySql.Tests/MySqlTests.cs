@@ -9,7 +9,7 @@ using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.MySql.Tests;
 
-[TestFixture(Explicit = true)]
+[TestFixture, Category("Docker"), NonParallelizable]
 internal sealed class MySqlTests
 {
 	[Test]
@@ -169,7 +169,11 @@ internal sealed class MySqlTests
 	}
 
 	private static MySqlDbConnector CreateConnector(MySqlDbConnectorSettings? settings = null) => new(
-		new MySqlConnection("Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true"), settings ?? new());
+		new MySqlConnection(GetConnectionString()), settings ?? new());
+
+	private static string GetConnectionString() =>
+		Environment.GetEnvironmentVariable("MUCHADO_MYSQL_TEST_CONNECTION_STRING") ??
+		"Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true";
 
 	private sealed class FakeDbRetryPolicy : DbRetryPolicy
 	{
