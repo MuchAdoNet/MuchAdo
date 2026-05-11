@@ -197,6 +197,113 @@ internal sealed class SqliteTests
 	}
 
 	[Test]
+	public void BatchDataReaderDelegatesMetadataAndTypedAccessors()
+	{
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+
+		var values = connector
+			.Command("select cast(42 as integer) as Id, 'one' as Name, cast(2.5 as real) as Amount")
+			.Command("select 'second' as Name")
+			.QueryMultiple(
+				_ =>
+				{
+					var reader = ((DbConnector) connector).ActiveReader!;
+					reader.FieldCount.Should().Be(3);
+					reader.GetName(0).Should().Be("Id");
+					reader.GetOrdinal("Name").Should().Be(1);
+					reader.GetFieldType(0).Should().Be<long>();
+					reader.GetDataTypeName(2).Should().NotBeNullOrEmpty();
+
+					reader.Read().Should().BeTrue();
+					reader.GetInt64(0).Should().Be(42);
+					reader.GetString(1).Should().Be("one");
+					reader.GetDouble(2).Should().Be(2.5);
+					reader[0].Should().Be(42L);
+					reader["Name"].Should().Be("one");
+					var fieldValues = new object[3];
+					reader.GetValues(fieldValues).Should().Be(3);
+					fieldValues.Should().Equal(42L, "one", 2.5);
+
+					reader.NextResult().Should().BeTrue();
+					reader.Read().Should().BeTrue();
+					return (reader.FieldCount, reader.GetString(0));
+				});
+
+		values.Should().Be((1, "second"));
+	}
+
+	[Test]
+	public void BatchDataReaderSkipsNonRowCommandsBetweenResultSets()
+	{
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+
+		var values = connector
+			.Command("create table Items (Id integer primary key, Name text not null)")
+			.Command("insert into Items (Name) values ('one')")
+			.Command("select count(*) from Items")
+			.Command("update Items set Name = 'two' where Id = 1")
+			.Command("select Name from Items where Id = 1")
+			.QueryMultiple(reader => (reader.ReadSingle<long>(), reader.ReadSingle<string>()));
+
+		values.Should().Be((1, "two"));
+	}
+
+	[Test]
+	public void BatchDataReaderDisposedReaderThrowsForReadAndNextResult()
+	{
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+		using var resultSetReader = connector
+			.Command("select 1")
+			.Command("select 2")
+			.QueryMultiple();
+		var reader = ((DbConnector) connector).ActiveReader!;
+
+		resultSetReader.Dispose();
+
+		Invoking(reader.Read).Should().Throw<ObjectDisposedException>();
+		Invoking(reader.NextResult).Should().Throw<ObjectDisposedException>();
+	}
+
+	[Test]
+	public void BatchDataReaderEmptyBatchThrows()
+	{
+		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+
+		Invoking(() => connector.CreateCommandBatch().QueryMultiple())
+			.Should().Throw<InvalidOperationException>()
+			.WithMessage("The command batch is empty.");
+	}
+
+	[Test]
+	public async Task BatchDataReaderAsyncPreparedBatch()
+	{
+		await using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
+
+		await connector.Command("create table Items (Id integer primary key, Name text not null)").ExecuteAsync();
+
+		(await connector
+			.Command("insert into Items (Name) values ('one')")
+			.Prepare()
+			.ExecuteAsync()).Should().Be(1);
+
+		var values = await connector
+			.Command("select count(*) from Items")
+			.Command("insert into Items (Name) values ('two')")
+			.Command("select Name from Items order by Id")
+			.Prepare()
+			.QueryMultipleAsync(
+				async reader =>
+				{
+					var count = await reader.ReadSingleAsync<long>();
+					var names = await reader.ReadAsync<string>();
+					return (count, names);
+				});
+
+		values.count.Should().Be(1);
+		values.names.Should().Equal("one", "two");
+	}
+
+	[Test]
 	public void NullParameter()
 	{
 		using var connector = new SqliteDbConnector(new SqliteConnection("Data Source=:memory:"));
