@@ -17,14 +17,15 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 						record.Get<string>(0, 1).Should().Be(s_dto.TheText);
 					else
 						record.Get<string>(0, 1).Should().BeNull();
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -36,11 +37,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						record.Get<long>(1, 1).Should().Be(s_dto.TheInteger);
 						record.Get<double>(2, 1).Should().Be(s_dto.TheReal);
@@ -50,6 +51,7 @@ internal sealed class DbDataMapperTests
 						Invoking(() => record.Get<long>(1, 1)).Should().Throw<InvalidOperationException>();
 						Invoking(() => record.Get<double>(2, 1)).Should().Throw<InvalidOperationException>();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -61,11 +63,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						record.Get<long?>(1, 1).Should().Be(s_dto.TheInteger);
 						record.Get<double?>(2, 1).Should().Be(s_dto.TheReal);
@@ -75,6 +77,7 @@ internal sealed class DbDataMapperTests
 						record.Get<long?>(1, 1).Should().BeNull();
 						record.Get<double?>(2, 1).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -86,11 +89,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						record.Get<Answer>(1, 1).Should().Be(Answer.FortyTwo);
 						record.Get<Answer?>(1, 1).Should().Be(Answer.FortyTwo);
@@ -100,6 +103,7 @@ internal sealed class DbDataMapperTests
 						Invoking(() => record.Get<Answer>(1, 1)).Should().Throw<InvalidOperationException>();
 						record.Get<Answer?>(1, 1).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -110,7 +114,7 @@ internal sealed class DbDataMapperTests
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
@@ -129,7 +133,7 @@ internal sealed class DbDataMapperTests
 	{
 		using var connector = GetConnectorWithItems(ignoreUnusedFields: ignore);
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -150,7 +154,7 @@ internal sealed class DbDataMapperTests
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -174,14 +178,15 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 						record.Get<byte[]>(3, 1).Should().Equal(s_dto.TheBlob);
 					else
 						record.Get<byte[]>(3, 1).Should().BeNull();
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -193,11 +198,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						var bytes = new byte[100];
 						using (var stream = record.Get<Stream>(3, 1))
@@ -208,6 +213,7 @@ internal sealed class DbDataMapperTests
 					{
 						record.Get<Stream>(3, 1).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -217,24 +223,25 @@ internal sealed class DbDataMapperTests
 	public void TupleTests([Values(2, 3, 4, 5, 6, 7, 8, 9, 10)] int fieldCount)
 	{
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
-		var columns = string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => $"Item{x}"));
-#pragma warning disable MUCH0001
+		var fieldIndices = Enumerable.Range(1, fieldCount).ToList();
+		var columns = Sql.Intersperse(", ", fieldIndices.Select(x => Sql.Raw($"Item{x}")));
 		connector
-			.Command($"""
-				create table Tuples ({columns});
-				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => x))});
-				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(_ => "null"))});
+			.CommandFormat($"""
+				create table Tuples (Id integer primary key,
+					{Sql.Intersperse(", ", fieldIndices.Select(x => Sql.Raw($"Item{x} integer")))});
+				insert into Tuples ({columns}) values
+					({Sql.Intersperse(", ", fieldIndices.Select(x => Sql.Raw($"{x}")))}),
+					({Sql.Intersperse(", ", fieldIndices.Select(_ => Sql.Raw("null")))});
 				""")
 			.Execute();
-#pragma warning restore MUCH0001
 
 		var index = 0;
 		connector
-			.Command("select * from Tuples;")
+			.CommandFormat($"select {columns} from Tuples order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						if (fieldCount == 2)
 							record.Get<(int, int)>().Should().Be((1, 2));
@@ -278,6 +285,7 @@ internal sealed class DbDataMapperTests
 						else
 							throw new InvalidOperationException();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -287,47 +295,44 @@ internal sealed class DbDataMapperTests
 	public void NullableTuples()
 	{
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
-		const int fieldCount = 3;
-		var columns = string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => $"Item{x}"));
-#pragma warning disable MUCH0001
 		connector
-			.Command($"""
-				create table Tuples ({columns});
-				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(x => x))});
-				insert into Tuples ({columns}) values ({string.Join(", ", Enumerable.Range(1, fieldCount).Select(_ => "null"))});
-				insert into Tuples ({columns}) values (null, 2, 3);
+			.Command("""
+				create table Tuples (Id integer primary key, Item1 integer, Item2 integer, Item3 integer);
+				insert into Tuples (Item1, Item2, Item3) values (1, 2, 3), (null, null, null), (null, 2, 3);
 				""")
 			.Execute();
-#pragma warning restore MUCH0001
 
 		var index = 0;
 		connector
-			.Command("select * from Tuples;")
-			.Query(
-				record =>
+			.Command("select Item1, Item2, Item3 from Tuples order by Id;")
+			.Query(record =>
+			{
+				if (index == 0)
 				{
-					if (index++ == 0)
-					{
-						record.Get<(int, int, int)>().Should().Be((1, 2, 3));
-						record.Get<(int, int, int)?>().Should().Be((1, 2, 3));
-					}
-					else
-					{
-						if (index == 2)
-						{
-							record.Get<(int?, int?, int?)>().Should().Be((null, null, null));
-							record.Get<(int?, int?, int?)?>().Should().Be(null);
-						}
-						else
-						{
-							record.Get<(int, int, int)?>().Should().Be((0, 2, 3));
-							(int?, int?, int?) expected = (null, 2, 3);
-							record.Get<(int?, int?, int?)>().Should().Be(expected);
-							record.Get<(int?, int?, int?)?>().Should().Be(expected);
-						}
-					}
-					return 1;
-				})
+					record.Get<(int, int, int)>().Should().Be((1, 2, 3));
+					record.Get<(int, int, int)?>().Should().Be((1, 2, 3));
+					(int?, int?, int?) expected = (1, 2, 3);
+					record.Get<(int?, int?, int?)>().Should().Be(expected);
+					record.Get<(int?, int?, int?)?>().Should().Be(expected);
+				}
+				else if (index == 1)
+				{
+					Invoking(record.Get<(int, int, int)>).Should().Throw<InvalidOperationException>();
+					record.Get<(int, int, int)?>().Should().Be(null);
+					record.Get<(int?, int?, int?)>().Should().Be((null, null, null));
+					record.Get<(int?, int?, int?)?>().Should().Be(null);
+				}
+				else
+				{
+					Invoking(record.Get<(int, int, int)>).Should().Throw<InvalidOperationException>();
+					Invoking(record.Get<(int, int, int)?>).Should().Throw<InvalidOperationException>();
+					(int?, int?, int?) expected = (null, 2, 3);
+					record.Get<(int?, int?, int?)>().Should().Be(expected);
+					record.Get<(int?, int?, int?)?>().Should().Be(expected);
+				}
+				index++;
+				return 1;
+			})
 			.Sum().Should().Be(3);
 	}
 
@@ -353,11 +358,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						// DTO
 						record.Get<ItemDto>(0, 4).Should().BeEquivalentTo(s_dto);
@@ -378,6 +383,7 @@ internal sealed class DbDataMapperTests
 					{
 						record.Get<ItemDto>(0, 4).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -389,11 +395,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, null, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, null, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						var tuple = record.Get<(ItemDto, ItemDto)>(0, 5);
 						tuple.Item1.Should().BeEquivalentTo(new ItemDto(s_dto.TheText) { TheInteger = s_dto.TheInteger });
@@ -405,6 +411,7 @@ internal sealed class DbDataMapperTests
 						tuple.Item1.Should().BeNull();
 						tuple.Item2.Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -416,11 +423,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger from items;")
+			.Command("select TheText, TheInteger from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						var tuple = record.Get<(ItemDto, ItemDto)>(0, 2);
 						tuple.Item1.Should().BeEquivalentTo(new ItemDto(s_dto.TheText));
@@ -432,6 +439,7 @@ internal sealed class DbDataMapperTests
 						tuple.Item1.Should().BeNull();
 						tuple.Item2.Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -443,22 +451,22 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						// record (compare by members because the TheBlob is compared by reference in .Equals())
 						record.Get<ItemRecord>(0, 4).Should().BeEquivalentTo(s_record, x => x.ComparingByMembers<ItemRecord>());
-						record.Get<ItemRecord>(0, 1).Should().BeEquivalentTo(new ItemRecord(s_record.TheText, default, default, default), x => x.ComparingByMembers<ItemRecord>());
+						record.Get<ItemRecord>(0, 1).Should().BeEquivalentTo(new ItemRecord(s_record.TheText, 0, 0, null), x => x.ComparingByMembers<ItemRecord>());
 						record.Get<ItemRecord>(0, 0).Should().BeNull();
 						record.Get<ItemRecord>(4, 0).Should().BeNull();
 
 						// tuple with record
 						var tuple = record.Get<(string, ItemRecord, byte[])>(0, 4);
 						tuple.Item1.Should().Be(s_record.TheText);
-						tuple.Item2.Should().BeEquivalentTo(new ItemRecord(default, s_record.TheInteger, s_record.TheReal, default), x => x.ComparingByMembers<ItemRecord>());
+						tuple.Item2.Should().BeEquivalentTo(new ItemRecord(null, s_record.TheInteger, s_record.TheReal, null), x => x.ComparingByMembers<ItemRecord>());
 						tuple.Item3.Should().Equal(s_record.TheBlob);
 
 						// tuple with two records (needs NULL terminator)
@@ -468,6 +476,7 @@ internal sealed class DbDataMapperTests
 					{
 						record.Get<ItemRecord>(0, 4).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -479,15 +488,16 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select thetext, THEinteger from items;")
+			.Command("select thetext, THEinteger from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						record.Get<ItemDto>(0, 2)
 							.Should().BeEquivalentTo(new ItemDto(s_dto.TheText) { TheInteger = s_dto.TheInteger });
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -499,15 +509,16 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText as the_text, TheInteger as the_integer from items;")
+			.Command("select TheText as the_text, TheInteger as the_integer from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						record.Get<ItemDto>(0, 2)
 							.Should().BeEquivalentTo(new ItemDto(s_dto.TheText) { TheInteger = s_dto.TheInteger });
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -520,17 +531,18 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems(ignoreUnusedFields: ignore);
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger as Nope from items;")
+			.Command("select TheText, TheInteger as Nope from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						if (ignore)
 							record.Get<ItemDto>(0, 2).Should().BeEquivalentTo(new ItemDto(s_dto.TheText));
 						else
 							Invoking(() => record.Get<ItemDto>(0, 2)).Should().Throw<InvalidOperationException>();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -542,11 +554,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						// dynamic
 						((string) record.Get<dynamic>(0, 4).TheText).Should().Be(s_dto.TheText);
@@ -567,6 +579,7 @@ internal sealed class DbDataMapperTests
 						((object) record.Get<dynamic>(0, 4)).Should().BeNull();
 						record.Get<object>(0, 4).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -578,11 +591,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						// dictionary
 						((string) record.Get<Dictionary<string, object?>>(0, 4)["TheText"]!).Should().Be(s_dto.TheText);
@@ -597,6 +610,7 @@ internal sealed class DbDataMapperTests
 						// all nulls returns null dictionary
 						record.Get<IDictionary>(0, 4).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -608,11 +622,11 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 					{
 						// object/dynamic
 						record.Get<object>(0).Should().Be(s_dto.TheText);
@@ -640,17 +654,18 @@ internal sealed class DbDataMapperTests
 						record.Get<object>(0).Should().BeNull();
 						((object) record.Get<dynamic>(0)).Should().BeNull();
 					}
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
 	}
 
 	[Test]
-	public void GetExtension()
+	public void Get()
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -661,11 +676,11 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
-	public void GetAtExtension()
+	public void GetAt()
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -680,11 +695,11 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
-	public void AsExtension()
+	public void As()
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -698,11 +713,11 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
-	public void GetRangeExtension()
+	public void GetRange()
 	{
 		using var connector = GetConnectorWithItems();
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.QueryFirst(
 				record =>
 				{
@@ -722,14 +737,15 @@ internal sealed class DbDataMapperTests
 		using var connector = GetConnectorWithItems();
 		var index = 0;
 		connector
-			.Command("select TheText, TheInteger, TheReal, TheBlob from items;")
+			.Command("select TheText, TheInteger, TheReal, TheBlob from Items order by Id;")
 			.Query(
 				record =>
 				{
-					if (index++ == 0)
+					if (index == 0)
 						record.Get<CustomColumnDto>(0, 1).Should().BeEquivalentTo(new CustomColumnDto { Text = s_dto.TheText });
 					else
 						record.Get<CustomColumnDto>(0, 1).Should().BeNull();
+					index++;
 					return 1;
 				})
 			.Sum().Should().Be(2);
@@ -744,7 +760,7 @@ internal sealed class DbDataMapperTests
 
 		var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"), settings);
 		connector
-			.Command("create table Items (TheText text null, TheInteger integer null, TheReal real null, TheBlob blob null);")
+			.Command("create table Items (Id integer primary key, TheText text null, TheInteger integer null, TheReal real null, TheBlob blob null);")
 			.Execute();
 		connector
 			.Command("insert into Items (TheText, TheInteger, TheReal, TheBlob) values ('hey', 42, 3.1415, X'01FE');")
