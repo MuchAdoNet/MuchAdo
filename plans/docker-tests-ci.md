@@ -17,6 +17,7 @@
 - Add a repeatable command that starts the database containers, initializes the `test` databases, runs the provider integration tests, and tears containers down reliably.
 - Run the Docker-backed tests in GitHub Actions on `ubuntu-latest`, where Docker Compose support is already available on hosted runners.
 - Preserve the existing OS matrix for restore/build/unit/package coverage.
+- Gate package publishing on successful builds across Ubuntu, Windows, and macOS, plus the Docker-backed test job.
 - Make failures easy to diagnose by publishing test results and, when container startup fails, Docker logs.
 
 ## Plan
@@ -29,6 +30,7 @@
   - `tests/MuchAdo.MySql.Tests/MuchAdo.MySql.Tests.csproj`
   - `tests/MuchAdo.Npgsql.Tests/MuchAdo.Npgsql.Tests.csproj`
   - `tests/MuchAdo.SqlServer.Tests/MuchAdo.SqlServer.Tests.csproj`
+- Run Docker-backed tests as `net10.0` coverage in Ubuntu CI. Do not add a separate SQL Server `net481` Docker path unless a future regression shows the extra framework coverage is worth the cost.
 - Verify whether NUnit explicit tests run when selected by `dotnet test --filter`; if they do not run reliably, remove `Explicit` once the default unit-test filter is in place.
 
 ### 2. Harden Docker Compose Setup
@@ -48,7 +50,7 @@
   - Depend on `build` unless `--skip build` is supplied.
   - Run `docker compose -f docker/docker-compose.yml up -d --build`.
   - Wait for service health or run the setup step that blocks until databases are ready.
-  - Execute the three provider test projects with `dotnet test --no-build --configuration <configuration> --filter TestCategory=Docker`.
+  - Execute the three provider test projects with `dotnet test --no-build --configuration <configuration> --framework net10.0 --filter TestCategory=Docker`.
   - Emit TRX results under `release/TestResults` using stable file names per provider.
   - Always run `docker compose -f docker/docker-compose.yml down -v` in a `finally` path.
 - If extending `Faithlife.Build` is awkward, add a checked-in PowerShell helper such as `tools/Test-Docker.ps1` and have both the build target and CI call that helper. The build target should remain the public entry point.
@@ -62,13 +64,19 @@
   - runs `./build.ps1 restore`, `./build.ps1 build --skip restore`, then `./build.ps1 test-docker --skip build`
   - uploads TRX files from `release/TestResults/**/*.trx`
   - on failure, uploads Docker Compose logs as an artifact
-- Make package publishing depend only on the existing Windows `build` leg unless the project policy should require Docker-test success before publishing. If Docker tests should gate publishing, split publish into its own job with `needs: [build, docker-tests]`.
+- Split publishing into its own job so it can depend on the full OS matrix and Docker tests:
+  - remove the `Publish` step from the matrix job,
+  - add a `publish` job with `needs: [build, docker-tests]`,
+  - keep the existing publish condition: repository owner is `MuchAdoNet` and ref is `refs/heads/master`,
+  - run publishing on Windows so the release path stays closest to today's behavior,
+  - either download the package artifact produced by the Windows matrix leg or rerun `./build.ps1 package --skip test` before `./build.ps1 publish --skip package`.
 
 ### 5. Local Developer Workflow
 
 - Document the local command in `CONTRIBUTING.md`, for example:
   - `./build.ps1 test` for unit tests only.
   - `./build.ps1 test-docker` for MySQL, PostgreSQL, and SQL Server integration tests.
+- Keep Compose-compatible connection strings as the test defaults, but let each provider test override the default through an environment variable. Suggested names are `MUCHADO_MYSQL_TEST_CONNECTION_STRING`, `MUCHADO_NPGSQL_TEST_CONNECTION_STRING`, and `MUCHADO_SQLSERVER_TEST_CONNECTION_STRING`.
 - Note the prerequisites: Docker Desktop or Docker Engine with Compose V2, available ports `1433`, `3306`, and `5432`, and enough memory for SQL Server.
 - Include cleanup guidance: `docker compose -f docker/docker-compose.yml down -v`.
 
@@ -80,10 +88,5 @@
   - the existing OS matrix still runs unit tests and packaging,
   - the new Ubuntu Docker job starts all services,
   - all three provider test projects run,
+  - the publish job is skipped or runs only after all matrix jobs and Docker tests have succeeded,
   - test results and Docker logs are available as artifacts when appropriate.
-
-## Open Decisions
-
-- Whether Docker-backed tests must gate package publishing or can report as a separate required check.
-- Whether to keep SQL Server coverage only on `net10.0` in Ubuntu CI, or add a separate Windows/manual path for `net481` coverage.
-- Whether provider connection strings should remain hard-coded for tests or move to environment-variable overrides to avoid fixed host ports in local development.
