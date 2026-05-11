@@ -14,6 +14,64 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
+	public async Task ProviderAccessorsBatchTimeoutTransactionsAndFunction()
+	{
+		var tableName = Sql.Name($"{nameof(ProviderAccessorsBatchTimeoutTransactionsAndFunction)}_{c_framework}");
+		var functionName = Sql.Name($"{nameof(ProviderAccessorsBatchTimeoutTransactionsAndFunction)}_square_{c_framework}");
+
+		await using var connector = CreateConnector();
+		connector.Connection.Should().BeOfType<NpgsqlConnection>();
+		(await connector.GetOpenConnectionAsync()).Should().BeSameAs(connector.Connection);
+		connector.GetOpenConnection().Should().BeSameAs(connector.Connection);
+
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.CommandFormat($"create or replace function {functionName}(Value integer) returns integer language sql as 'select Value * Value'")
+			.ExecuteAsync();
+
+		await using (await connector.BeginTransactionAsync())
+		{
+			connector.Transaction.Should().BeOfType<NpgsqlTransaction>();
+			await connector.CommandFormat($"insert into {tableName} (Name) values ({"rollback"})").ExecuteAsync();
+		}
+
+		(await connector.CommandFormat($"select count(*) from {tableName}").QuerySingleAsync<long>()).Should().Be(0);
+
+		await using (await connector.BeginTransactionAsync())
+		{
+			connector.Transaction.Should().BeOfType<NpgsqlTransaction>();
+			await connector.CommandFormat($"insert into {tableName} (Name) values ({"commit"})").ExecuteAsync();
+			await connector.CommitTransactionAsync();
+		}
+
+		(await connector.CommandFormat($"select Name from {tableName}").QuerySingleAsync<string>()).Should().Be("commit");
+		(await connector.CommandFormat($"select {functionName}({11})").QuerySingleAsync<int>()).Should().Be(121);
+
+		(await connector.CommandFormat($"select Name from {tableName}").WithTimeout(TimeSpan.FromSeconds(3)).QueryAsync(
+			record =>
+			{
+				connector.ActiveCommand.Should().BeOfType<NpgsqlCommand>();
+				connector.ActiveCommand!.CommandTimeout.Should().Be(3);
+				connector.ActiveReader.Should().BeOfType<NpgsqlDataReader>();
+				return record.Get<string>();
+			})).Should().Equal("commit");
+
+		var values = await connector
+			.CommandFormat($"select count(*) from {tableName}")
+			.CommandFormat($"select Name from {tableName}")
+			.WithTimeout(TimeSpan.FromSeconds(4))
+			.QueryMultipleAsync(
+				async reader =>
+				{
+					connector.ActiveBatch.Should().BeOfType<NpgsqlBatch>();
+					connector.ActiveBatch!.Timeout.Should().Be(4);
+					return (await reader.ReadSingleAsync<long>(), await reader.ReadSingleAsync<string>());
+				});
+		values.Should().Be((1, "commit"));
+	}
+
+	[Test]
 	public async Task ReuseParameter()
 	{
 		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
