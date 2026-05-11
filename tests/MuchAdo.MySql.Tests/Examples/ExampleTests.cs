@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace MuchAdo.MySql.Tests.Examples;
 
-[TestFixture(Explicit = true), NonParallelizable]
+[TestFixture, Category("Docker"), NonParallelizable]
 [SuppressMessage("ReSharper", "InterpolatedStringExpressionIsNotIFormattable", Justification = "Custom formatting.")]
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1400:Access modifier should be declared", Justification = "Simpler for example.")]
 [SuppressMessage("Style", "IDE0040:Add accessibility modifiers", Justification = "Simpler for example.")]
@@ -472,6 +472,7 @@ internal sealed class ExampleTests
     sealed record Widget(long Id, string Name, double? Height);
 
     private static string GetConnectionString() =>
+        Environment.GetEnvironmentVariable("MUCHADO_MYSQL_TEST_CONNECTION_STRING") ??
         "Server=localhost;User Id=root;Password=test;SSL Mode=none;Database=test;Ignore Prepare=false;AllowPublicKeyRetrieval=true";
 
     private MySqlDbConnector CreateConnector() => new MySqlDbConnector(
