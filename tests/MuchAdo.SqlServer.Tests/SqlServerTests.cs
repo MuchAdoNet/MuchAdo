@@ -6,7 +6,7 @@ using static FluentAssertions.FluentActions;
 
 namespace MuchAdo.SqlServer.Tests;
 
-[TestFixture(Explicit = true)]
+[TestFixture, Category("Docker"), NonParallelizable]
 internal sealed class SqlServerTests
 {
 	[Test]
@@ -51,7 +51,11 @@ internal sealed class SqlServerTests
 	}
 
 	private static SqlServerDbConnector CreateConnector() => new(
-		new SqlConnection("data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True"));
+		new SqlConnection(GetConnectionString()));
+
+	private static string GetConnectionString() =>
+		Environment.GetEnvironmentVariable("MUCHADO_SQLSERVER_TEST_CONNECTION_STRING") ??
+		"data source=localhost;user id=sa;password=P@ssw0rd;initial catalog=test;TrustServerCertificate=True";
 
 #if NET
 	private const string c_suffix = "_netc";

@@ -1,11 +1,16 @@
 services:
   mssql:
-    image: mcr.microsoft.com/mssql/server:2017-CU17-ubuntu
+    image: mcr.microsoft.com/mssql/server:2022-latest
     ports:
       - "1433:1433"
     environment:
       ACCEPT_EULA: Y
       MSSQL_SA_PASSWORD: P@ssw0rd
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"select 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"select 1\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   mysql:
     image: mysql:8.0
@@ -13,6 +18,12 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: test
+      MYSQL_DATABASE: test
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ptest"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   postgres:
     image: postgres:11.6-alpine
@@ -21,11 +32,17 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   setup:
     build: ./setup/
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      MSSQL_SA_PASSWORD: P@ssw0rd
     depends_on:
       - mssql
       - mysql

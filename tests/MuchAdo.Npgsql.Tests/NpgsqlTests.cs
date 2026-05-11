@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace MuchAdo.Npgsql.Tests;
 
-[TestFixture(Explicit = true)]
+[TestFixture, Category("Docker"), NonParallelizable]
 internal sealed class NpgsqlTests
 {
 	[OneTimeSetUp]
@@ -112,7 +112,11 @@ internal sealed class NpgsqlTests
 	}
 
 	private static NpgsqlDbConnector CreateConnector() => new(
-		new NpgsqlConnection("host=localhost;user id=root;password=test;database=test"));
+		new NpgsqlConnection(GetConnectionString()));
+
+	private static string GetConnectionString() =>
+		Environment.GetEnvironmentVariable("MUCHADO_NPGSQL_TEST_CONNECTION_STRING") ??
+		"host=localhost;user id=root;password=test;database=test";
 
 #if NET
 	private const string c_framework = "netc";

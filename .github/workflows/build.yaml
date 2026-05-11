@@ -38,8 +38,51 @@ jobs:
       run: .\build.ps1 test --skip build
     - name: Package
       run: .\build.ps1 package --skip test
+
+  docker-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+    - name: Restore
+      run: .\build.ps1 restore
+    - name: Build
+      run: .\build.ps1 build --skip restore
+    - name: Test Docker-backed providers
+      run: .\build.ps1 test-docker --skip build
+    - name: Upload Docker test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-test-results
+        path: release/TestResults/**/*.trx
+        if-no-files-found: ignore
+    - name: Upload Docker logs
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-logs
+        path: release/TestResults/docker-compose.log
+        if-no-files-found: ignore
+
+  publish:
+    needs: [build, docker-tests]
+    runs-on: windows-latest
+    if: github.repository_owner == 'MuchAdoNet' && github.ref == 'refs/heads/master'
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+    - name: Restore
+      run: .\build.ps1 restore
+    - name: Build
+      run: .\build.ps1 build --skip restore
+    - name: Package
+      run: .\build.ps1 package --skip test
     - name: Publish
-      if: runner.os == 'Windows' && github.repository_owner == 'MuchAdoNet' && github.ref == 'refs/heads/master'
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
       run: .\build.ps1 publish --skip package
