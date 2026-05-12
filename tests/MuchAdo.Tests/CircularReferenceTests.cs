@@ -43,6 +43,32 @@ internal sealed class CircularReferenceTests
 	}
 
 	[Test]
+	public void MutuallyReferentialDtosCanMapOrderCustomerLastOrder()
+	{
+		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));
+		connector
+			.Command("""
+				create table Orders (OrderId integer not null, CustomerId integer not null);
+				insert into Orders (OrderId, CustomerId) values (42, 7);
+				""")
+			.Execute();
+
+		var result = connector
+			.Command("""
+				select OrderId, null, CustomerId, null, OrderId
+				from Orders;
+				""")
+			.QueryFirst<(OrderDto Order, CustomerDto Customer, OrderDto LastOrder)>();
+
+		result.Order.OrderId.Should().Be(42);
+		result.Order.Customer.Should().BeNull();
+		result.Customer.CustomerId.Should().Be(7);
+		result.Customer.LastOrder.Should().BeNull();
+		result.LastOrder.OrderId.Should().Be(42);
+		result.LastOrder.Customer.Should().BeNull();
+	}
+
+	[Test]
 	public void SelectedSelfReferentialPropertyThrowsMeaningfulException()
 	{
 		using var connector = new DbConnector(new SqliteConnection("Data Source=:memory:"));

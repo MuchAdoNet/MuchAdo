@@ -647,6 +647,100 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void QueryMultipleOrDefaultAndValidationTests()
+	{
+		using var connector = CreateConnector();
+		connector.Command("create table Items (ItemId integer primary key, Name text not null);").Execute();
+		connector.Command("insert into Items (Name) values ('item1'), ('item2');").Execute();
+
+		const string sql = """
+			select Name from Items order by ItemId;
+			select Name from Items where 0;
+			select Name from Items where Name = 'item1';
+			select Name from Items where 0;
+			""";
+
+		using (var reader = connector.Command(sql).QueryMultiple())
+		{
+			reader.ReadFirstOrDefault(ToUpper).Should().Be("ITEM1");
+			reader.ReadFirstOrDefault<string>().Should().BeNull();
+			reader.ReadSingleOrDefault(ToUpper).Should().Be("ITEM1");
+			reader.ReadSingleOrDefault<string>().Should().BeNull();
+		}
+
+		using (var reader = connector.Command("select Name from Items order by ItemId;").QueryMultiple())
+		{
+			Invoking(() => reader.Read<string>(null!)).Should().Throw<ArgumentNullException>();
+			Invoking(() => reader.ReadFirst<string>(null!)).Should().Throw<ArgumentNullException>();
+			Invoking(() => reader.ReadFirstOrDefault<string>(null!)).Should().Throw<ArgumentNullException>();
+			Invoking(() => reader.ReadSingle<string>(null!)).Should().Throw<ArgumentNullException>();
+			Invoking(() => reader.ReadSingleOrDefault<string>(null!)).Should().Throw<ArgumentNullException>();
+			Invoking(() => reader.Enumerate<string>(null!).ToList()).Should().Throw<ArgumentNullException>();
+		}
+	}
+
+	[Test]
+	public async Task QueryMultipleAsyncOrDefaultAndValidationTests()
+	{
+		await using var connector = CreateConnector();
+		await connector.Command("create table Items (ItemId integer primary key, Name text not null);").ExecuteAsync();
+		await connector.Command("insert into Items (Name) values ('item1'), ('item2');").ExecuteAsync();
+
+		const string sql = """
+			select Name from Items order by ItemId;
+			select Name from Items where 0;
+			select Name from Items where Name = 'item1';
+			select Name from Items where 0;
+			""";
+
+		await using (var reader = await connector.Command(sql).QueryMultipleAsync())
+		{
+			(await reader.ReadFirstOrDefaultAsync(ToUpper)).Should().Be("ITEM1");
+			(await reader.ReadFirstOrDefaultAsync<string>()).Should().BeNull();
+			(await reader.ReadSingleOrDefaultAsync(ToUpper)).Should().Be("ITEM1");
+			(await reader.ReadSingleOrDefaultAsync<string>()).Should().BeNull();
+		}
+
+		await using (var reader = await connector.Command("select Name from Items order by ItemId;").QueryMultipleAsync())
+		{
+			await Awaiting(async () => await reader.ReadAsync<string>(null!)).Should().ThrowAsync<ArgumentNullException>();
+			await Awaiting(async () => await reader.ReadFirstAsync<string>(null!)).Should().ThrowAsync<ArgumentNullException>();
+			await Awaiting(async () => await reader.ReadFirstOrDefaultAsync<string>(null!)).Should().ThrowAsync<ArgumentNullException>();
+			await Awaiting(async () => await reader.ReadSingleAsync<string>(null!)).Should().ThrowAsync<ArgumentNullException>();
+			await Awaiting(async () => await reader.ReadSingleOrDefaultAsync<string>(null!)).Should().ThrowAsync<ArgumentNullException>();
+			Invoking(() => reader.EnumerateAsync<string>(null!)).Should().Throw<ArgumentNullException>();
+		}
+	}
+
+	[Test]
+	public void QueryMultipleDisposeClearsActiveState()
+	{
+		using var connector = CreateConnector();
+		var reader = connector.Command("select 1; select 2;").QueryMultiple();
+		connector.ActiveReader.Should().NotBeNull();
+		connector.ActiveCommand.Should().NotBeNull();
+
+		reader.Dispose();
+
+		connector.ActiveReader.Should().BeNull();
+		connector.ActiveCommand.Should().BeNull();
+	}
+
+	[Test]
+	public async Task QueryMultipleDisposeAsyncClearsActiveState()
+	{
+		await using var connector = CreateConnector();
+		var reader = await connector.Command("select 1; select 2;").QueryMultipleAsync();
+		connector.ActiveReader.Should().NotBeNull();
+		connector.ActiveCommand.Should().NotBeNull();
+
+		await reader.DisposeAsync();
+
+		connector.ActiveReader.Should().BeNull();
+		connector.ActiveCommand.Should().BeNull();
+	}
+
+	[Test]
 	public void CacheTests()
 	{
 		using var connector = CreateConnector();

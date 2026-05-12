@@ -110,6 +110,78 @@ internal sealed class DbDataMapperTests
 	}
 
 	[Test]
+	public void PrimitiveMapperMatrix()
+	{
+		var dateTime = new DateTime(2026, 5, 11, 12, 30, 45, DateTimeKind.Utc);
+		var dateTimeOffset = new DateTimeOffset(dateTime);
+		var guid = Guid.Parse("7b36e5fd-d4a1-418f-85bd-9ab3905c16cf");
+		short int16 = -12;
+		var timeSpan = TimeSpan.FromSeconds(123);
+		var table = new DataTable();
+		table.Columns.Add("Bool", typeof(bool));
+		table.Columns.Add("Byte", typeof(byte));
+		table.Columns.Add("Char", typeof(char));
+		table.Columns.Add("DateTime", typeof(DateTime));
+		table.Columns.Add("Float", typeof(float));
+		table.Columns.Add("Guid", typeof(Guid));
+		table.Columns.Add("Int16", typeof(short));
+		table.Columns.Add("DateTimeOffset", typeof(DateTimeOffset));
+		table.Columns.Add("TimeSpan", typeof(TimeSpan));
+		table.Columns.Add("UInt32", typeof(uint));
+		table.Rows.Add(true, (byte) 7, 'z', dateTime, 1.25f, guid, int16, dateTimeOffset, timeSpan, 123U);
+		table.Rows.Add(DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value);
+
+		using var reader = table.CreateDataReader();
+		reader.Read().Should().BeTrue();
+		var mapper = DbDataMapper.Default;
+		mapper.GetTypeMapper<bool>().Map(reader, 0, null).Should().BeTrue();
+		mapper.GetTypeMapper<byte>().Map(reader, 1, null).Should().Be(7);
+		mapper.GetTypeMapper<char>().Map(reader, 2, null).Should().Be('z');
+		mapper.GetTypeMapper<DateTime>().Map(reader, 3, null).Should().Be(dateTime);
+		mapper.GetTypeMapper<float>().Map(reader, 4, null).Should().Be(1.25f);
+		mapper.GetTypeMapper<Guid>().Map(reader, 5, null).Should().Be(guid);
+		mapper.GetTypeMapper<short>().Map(reader, 6, null).Should().Be(-12);
+		mapper.GetTypeMapper<DateTimeOffset>().Map(reader, 7, null).Should().Be(dateTimeOffset);
+		mapper.GetTypeMapper<TimeSpan>().Map(reader, 8, null).Should().Be(timeSpan);
+		mapper.GetTypeMapper<uint>().Map(reader, 9, null).Should().Be(123U);
+
+		reader.Read().Should().BeTrue();
+		Invoking(() => mapper.GetTypeMapper<bool>().Map(reader, 0, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<bool?>().Map(reader, 0, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<byte>().Map(reader, 1, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<byte?>().Map(reader, 1, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<char>().Map(reader, 2, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<char?>().Map(reader, 2, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<DateTime>().Map(reader, 3, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<DateTime?>().Map(reader, 3, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<float>().Map(reader, 4, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<float?>().Map(reader, 4, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<Guid>().Map(reader, 5, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<Guid?>().Map(reader, 5, null).Should().BeNull();
+		Invoking(() => mapper.GetTypeMapper<short>().Map(reader, 6, null)).Should().Throw<InvalidOperationException>();
+		mapper.GetTypeMapper<short?>().Map(reader, 6, null).Should().BeNull();
+	}
+
+	[Test]
+	public void FallbackReferenceMappers()
+	{
+		var mapper = DbDataMapper.Default;
+		var bytes = new byte[] { 1, 2, 3 };
+
+		mapper.GetTypeMapper<TextReader>().Map(new FakeDataRecord("hello"), 0, null).ReadToEnd().Should().Be("hello");
+		mapper.GetTypeMapper<byte[]>().Map(new FakeDataRecord(bytes, returnBytesFromGetValue: false), 0, null).Should().Equal(bytes);
+		using var stream = mapper.GetTypeMapper<Stream>().Map(new FakeDataRecord(bytes), 0, null);
+		stream.ReadByte().Should().Be(1);
+		stream.ReadByte().Should().Be(2);
+		stream.ReadByte().Should().Be(3);
+		stream.ReadByte().Should().Be(-1);
+
+		Invoking(() => mapper.GetTypeMapper<DateTimeOffset>().Map(new FakeDataRecord(DateTimeOffset.Now), 0, null))
+			.Should().Throw<InvalidOperationException>()
+			.WithMessage("Record must be a DbDataRecord.");
+	}
+
+	[Test]
 	public void BadIndexCount()
 	{
 		using var connector = GetConnectorWithItems();
@@ -786,6 +858,45 @@ internal sealed class DbDataMapperTests
 	{
 		[Column("TheText")]
 		public string? Text { get; set; }
+	}
+
+	private sealed class FakeDataRecord(object value, bool returnBytesFromGetValue = true) : IDataRecord
+	{
+		public int FieldCount => 1;
+		public object this[int index] => GetValue(index);
+		public object this[string name] => GetValue(GetOrdinal(name));
+		public string GetName(int index) => "Value";
+		public string GetDataTypeName(int index) => value.GetType().Name;
+		public Type GetFieldType(int index) => value.GetType();
+		public object GetValue(int index) => returnBytesFromGetValue ? value : new object();
+		public int GetValues(object[] values)
+		{
+			values[0] = GetValue(0);
+			return 1;
+		}
+		public int GetOrdinal(string name) => name == "Value" ? 0 : -1;
+		public bool GetBoolean(int index) => (bool) value;
+		public byte GetByte(int index) => (byte) value;
+		public long GetBytes(int index, long fieldOffset, byte[]? buffer, int bufferoffset, int length)
+		{
+			var bytes = (byte[]) value;
+			if (buffer is not null)
+				Array.Copy(bytes, (int) fieldOffset, buffer, bufferoffset, length);
+			return bytes.Length;
+		}
+		public char GetChar(int index) => (char) value;
+		public long GetChars(int index, long fieldoffset, char[]? buffer, int bufferoffset, int length) => throw new NotSupportedException();
+		public Guid GetGuid(int index) => (Guid) value;
+		public short GetInt16(int index) => (short) value;
+		public int GetInt32(int index) => (int) value;
+		public long GetInt64(int index) => (long) value;
+		public float GetFloat(int index) => (float) value;
+		public double GetDouble(int index) => (double) value;
+		public string GetString(int index) => (string) value;
+		public decimal GetDecimal(int index) => (decimal) value;
+		public DateTime GetDateTime(int index) => (DateTime) value;
+		public IDataReader GetData(int index) => throw new NotSupportedException();
+		public bool IsDBNull(int index) => value is DBNull;
 	}
 
 #pragma warning disable CA1801, SA1313

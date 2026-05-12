@@ -14,6 +14,64 @@ internal sealed class NpgsqlTests
 	}
 
 	[Test]
+	public async Task ProviderAccessorsBatchTimeoutTransactionsAndFunction()
+	{
+		var tableName = Sql.Name($"{nameof(ProviderAccessorsBatchTimeoutTransactionsAndFunction)}_{c_framework}");
+		var functionName = Sql.Name($"{nameof(ProviderAccessorsBatchTimeoutTransactionsAndFunction)}_square_{c_framework}");
+
+		await using var connector = CreateConnector();
+		connector.Connection.Should().BeOfType<NpgsqlConnection>();
+		(await connector.GetOpenConnectionAsync()).Should().BeSameAs(connector.Connection);
+		connector.GetOpenConnection().Should().BeSameAs(connector.Connection);
+
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.CommandFormat($"create or replace function {functionName}(Value integer) returns integer language sql as 'select Value * Value'")
+			.ExecuteAsync();
+
+		await using (await connector.BeginTransactionAsync())
+		{
+			connector.Transaction.Should().BeOfType<NpgsqlTransaction>();
+			await connector.CommandFormat($"insert into {tableName} (Name) values ({"rollback"})").ExecuteAsync();
+		}
+
+		(await connector.CommandFormat($"select count(*) from {tableName}").QuerySingleAsync<long>()).Should().Be(0);
+
+		await using (await connector.BeginTransactionAsync())
+		{
+			connector.Transaction.Should().BeOfType<NpgsqlTransaction>();
+			await connector.CommandFormat($"insert into {tableName} (Name) values ({"commit"})").ExecuteAsync();
+			await connector.CommitTransactionAsync();
+		}
+
+		(await connector.CommandFormat($"select Name from {tableName}").QuerySingleAsync<string>()).Should().Be("commit");
+		(await connector.CommandFormat($"select {functionName}({11})").QuerySingleAsync<int>()).Should().Be(121);
+
+		(await connector.CommandFormat($"select Name from {tableName}").WithTimeout(TimeSpan.FromSeconds(3)).QueryAsync(
+			record =>
+			{
+				connector.ActiveCommand.Should().BeOfType<NpgsqlCommand>();
+				connector.ActiveCommand!.CommandTimeout.Should().Be(3);
+				connector.ActiveReader.Should().BeOfType<NpgsqlDataReader>();
+				return record.Get<string>();
+			})).Should().Equal("commit");
+
+		var values = await connector
+			.CommandFormat($"select count(*) from {tableName}")
+			.CommandFormat($"select Name from {tableName}")
+			.WithTimeout(TimeSpan.FromSeconds(4))
+			.QueryMultipleAsync(
+				async reader =>
+				{
+					connector.ActiveBatch.Should().BeOfType<NpgsqlBatch>();
+					connector.ActiveBatch!.Timeout.Should().Be(4);
+					return (await reader.ReadSingleAsync<long>(), await reader.ReadSingleAsync<string>());
+				});
+		values.Should().Be((1, "commit"));
+	}
+
+	[Test]
 	public async Task ReuseParameter()
 	{
 		var tableName = Sql.Name($"{nameof(ReuseParameter)}_{c_framework}");
@@ -34,6 +92,48 @@ internal sealed class NpgsqlTests
 			.CommandFormat($"select Number from {tableName} order by ItemId;")
 			.QueryAsync<int>();
 		values.Should().Equal(1, 2);
+	}
+
+	[Test]
+	public async Task PrepareCacheTests()
+	{
+		var tableName = Sql.Name($"{nameof(PrepareCacheTests)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.ExecuteAsync();
+
+		var insertSql = Sql.Raw($"insert into {tableName} (Name) values ($1), ($2);");
+		(await connector.Command(insertSql, Sql.Params(["one", "two"])).Prepare().Cache().ExecuteAsync()).Should().Be(2);
+		(await connector.Command(insertSql, Sql.Params(["three", "four"])).Prepare().Cache().ExecuteAsync()).Should().Be(2);
+
+		await FluentActions.Awaiting(async () => await connector.Command(insertSql, Sql.Params(["five", "six", "seven"])).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+		await FluentActions.Awaiting(async () => await connector.Command(insertSql, Sql.Param("five")).Prepare().Cache().ExecuteAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "three", "four");
+	}
+
+	[Test]
+	public async Task NumberedRepeatParameterWithCache()
+	{
+		var tableName = Sql.Name($"{nameof(NumberedRepeatParameterWithCache)}_{c_framework}");
+
+		await using var connector = CreateConnector();
+		var lastCommandText = "";
+		connector.Executing += (_, e) => lastCommandText = e.CommandBatch.GetCommand(e.CommandBatch.CommandCount - 1).BuildText(connector.SqlSyntax);
+
+		await connector
+			.CommandFormat($"drop table if exists {tableName}")
+			.CommandFormat($"create table {tableName} (Id serial primary key, Name varchar not null)")
+			.ExecuteAsync();
+
+		var repeated = Sql.RepeatParam("one");
+		await connector.CommandFormat($"insert into {tableName} (Name) values ({repeated}), ({"two"}), ({repeated})").Cache().ExecuteAsync();
+		lastCommandText.Should().Contain("values ($1), ($2), ($1)");
+
+		(await connector.CommandFormat($"select Name from {tableName} order by Id").QueryAsync<string>()).Should().Equal("one", "two", "one");
 	}
 
 	[Test]
