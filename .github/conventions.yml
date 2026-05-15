@@ -1,4 +1,12 @@
 conventions:
+  - path: Faithlife/CodingGuidelines/conventions/gitattributes-lf
+  - path: Faithlife/CodingGuidelines/conventions/dotnet-sdk10
+  - path: Faithlife/CodingGuidelines/conventions/dotnet-slnx
+  - path: Faithlife/CodingGuidelines/conventions/editorconfig-root
+  - path: Faithlife/CodingGuidelines/conventions/editorconfig-md
+  - path: Faithlife/CodingGuidelines/conventions/editorconfig-yaml
+  - path: Faithlife/CodingGuidelines/conventions/editorconfig-csharp
+  - path: Faithlife/CodingGuidelines/conventions/faithlife-build-script
   - path: Faithlife/CodingGuidelines/conventions/license-mit
     settings:
       copyright-holder: Ed Ball
