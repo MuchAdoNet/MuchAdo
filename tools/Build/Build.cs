@@ -19,6 +19,7 @@ internal static class Build
 				FindProjects = FindUnitTestProjects,
 				RunTests = path => RunUnitTestProject(settings!, path),
 			},
+			PackageSettings = new DotNetPackageSettings { PushTagOnPublish = x => $"v{x.Version}" },
 		};
 
 		return settings;
