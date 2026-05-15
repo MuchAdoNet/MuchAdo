@@ -1,0 +1,4 @@
+conventions:
+  - path: Faithlife/CodingGuidelines/conventions/license-mit
+    settings:
+      copyright-holder: Ed Ball
