@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.2.2
+
+* Fix pooled connector transaction disposal after attaching a transaction with `noDispose: true` so the flag doesn't persist across pool reuse.
+* Stabilize repeated enumeration and rendering of SQL parameter sources created from deferred enumerables.
+* Fix `ValueTuple` element mapping so null values for non-nullable tuple elements fail instead of being silently mapped to default values.
+
 ## 1.2.1
 
 * Fix construction of DTO mappers for self-referential and mutually referential DTO types, allowing selected non-circular properties to map successfully and reporting selected circular properties with a meaningful exception.
