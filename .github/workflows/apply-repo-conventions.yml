@@ -1,0 +1,52 @@
+name: Apply Repository Conventions
+
+on:
+  schedule:
+  - cron: '31 9 * * 1-5'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MUCHADO_BOT_APP_ID }}
+          private-key: ${{ secrets.MUCHADO_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # full history needed for git merge-base in repo-conventions tool
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --local --name-only --get-regexp 'url.https\:\/\/.*@github\.com\/${{ github.repository_owner }}.*' 2>$null | % { git config --local --unset-all $_ }
+          git config --global --name-only --get-regexp 'url.https\:\/\/.*@github\.com\/${{ github.repository_owner }}.*' 2>$null | % { git config --global --unset-all $_ }
+          git config --global credential.helper ''
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository_owner }}/".insteadOf "https://github.com/${{ github.repository_owner }}/"
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+
+      - name: Install APM
+        uses: microsoft/apm-action@v1
+        with:
+          setup-only: true
+
+      - name: Apply repository conventions
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        # use `dnx -y repo-conventions ...` when .NET 8 is no longer supported
+        run: |
+          dotnet tool install -g repo-conventions
+          repo-conventions apply --open-pr
