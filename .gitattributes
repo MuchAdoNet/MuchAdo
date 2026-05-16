@@ -1,1 +1,5 @@
 * text=auto eol=lf
+
+# DO NOT EDIT: create-muchado-skill convention
+/skill/** linguist-generated=true
+# END DO NOT EDIT
