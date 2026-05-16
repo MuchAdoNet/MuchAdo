@@ -756,3 +756,9 @@ resharper_unused_auto_property_accessor_local_highlighting = suggestion
 resharper_unused_member_global_highlighting = none
 resharper_unused_member_local_highlighting = suggestion
 # END DO NOT EDIT
+
+# DO NOT EDIT: json convention
+[*.json]
+indent_size = 2
+indent_style = space
+# END DO NOT EDIT
