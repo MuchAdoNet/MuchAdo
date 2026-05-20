@@ -7,22 +7,10 @@ end_of_line = lf
 trim_trailing_whitespace = true
 # END DO NOT EDIT
 
-[*.json]
-resharper_comment_typo_highlighting = none
-resharper_identifier_typo_highlighting = none
-resharper_string_literal_typo_highlighting = none
-
-[Directory.Packages.props]
-insert_final_newline = false
-
-[dotnet-tools.json]
-insert_final_newline = false
-
 # DO NOT EDIT: md convention
 [*.md]
 indent_size = 2
 indent_style = space
-insert_final_newline = true
 # END DO NOT EDIT
 
 # DO NOT EDIT: yaml convention
