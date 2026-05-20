@@ -26,6 +26,11 @@ jobs:
           # full history needed for git merge-base in repo-conventions tool
           fetch-depth: 0
 
+      - name: Configure Git
+        run: |
+          git config user.name "muchado-bot[app]"
+          git config user.email "muchado-bot[app]@users.noreply.github.com"
+
       - name: Install .NET
         uses: actions/setup-dotnet@v5
 
