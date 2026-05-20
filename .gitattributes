@@ -3,3 +3,7 @@
 # DO NOT EDIT: create-muchado-skill convention
 /skill/** linguist-generated=true
 # END DO NOT EDIT
+
+# DO NOT EDIT: csharp convention
+*.cs text diff=csharp
+# END DO NOT EDIT
