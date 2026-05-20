@@ -7,3 +7,7 @@
 # DO NOT EDIT: csharp convention
 *.cs text diff=csharp
 # END DO NOT EDIT
+
+# DO NOT EDIT: update-repo-docs convention
+/skills/muchado/** linguist-generated=true
+# END DO NOT EDIT
