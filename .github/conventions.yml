@@ -3,4 +3,4 @@ conventions:
   - path: Faithlife/CodingGuidelines/conventions/license-mit
     settings:
       copyright-holder: Ed Ball
-  - path: MuchAdoNet/muchadonet.github.io/conventions/create-muchado-skill
+  - path: MuchAdoNet/muchadonet.github.io/conventions/update-repo-docs
