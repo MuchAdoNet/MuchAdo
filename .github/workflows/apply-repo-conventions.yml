@@ -43,7 +43,5 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        # use `dnx -y repo-conventions ...` when .NET 8 is no longer supported
         run: |
-          dotnet tool install -g repo-conventions
-          repo-conventions apply --open-pr
+          dnx -y repo-conventions apply --open-pr
