@@ -8,32 +8,6 @@
 [![MuchAdo.Sqlite](https://img.shields.io/nuget/v/MuchAdo.Sqlite.svg?label=MuchAdo.Sqlite)](https://www.nuget.org/packages/MuchAdo.Sqlite)
 [![MuchAdo.SqlServer](https://img.shields.io/nuget/v/MuchAdo.SqlServer.svg?label=MuchAdo.SqlServer)](https://www.nuget.org/packages/MuchAdo.SqlServer)
 
-The **MuchAdo** class library provides an intuitive API for [working with relational databases](https://muchado.net/databases) like MySQL, PostgreSQL, SQLite, and Microsoft SQL Server. It is [similar to Dapper](https://muchado.net/other-libraries) and other micro ORMs for .NET.
-
-```csharp
-var shortWidgets = await connector
-    .CommandFormat(
-        $"select id, name from widgets where height <= {maxHeight}")
-    .QueryAsync<(long Id, string Name)>(cancellationToken);
-```
-
-To use MuchAdo, add a reference to the [NuGet package](https://muchado.net/databases) that corresponds to your database. Strongly consider adding a reference to [MuchAdo.Analyzers](https://muchado.net/analyzers) as well.
-
-## Key Features
-
-* open and close [database connections](https://muchado.net/connections) automatically
-* use a fluent API to [execute commands](https://muchado.net/commands) and read data
-* read multiple result sets from [command batches](https://muchado.net/command-batches)
-* leverage [transactions](https://muchado.net/transactions) simply and correctly
-* [map data records](https://muchado.net/data-mapping) into simple types, tuples, and DTOs
-* use [formatted SQL](https://muchado.net/formatted-sql) to build SQL statements
-* specify [parameters](https://muchado.net/parameters) for commands and stored procedures
-* support [resilience](https://muchado.net/resilience) by retrying transient failures
-* [improve performance](https://muchado.net/optimizations) by preparing, caching, and pooling
-* provide [analyzers](https://muchado.net/analyzers) to help ensure proper use of the library
-
-For more information, please check out our [comprehensive documentation](https://muchado.net/)!
-
 <!-- DO NOT EDIT: update-repo-docs convention -->
 
 The **MuchAdo** class library provides an intuitive API for [working with relational databases](https://muchado.net/databases) like MySQL, PostgreSQL, SQLite, and Microsoft SQL Server. It is [similar to Dapper](https://muchado.net/other-libraries) and other micro ORMs for .NET.
@@ -65,3 +39,5 @@ Follow the links below for detailed information on MuchAdo features.
 * [**Other Libraries**](https://muchado.net/other-libraries) — Compare MuchAdo with Dapper across connection handling, query buffering, command batching, transaction tracking, mapping, SQL building, parameters, and optimizations.
 
 <!-- END DO NOT EDIT -->
+
+For more information, please check out our [comprehensive documentation](https://muchado.net/)!
