@@ -95,7 +95,7 @@ return BuildRunner.Execute(args, build =>
 				"--yes",
 				$"-reports:{coverageTestResultsDirectory}/*/coverage.cobertura.xml",
 				$"-targetdir:{coverageReportDirectory}",
-				"-reporttypes:Html;Cobertura;TextSummary;MarkdownSummaryGithub",
+				"-reporttypes:Html;Cobertura;TextSummary;MarkdownAssembliesSummary",
 				"-assemblyfilters:+MuchAdo*;-*.Tests",
 			]);
 
@@ -104,7 +104,7 @@ return BuildRunner.Execute(args, build =>
 				Console.WriteLine(File.ReadAllText(textSummaryPath));
 
 			var githubStepSummaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
-			var markdownSummaryPath = Path.Combine(coverageReportDirectory, "SummaryGithub.md");
+			var markdownSummaryPath = Path.Combine(coverageReportDirectory, "Summary.md");
 			if (!string.IsNullOrWhiteSpace(githubStepSummaryPath) && File.Exists(markdownSummaryPath))
 				File.AppendAllText(githubStepSummaryPath, File.ReadAllText(markdownSummaryPath));
 
