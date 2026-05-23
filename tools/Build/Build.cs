@@ -1,271 +1,122 @@
-var buildSettings = Build.CreateSettings();
+var buildSettings = new DotNetBuildSettings
+{
+	NuGetApiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY"),
+	PackageSettings = new DotNetPackageSettings { PushTagOnPublish = x => $"v{x.Version}" },
+};
 
 return BuildRunner.Execute(args, build =>
 {
 	build.AddDotNetTargets(buildSettings);
-	Build.AddTargets(build, buildSettings);
-});
 
-internal static class Build
-{
-	public static DotNetBuildSettings CreateSettings()
-	{
-		DotNetBuildSettings? settings = null;
-		settings = new DotNetBuildSettings
+	build.Target("test-no-docker")
+		.DependsOn("build")
+		.Describe("Runs tests that do not require Docker")
+		.Does(() =>
 		{
-			NuGetApiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY"),
-			TestSettings = new DotNetTestSettings
+			var dockerTestProjects = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FindProjects = FindUnitTestProjects,
-				RunTests = path => RunUnitTestProject(settings!, path),
-			},
-			PackageSettings = new DotNetPackageSettings { PushTagOnPublish = x => $"v{x.Version}" },
-		};
+				"MuchAdo.MySql.Tests.csproj",
+				"MuchAdo.Npgsql.Tests.csproj",
+				"MuchAdo.SqlServer.Tests.csproj",
+			};
 
-		return settings;
-	}
+			foreach (var project in FindFiles("tests/**/*.csproj")
+				.Where(project => !dockerTestProjects.Contains(Path.GetFileName(project)))
+				.Order(StringComparer.OrdinalIgnoreCase))
+			{
+				var testArguments = new List<string?>
+				{
+					"test",
+					project,
+					"-c",
+					buildSettings.GetConfiguration(),
+					buildSettings.GetPlatformArg(),
+					buildSettings.GetBuildNumberArg(),
+					"--no-build",
+					buildSettings.GetVerbosityArg(),
+					buildSettings.GetMaxCpuCountArg(),
+				};
 
-	public static void AddTargets(BuildApp build, DotNetBuildSettings settings)
-	{
-		build.Target("coverage")
-			.DependsOn("build")
-			.Describe("Runs all tests with Coverlet and generates coverage reports")
-			.Does(() => RunCoverage(settings));
+				testArguments.AddRange(buildSettings.GetExtraPropertyArgs("test"));
+				testArguments.AddRange(
+				[
+					"--filter",
+					"TestCategory!=Docker",
+				]);
 
-		build.Target("test-docker")
-			.DependsOn("build")
-			.Describe("Runs Docker-backed database tests")
-			.Does(() => RunDockerTests(settings));
-	}
+				RunDotNet(testArguments);
+			}
+		});
 
-	private static IReadOnlyList<string> FindUnitTestProjects() =>
-		[.. FindFiles("tests/**/*.csproj").Where(project => !IsDockerTestProject(project))];
-
-	private static void RunUnitTestProject(DotNetBuildSettings settings, string? path)
-	{
-		if (path is not null && IsDockerTestProject(path))
+	build.Target("coverage")
+		.DependsOn("build")
+		.Describe("Runs all tests with Coverlet and generates coverage reports")
+		.Does(() =>
 		{
-			Console.WriteLine($"Skipping Docker-backed test project {path}.");
-			return;
-		}
+			const string coverageReportDirectory = "artifacts/Coverage/Report";
+			const string coverageRunSettings = "coverage.runsettings";
+			const string coverageTestResultsDirectory = "artifacts/TestResults/Coverage";
 
-		RunTestProject(settings, path, framework: null, filter: "TestCategory!=Docker", logger: null, resultsDirectory: null);
-	}
+			if (Directory.Exists(coverageTestResultsDirectory))
+			{
+				Directory.Delete(coverageTestResultsDirectory, recursive: true);
+			}
 
-	private static void RunCoverage(DotNetBuildSettings settings)
-	{
-		DeleteDirectoryIfExists(c_coverageTestResultsDirectory);
-		DeleteDirectoryIfExists(c_coverageReportDirectory);
-		Directory.CreateDirectory(c_coverageTestResultsDirectory);
+			if (Directory.Exists(coverageReportDirectory))
+			{
+				Directory.Delete(coverageReportDirectory, recursive: true);
+			}
 
-		RunDockerCompose("up", "-d", "--build", "mssql", "mysql", "postgres");
-		RunDockerCompose("build", "setup");
-
-		var completed = false;
-		try
-		{
-			RunDockerCompose("run", "--rm", "setup");
+			Directory.CreateDirectory(coverageTestResultsDirectory);
 
 			foreach (var project in FindFiles("tests/**/*.csproj").Order(StringComparer.OrdinalIgnoreCase))
 			{
 				var projectName = Path.GetFileNameWithoutExtension(project);
-				RunTestProject(
-					settings,
+				var testArguments = new List<string?>
+				{
+					"test",
 					project,
-					framework: "net10.0",
-					filter: null,
-					logger: $"trx;LogFileName={projectName}.coverage.trx",
-					resultsDirectory: c_coverageTestResultsDirectory,
-					extraArguments:
-					[
-						"--collect", "XPlat Code Coverage",
-						"--settings", c_coverageRunSettings,
-					]);
+					"-c",
+					buildSettings.GetConfiguration(),
+					buildSettings.GetPlatformArg(),
+					buildSettings.GetBuildNumberArg(),
+					"--no-build",
+					buildSettings.GetVerbosityArg(),
+					buildSettings.GetMaxCpuCountArg(),
+				};
+
+				testArguments.AddRange(buildSettings.GetExtraPropertyArgs("test"));
+				testArguments.AddRange(
+				[
+					"--framework",
+					"net10.0",
+					"--results-directory",
+					coverageTestResultsDirectory,
+					"--logger",
+					$"trx;LogFileName={projectName}.coverage.trx",
+					"--collect",
+					"XPlat Code Coverage",
+					"--settings",
+					coverageRunSettings,
+					"--",
+					"RunConfiguration.TreatNoTestsAsError=true",
+				]);
+
+				RunDotNet(testArguments);
 			}
 
-			RunCoverageReport();
-			completed = true;
-		}
-		catch
-		{
-			WriteDockerLogs();
-			throw;
-		}
-		finally
-		{
-			try
-			{
-				RunDockerCompose("down", "-v");
-			}
-			catch when (!completed)
-			{
-			}
-		}
-	}
+			Directory.CreateDirectory(coverageReportDirectory);
+			RunDotNet(
+			[
+				"dnx",
+				"dotnet-reportgenerator-globaltool",
+				"--yes",
+				$"-reports:{coverageTestResultsDirectory}/*/coverage.cobertura.xml",
+				$"-targetdir:{coverageReportDirectory}",
+				"-reporttypes:Html;Cobertura;MarkdownSummaryGithub",
+				"-assemblyfilters:+MuchAdo*;-*.Tests",
+			]);
 
-	private static void RunDockerTests(DotNetBuildSettings settings)
-	{
-		Directory.CreateDirectory(c_testResultsDirectory);
-
-		RunDockerCompose("up", "-d", "--build", "mssql", "mysql", "postgres");
-		RunDockerCompose("build", "setup");
-
-		var completed = false;
-		try
-		{
-			RunDockerCompose("run", "--rm", "setup");
-
-			foreach (var project in s_dockerTestProjects)
-			{
-				var projectName = Path.GetFileNameWithoutExtension(project);
-				RunTestProject(
-					settings,
-					project,
-					framework: "net10.0",
-					filter: "TestCategory=Docker",
-					logger: $"trx;LogFileName={projectName}.trx",
-					resultsDirectory: c_testResultsDirectory);
-			}
-
-			completed = true;
-		}
-		catch
-		{
-			WriteDockerLogs();
-			throw;
-		}
-		finally
-		{
-			try
-			{
-				RunDockerCompose("down", "-v");
-			}
-			catch when (!completed)
-			{
-			}
-		}
-	}
-
-	private static void RunTestProject(
-		DotNetBuildSettings settings,
-		string? path,
-		string? framework,
-		string? filter,
-		string? logger,
-		string? resultsDirectory,
-		IEnumerable<string?>? extraArguments = null)
-	{
-		var arguments = new List<string?>
-		{
-			"test",
-			path,
-			"-c",
-			settings.GetConfiguration(),
-			settings.GetPlatformArg(),
-			settings.GetBuildNumberArg(),
-			"--no-build",
-			settings.GetVerbosityArg(),
-			settings.GetMaxCpuCountArg(),
-		};
-
-		arguments.AddRange(settings.GetExtraPropertyArgs("test"));
-
-		if (framework is not null)
-		{
-			arguments.Add("--framework");
-			arguments.Add(framework);
-		}
-
-		if (filter is not null)
-		{
-			arguments.Add("--filter");
-			arguments.Add(filter);
-		}
-
-		if (resultsDirectory is not null)
-		{
-			arguments.Add("--results-directory");
-			arguments.Add(resultsDirectory);
-		}
-
-		if (logger is not null)
-		{
-			arguments.Add("--logger");
-			arguments.Add(logger);
-		}
-
-		if (extraArguments is not null)
-		{
-			arguments.AddRange(extraArguments);
-		}
-
-		arguments.Add("--");
-		arguments.Add("RunConfiguration.TreatNoTestsAsError=true");
-
-		RunDotNet(arguments);
-	}
-
-	private static void RunCoverageReport()
-	{
-		Directory.CreateDirectory(c_coverageReportDirectory);
-		RunDotNet(
-		[
-			"dnx",
-			"dotnet-reportgenerator-globaltool",
-			"--yes",
-			$"-reports:{c_coverageTestResultsDirectory}/*/coverage.cobertura.xml",
-			$"-targetdir:{c_coverageReportDirectory}",
-			"-reporttypes:Html;Cobertura;MarkdownSummaryGithub",
-			"-assemblyfilters:+MuchAdo*;-*.Tests",
-		]);
-
-		Console.WriteLine($"Coverage report: {Path.GetFullPath(c_coverageReportDirectory)}");
-	}
-
-	private static void DeleteDirectoryIfExists(string path)
-	{
-		if (Directory.Exists(path))
-		{
-			Directory.Delete(path, recursive: true);
-		}
-	}
-
-	private static void RunDockerCompose(params string?[] args) =>
-		RunApp("docker", new[] { "compose", "-f", c_composeFile }.Concat(args));
-
-	private static void WriteDockerLogs()
-	{
-		Directory.CreateDirectory(c_testResultsDirectory);
-
-		using var writer = File.CreateText(c_dockerLogPath);
-		RunApp("docker", new AppRunnerSettings
-		{
-			Arguments = new[] { "compose", "-f", c_composeFile, "logs", "--no-color" },
-			HandleErrorLine = writer.WriteLine,
-			HandleOutputLine = writer.WriteLine,
-			IsExitCodeSuccess = exitCode => true,
+			Console.WriteLine($"Coverage report: {Path.GetFullPath(coverageReportDirectory)}");
 		});
-	}
-
-	private static bool IsDockerTestProject(string path)
-	{
-		var normalizedPath = NormalizePath(path);
-		return s_dockerTestProjects.Any(project => normalizedPath.EndsWith(project, StringComparison.OrdinalIgnoreCase));
-	}
-
-	private static string NormalizePath(string path) => path.Replace('\\', '/');
-
-	private const string c_composeFile = "docker/docker-compose.yml";
-	private const string c_coverageReportDirectory = "artifacts/Coverage/Report";
-	private const string c_coverageRunSettings = "coverage.runsettings";
-	private const string c_coverageTestResultsDirectory = "artifacts/TestResults/Coverage";
-	private const string c_testResultsDirectory = "release/TestResults";
-	private const string c_dockerLogPath = "release/TestResults/docker-compose.log";
-
-	private static readonly string[] s_dockerTestProjects =
-	[
-		"tests/MuchAdo.MySql.Tests/MuchAdo.MySql.Tests.csproj",
-		"tests/MuchAdo.Npgsql.Tests/MuchAdo.Npgsql.Tests.csproj",
-		"tests/MuchAdo.SqlServer.Tests/MuchAdo.SqlServer.Tests.csproj",
-	];
-}
+});

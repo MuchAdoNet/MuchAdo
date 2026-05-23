@@ -35,18 +35,26 @@ jobs:
       run: .\build.ps1 restore
     - name: Build
       run: .\build.ps1 build --skip restore
-    - name: Test
-      run: .\build.ps1 test --skip build
-    - name: Test Docker-backed providers
+    - name: Start Docker-backed providers
       if: matrix.os == 'ubuntu-latest'
-      run: .\build.ps1 test-docker --skip build
-    - name: Upload Docker test results
+      run: |
+        docker compose -f docker/docker-compose.yml up -d --build mssql mysql postgres
+        docker compose -f docker/docker-compose.yml build setup
+        docker compose -f docker/docker-compose.yml run --rm setup
+    - name: Test
+      if: matrix.os == 'ubuntu-latest'
+      run: .\build.ps1 test --skip build
+    - name: Test without Docker
+      if: matrix.os != 'ubuntu-latest'
+      run: .\build.ps1 test-no-docker --skip build
+    - name: Write Docker logs
+      if: ${{ failure() && matrix.os == 'ubuntu-latest' }}
+      run: |
+        New-Item -ItemType Directory -Force release/TestResults | Out-Null
+        docker compose -f docker/docker-compose.yml logs --no-color | Out-File -FilePath release/TestResults/docker-compose.log -Encoding utf8
+    - name: Stop Docker-backed providers
       if: ${{ always() && matrix.os == 'ubuntu-latest' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-test-results
-        path: release/TestResults/**/*.trx
-        if-no-files-found: ignore
+      run: docker compose -f docker/docker-compose.yml down -v
     - name: Upload Docker logs
       if: ${{ failure() && matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v4
