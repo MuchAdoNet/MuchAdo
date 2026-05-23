@@ -24,7 +24,7 @@ return BuildRunner.Execute(args, build =>
 				.Where(project => !dockerTestProjects.Contains(Path.GetFileName(project)))
 				.Order(StringComparer.OrdinalIgnoreCase))
 			{
-				List<string?> testArguments =
+				RunDotNet(
 				[
 					"test",
 					project,
@@ -36,9 +36,7 @@ return BuildRunner.Execute(args, build =>
 					buildSettings.GetVerbosityArg(),
 					buildSettings.GetMaxCpuCountArg(),
 					.. buildSettings.GetExtraPropertyArgs("test"),
-				];
-
-				RunDotNet(testArguments);
+				]);
 			}
 		});
 
@@ -55,10 +53,7 @@ return BuildRunner.Execute(args, build =>
 			static void CleanDirectory(string path)
 			{
 				if (Directory.Exists(path))
-				{
 					Directory.Delete(path, recursive: true);
-				}
-
 				Directory.CreateDirectory(path);
 			}
 
@@ -67,8 +62,7 @@ return BuildRunner.Execute(args, build =>
 
 			foreach (var project in FindFiles("tests/**/*.csproj").Order(StringComparer.OrdinalIgnoreCase))
 			{
-				var projectName = Path.GetFileNameWithoutExtension(project);
-				List<string?> testArguments =
+				RunDotNet(
 				[
 					"test",
 					project,
@@ -85,16 +79,14 @@ return BuildRunner.Execute(args, build =>
 					"--results-directory",
 					coverageTestResultsDirectory,
 					"--logger",
-					$"trx;LogFileName={projectName}.coverage.trx",
+					$"trx;LogFileName={Path.GetFileNameWithoutExtension(project)}.coverage.trx",
 					"--collect",
 					"XPlat Code Coverage",
 					"--settings",
 					coverageRunSettings,
 					"--",
 					"RunConfiguration.TreatNoTestsAsError=true",
-				];
-
-				RunDotNet(testArguments);
+				]);
 			}
 
 			RunDotNet(
@@ -111,17 +103,12 @@ return BuildRunner.Execute(args, build =>
 
 			var textSummaryPath = Path.Combine(coverageReportDirectory, "Summary.txt");
 			if (File.Exists(textSummaryPath))
-			{
 				Console.WriteLine(File.ReadAllText(textSummaryPath));
-			}
 
 			var githubStepSummaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
 			var markdownDeltaSummaryPath = Path.Combine(coverageReportDirectory, "DeltaSummary.md");
 			if (!string.IsNullOrWhiteSpace(githubStepSummaryPath) && File.Exists(markdownDeltaSummaryPath))
-			{
 				File.AppendAllText(githubStepSummaryPath, File.ReadAllText(markdownDeltaSummaryPath));
-				File.AppendAllText(githubStepSummaryPath, Environment.NewLine);
-			}
 
 			Console.WriteLine($"Coverage report: {Path.GetFullPath(coverageReportDirectory)}");
 		});
