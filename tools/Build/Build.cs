@@ -24,8 +24,8 @@ return BuildRunner.Execute(args, build =>
 				.Where(project => !dockerTestProjects.Contains(Path.GetFileName(project)))
 				.Order(StringComparer.OrdinalIgnoreCase))
 			{
-				var testArguments = new List<string?>
-				{
+				List<string?> testArguments =
+				[
 					"test",
 					project,
 					"-c",
@@ -35,14 +35,8 @@ return BuildRunner.Execute(args, build =>
 					"--no-build",
 					buildSettings.GetVerbosityArg(),
 					buildSettings.GetMaxCpuCountArg(),
-				};
-
-				testArguments.AddRange(buildSettings.GetExtraPropertyArgs("test"));
-				testArguments.AddRange(
-				[
-					"--filter",
-					"TestCategory!=Docker",
-				]);
+					.. buildSettings.GetExtraPropertyArgs("test"),
+				];
 
 				RunDotNet(testArguments);
 			}
@@ -55,25 +49,27 @@ return BuildRunner.Execute(args, build =>
 		{
 			const string coverageReportDirectory = "artifacts/Coverage/Report";
 			const string coverageRunSettings = "coverage.runsettings";
-			const string coverageTestResultsDirectory = "artifacts/TestResults/Coverage";
+			const string coverageTestResultsDirectory = "artifacts/Coverage/TestResults";
+			const string coverageHistoryDirectory = "artifacts/Coverage/History";
 
-			if (Directory.Exists(coverageTestResultsDirectory))
+			static void CleanDirectory(string path)
 			{
-				Directory.Delete(coverageTestResultsDirectory, recursive: true);
+				if (Directory.Exists(path))
+				{
+					Directory.Delete(path, recursive: true);
+				}
+
+				Directory.CreateDirectory(path);
 			}
 
-			if (Directory.Exists(coverageReportDirectory))
-			{
-				Directory.Delete(coverageReportDirectory, recursive: true);
-			}
-
-			Directory.CreateDirectory(coverageTestResultsDirectory);
+			CleanDirectory(coverageTestResultsDirectory);
+			CleanDirectory(coverageReportDirectory);
 
 			foreach (var project in FindFiles("tests/**/*.csproj").Order(StringComparer.OrdinalIgnoreCase))
 			{
 				var projectName = Path.GetFileNameWithoutExtension(project);
-				var testArguments = new List<string?>
-				{
+				List<string?> testArguments =
+				[
 					"test",
 					project,
 					"-c",
@@ -83,11 +79,7 @@ return BuildRunner.Execute(args, build =>
 					"--no-build",
 					buildSettings.GetVerbosityArg(),
 					buildSettings.GetMaxCpuCountArg(),
-				};
-
-				testArguments.AddRange(buildSettings.GetExtraPropertyArgs("test"));
-				testArguments.AddRange(
-				[
+					.. buildSettings.GetExtraPropertyArgs("test"),
 					"--framework",
 					"net10.0",
 					"--results-directory",
@@ -100,12 +92,11 @@ return BuildRunner.Execute(args, build =>
 					coverageRunSettings,
 					"--",
 					"RunConfiguration.TreatNoTestsAsError=true",
-				]);
+				];
 
 				RunDotNet(testArguments);
 			}
 
-			Directory.CreateDirectory(coverageReportDirectory);
 			RunDotNet(
 			[
 				"dnx",
@@ -113,9 +104,24 @@ return BuildRunner.Execute(args, build =>
 				"--yes",
 				$"-reports:{coverageTestResultsDirectory}/*/coverage.cobertura.xml",
 				$"-targetdir:{coverageReportDirectory}",
-				"-reporttypes:Html;Cobertura;MarkdownSummaryGithub",
+				$"-historydir:{coverageHistoryDirectory}",
+				"-reporttypes:Html;Cobertura;TextSummary;MarkdownDeltaSummary",
 				"-assemblyfilters:+MuchAdo*;-*.Tests",
 			]);
+
+			var textSummaryPath = Path.Combine(coverageReportDirectory, "Summary.txt");
+			if (File.Exists(textSummaryPath))
+			{
+				Console.WriteLine(File.ReadAllText(textSummaryPath));
+			}
+
+			var githubStepSummaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
+			var markdownDeltaSummaryPath = Path.Combine(coverageReportDirectory, "DeltaSummary.md");
+			if (!string.IsNullOrWhiteSpace(githubStepSummaryPath) && File.Exists(markdownDeltaSummaryPath))
+			{
+				File.AppendAllText(githubStepSummaryPath, File.ReadAllText(markdownDeltaSummaryPath));
+				File.AppendAllText(githubStepSummaryPath, Environment.NewLine);
+			}
 
 			Console.WriteLine($"Coverage report: {Path.GetFullPath(coverageReportDirectory)}");
 		});

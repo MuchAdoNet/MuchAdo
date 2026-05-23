@@ -41,9 +41,9 @@ jobs:
         docker compose -f docker/docker-compose.yml up -d --build mssql mysql postgres
         docker compose -f docker/docker-compose.yml build setup
         docker compose -f docker/docker-compose.yml run --rm setup
-    - name: Test with Docker
+    - name: Coverage with Docker
       if: matrix.os == 'ubuntu-latest'
-      run: .\build.ps1 test --skip build
+      run: .\build.ps1 coverage --skip build
     - name: Test without Docker
       if: matrix.os != 'ubuntu-latest'
       run: .\build.ps1 test-no-docker --skip build
@@ -61,6 +61,13 @@ jobs:
       with:
         name: docker-logs
         path: release/TestResults/docker-compose.log
+        if-no-files-found: ignore
+    - name: Upload coverage report
+      if: ${{ always() && matrix.os == 'ubuntu-latest' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: artifacts/Coverage/Report
         if-no-files-found: ignore
     - name: Package
       run: .\build.ps1 package --skip test
