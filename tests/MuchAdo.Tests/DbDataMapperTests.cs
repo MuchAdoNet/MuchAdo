@@ -28,7 +28,7 @@ internal sealed class DbDataMapperTests
 					index++;
 					return 1;
 				})
-			.Sum().Should().Be(2);
+			.Sum().Should().Be(3);
 	}
 
 	[Test]
