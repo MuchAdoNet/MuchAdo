@@ -48,7 +48,6 @@ return BuildRunner.Execute(args, build =>
 			const string coverageReportDirectory = "artifacts/Coverage/Report";
 			const string coverageRunSettings = "coverage.runsettings";
 			const string coverageTestResultsDirectory = "artifacts/Coverage/TestResults";
-			const string coverageHistoryDirectory = "artifacts/Coverage/History";
 
 			static void CleanDirectory(string path)
 			{
@@ -96,8 +95,7 @@ return BuildRunner.Execute(args, build =>
 				"--yes",
 				$"-reports:{coverageTestResultsDirectory}/*/coverage.cobertura.xml",
 				$"-targetdir:{coverageReportDirectory}",
-				$"-historydir:{coverageHistoryDirectory}",
-				"-reporttypes:Html;Cobertura;TextSummary;MarkdownDeltaSummary",
+				"-reporttypes:Html;Cobertura;TextSummary;MarkdownSummaryGithub",
 				"-assemblyfilters:+MuchAdo*;-*.Tests",
 			]);
 
@@ -106,9 +104,9 @@ return BuildRunner.Execute(args, build =>
 				Console.WriteLine(File.ReadAllText(textSummaryPath));
 
 			var githubStepSummaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
-			var markdownDeltaSummaryPath = Path.Combine(coverageReportDirectory, "DeltaSummary.md");
-			if (!string.IsNullOrWhiteSpace(githubStepSummaryPath) && File.Exists(markdownDeltaSummaryPath))
-				File.AppendAllText(githubStepSummaryPath, File.ReadAllText(markdownDeltaSummaryPath));
+			var markdownSummaryPath = Path.Combine(coverageReportDirectory, "SummaryGithub.md");
+			if (!string.IsNullOrWhiteSpace(githubStepSummaryPath) && File.Exists(markdownSummaryPath))
+				File.AppendAllText(githubStepSummaryPath, File.ReadAllText(markdownSummaryPath));
 
 			Console.WriteLine($"Coverage report: {Path.GetFullPath(coverageReportDirectory)}");
 		});
