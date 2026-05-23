@@ -35,13 +35,13 @@ jobs:
       run: .\build.ps1 restore
     - name: Build
       run: .\build.ps1 build --skip restore
-    - name: Start Docker-backed providers
+    - name: Start Docker
       if: matrix.os == 'ubuntu-latest'
       run: |
         docker compose -f docker/docker-compose.yml up -d --build mssql mysql postgres
         docker compose -f docker/docker-compose.yml build setup
         docker compose -f docker/docker-compose.yml run --rm setup
-    - name: Test
+    - name: Test with Docker
       if: matrix.os == 'ubuntu-latest'
       run: .\build.ps1 test --skip build
     - name: Test without Docker
@@ -52,7 +52,7 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force release/TestResults | Out-Null
         docker compose -f docker/docker-compose.yml logs --no-color | Out-File -FilePath release/TestResults/docker-compose.log -Encoding utf8
-    - name: Stop Docker-backed providers
+    - name: Stop Docker
       if: ${{ always() && matrix.os == 'ubuntu-latest' }}
       run: docker compose -f docker/docker-compose.yml down -v
     - name: Upload Docker logs
@@ -65,7 +65,7 @@ jobs:
     - name: Package
       run: .\build.ps1 package --skip test
     - name: Upload packages
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: nuget-packages
