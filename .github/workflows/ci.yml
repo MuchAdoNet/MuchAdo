@@ -57,14 +57,14 @@ jobs:
       run: docker compose -f docker/docker-compose.yml down -v
     - name: Upload Docker logs
       if: ${{ failure() && matrix.os == 'ubuntu-latest' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: docker-logs
         path: release/TestResults/docker-compose.log
         if-no-files-found: ignore
     - name: Upload coverage report
       if: ${{ always() && matrix.os == 'ubuntu-latest' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-report
         path: artifacts/Coverage/Report
@@ -73,7 +73,7 @@ jobs:
       run: .\build.ps1 package --skip test
     - name: Upload packages
       if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nuget-packages
         path: release/*.nupkg
