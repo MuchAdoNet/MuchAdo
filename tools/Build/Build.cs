@@ -1,11 +1,7 @@
 var buildSettings = new DotNetBuildSettings
 {
 	NuGetApiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY"),
-	CoverageSettings = new DotNetCoverageSettings
-	{
-		TargetFramework = "net10.0",
-		AssemblyFilters = ["+MuchAdo*", "-*.Tests"],
-	},
+	CoverageSettings = new DotNetCoverageSettings { TargetFramework = "net10.0" },
 	PackageSettings = new DotNetPackageSettings { PushTagOnPublish = x => $"v{x.Version}" },
 };
 
