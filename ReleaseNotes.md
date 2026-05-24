@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.2.3
+
+* Update dependencies.
+
 ## 1.2.2
 
 * Fix pooled connector transaction disposal after attaching a transaction with `noDispose: true` so the flag doesn't persist across pool reuse.
