@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.2.4
+
+* Update build and repository conventions.
+
 ## 1.2.3
 
 * Update dependencies.
