@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);1591;1998;CA1510;CA1513;IDE0300;IDE0370;NU1507</NoWarn>
     <GitHubOrganization>MuchAdoNet</GitHubOrganization>
     <RepositoryName>MuchAdo</RepositoryName>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Ed Ball</Authors>
   </PropertyGroup>
 
