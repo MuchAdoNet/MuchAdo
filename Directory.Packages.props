@@ -1,7 +1,11 @@
 <Project>
+  <!-- DO NOT EDIT: dotnet-common-props/properties convention -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
+  <!-- END DO NOT EDIT -->
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
@@ -19,14 +23,19 @@
     <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.8" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
-    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.0" />
+    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
     <PackageVersion Include="System.Text.Json" Version="10.0.8" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="XmlDocMarkdown.Core" Version="2.9.0" />
   </ItemGroup>
   <ItemGroup>
-    <GlobalPackageReference Include="NUnit.Analyzers" Version="4.13.0" />
     <GlobalPackageReference Include="PolySharp" Version="1.15.0" />
-    <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
   </ItemGroup>
+  <!-- DO NOT EDIT: dotnet-common-props/analyzers convention -->
+  <ItemGroup>
+    <GlobalPackageReference Include="Faithlife.Analyzers" Version="1.*" />
+    <GlobalPackageReference Include="NUnit.Analyzers" Version="4.*" />
+    <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.*-*" />
+  </ItemGroup>
+  <!-- END DO NOT EDIT -->
 </Project>

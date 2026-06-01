@@ -4,7 +4,7 @@
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net481;net10.0</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX'))">net10.0</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Linux'))">net10.0</TargetFrameworks>
-    <NoWarn>$(NoWarn);CA1849;CA1861;CA2007</NoWarn>
+    <NoWarn>$(NoWarn);CA1849;CA1861;CA2007;FL0014</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net481' ">
