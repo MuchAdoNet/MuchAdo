@@ -8,17 +8,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MuchAdo\MuchAdo.csproj" />
-    <ProjectReference Include="..\..\src\MuchAdo.MySql\MuchAdo.MySql.csproj" />
-    <ProjectReference Include="..\..\src\MuchAdo.Npgsql\MuchAdo.Npgsql.csproj" />
-    <ProjectReference Include="..\..\src\MuchAdo.Sqlite\MuchAdo.Sqlite.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Microsoft.Data.Sqlite" />
-    <PackageReference Include="MySqlConnector" />
-    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
 
 </Project>
