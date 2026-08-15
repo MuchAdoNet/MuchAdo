@@ -140,6 +140,22 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void EmptyQueryFirstAndSingleTests()
+	{
+		using var connector = CreateConnector();
+		var command = connector.Command("select cast(null as text) as Name where 0;");
+
+		Invoking(() => command.QueryFirst<string>()).Should().Throw<InvalidOperationException>();
+		Invoking(() => command.QueryFirst(ToUpper)).Should().Throw<InvalidOperationException>();
+		command.QueryFirstOrDefault<string>().Should().BeNull();
+		command.QueryFirstOrDefault(ToUpper).Should().BeNull();
+		Invoking(() => command.QuerySingle<string>()).Should().Throw<InvalidOperationException>();
+		Invoking(() => command.QuerySingle(ToUpper)).Should().Throw<InvalidOperationException>();
+		command.QuerySingleOrDefault<string>().Should().BeNull();
+		command.QuerySingleOrDefault(ToUpper).Should().BeNull();
+	}
+
+	[Test]
 	public async Task CommandAsyncTests()
 	{
 		await using var connector = CreateConnector();
@@ -166,6 +182,22 @@ internal sealed class DbConnectorTests
 		(await connector.Command("insert into Items (Name) values ('item1'); select last_insert_rowid();").QueryFirstAsync<long>()).Should().NotBe(0);
 		(await connector.Command("insert into Items (Name) values ('item1'); select last_insert_rowid();").QuerySingleOrDefaultAsync<long>()).Should().NotBe(0);
 		(await connector.Command("insert into Items (Name) values ('item1'); select last_insert_rowid();").QuerySingleAsync<long>()).Should().NotBe(0);
+	}
+
+	[Test]
+	public async Task EmptyQueryFirstAndSingleAsyncTests()
+	{
+		await using var connector = CreateConnector();
+		var command = connector.Command("select cast(null as text) as Name where 0;");
+
+		await Invoking(async () => await command.QueryFirstAsync<string>()).Should().ThrowAsync<InvalidOperationException>();
+		await Invoking(async () => await command.QueryFirstAsync(ToUpper)).Should().ThrowAsync<InvalidOperationException>();
+		(await command.QueryFirstOrDefaultAsync<string>()).Should().BeNull();
+		(await command.QueryFirstOrDefaultAsync(ToUpper)).Should().BeNull();
+		await Invoking(async () => await command.QuerySingleAsync<string>()).Should().ThrowAsync<InvalidOperationException>();
+		await Invoking(async () => await command.QuerySingleAsync(ToUpper)).Should().ThrowAsync<InvalidOperationException>();
+		(await command.QuerySingleOrDefaultAsync<string>()).Should().BeNull();
+		(await command.QuerySingleOrDefaultAsync(ToUpper)).Should().BeNull();
 	}
 
 	[Test]

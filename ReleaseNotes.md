@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.3.1
+
+* Fix parameterless `QuerySingleAsync<T>()` to throw when no records are returned, matching `QuerySingle<T>()` and the other `QuerySingleAsync` overloads.
+
 ## 1.3.0
 
 * MuchAdo.Sqlite now depends on Microsoft.Data.Sqlite.Core. Depending on Microsoft.Data.Sqlite prevented clients from choosing their own native SQLite bundle, e.g. SQLitePCLRaw.bundle_e_sqlite3 vs. SQLite3MC.PCLRaw.bundle, which clients must now reference directly, or indirectly via dependency on Microsoft.Data.Sqlite. This is a potentially breaking change for clients that were relying on MuchAdo.Sqlite to bring in Microsoft.Data.Sqlite, but it is a minor version bump because the impact is limited.

@@ -179,7 +179,7 @@ public sealed class DbConnectorCommandBatch
 	/// <remarks>Throws <see cref="InvalidOperationException"/> if no records are returned, or if more than one record is returned.</remarks>
 	/// <seealso cref="QuerySingle{T}()" />
 	public ValueTask<T> QuerySingleAsync<T>(CancellationToken cancellationToken = default) =>
-		Connector.QueryFirstAsync<T>(this, map: null, single: true, orDefault: true, cancellationToken);
+		Connector.QueryFirstAsync<T>(this, map: null, single: true, orDefault: false, cancellationToken);
 
 	/// <summary>
 	/// Executes the query, converting the first record to the specified type with the specified delegate.
