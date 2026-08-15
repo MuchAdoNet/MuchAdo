@@ -16,7 +16,7 @@ defaults:
     shell: pwsh
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-matrix:
@@ -97,6 +97,9 @@ jobs:
     runs-on: windows-latest
     needs: build
     if: github.repository_owner == 'MuchAdoNet' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+      id-token: write
     steps:
     - name: Check out code
       uses: actions/checkout@v6
@@ -107,8 +110,13 @@ jobs:
       with:
         name: nuget-packages
         path: release
+    - name: NuGet login
+      uses: NuGet/login@v1
+      id: nuget-login
+      with:
+        user: MuchAdo
     - name: Publish
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
       run: ./build.ps1 publish --skip package --trigger publish-nuget-output
