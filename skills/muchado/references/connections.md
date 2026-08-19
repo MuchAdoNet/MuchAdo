@@ -35,7 +35,30 @@ If you want to open the connection before executing the first command, call `Ope
 
 The default `DbConnector` settings are often sufficient, especially if you are using a provider-specific package, but you can optionally pass a `DbConnectorSettings` to the `DbConnector` constructor. For efficiency, consider using a singleton for the settings rather than creating a new settings object every time you create a new connector.
 
-Each provider-specific package has its own settings class derived from `DbConnectorSettings`, e.g. `MySqlDbConnectorSettings`, which may have settings specific to that provider.
+The connector settings are:
+
+* `SqlSyntax` — Controls the SQL dialect used when formatting SQL, including identifier quoting, parameter placeholders, keyword casing, and DTO column naming. See [Formatted SQL](./formatted-sql.md#sql-syntax).
+* `DataMapper` — Controls how data records are mapped to .NET values. See [Data Mapping](./data-mapping.md).
+* `DefaultTransactionSettings` — Supplies the default transaction settings, such as the isolation level. See [Transaction Settings](./transactions.md#transaction-settings).
+* `DefaultTimeout` — Supplies the default command timeout. Use `WithTimeout` to override it for an individual command. See [Setting the Timeout](./commands.md#setting-the-timeout).
+* `CacheCommands` — Caches commands by default. See [Cached Commands](./optimizations.md#cached-commands).
+* `PrepareCommands` — Prepares commands by default. See [Prepared Commands](./optimizations.md#prepared-commands).
+* `NoDisposeConnection` — Prevents the connector from disposing the underlying connection when the connector is disposed. An open connection is also left open.
+* `CancelUnfinishedCommands` — Cancels a command when its reader is not read to the end, such as when an `Enumerate` loop exits early. See [Lazy Reading](./commands.md#lazy-reading).
+* `RetryPolicy` — Supplies the policy used when opening connections and by the explicit retry methods. See [Resilience](./resilience.md).
+
+To dispose an arbitrary object when the connector is disposed, call `AttachDisposable` on the connector after it is created.
+
+Each provider-specific package has its own settings class derived from `DbConnectorSettings`. These classes inherit the common settings above and set provider-appropriate defaults.
+
+### MySql
+
+`MySqlDbConnector` uses `MySqlDbConnectorSettings`:
+
+* `SqlSyntax` defaults to `SqlSyntax.MySql`, which uses backticks for identifiers and `?` for unnamed parameters. See [Formatted SQL](./formatted-sql.md#sql-syntax).
+* `DataMapper` defaults to `MySqlDbDataMapper.Default`, which includes MySQL-specific type mappers. See [Databases](./databases.md#mysql) and [Data Mapping](./data-mapping.md#value-types).
+
+For example, you can customize the inherited SQL syntax settings while retaining the MySQL defaults:
 
 ```csharp
 private MySqlDbConnector CreateConnector() => new MySqlDbConnector(
@@ -47,10 +70,27 @@ private static readonly MySqlDbConnectorSettings s_connectorSettings = new()
 };
 ```
 
-To attach an `IDbConnection` to a connector without disposing it when the connector is disposed, use the `NoDisposeConnection` connector setting. If the attached connection is open, it will be kept open even after the connector is disposed.
+### PostgreSQL
 
-To dispose an arbitrary object when the connector is disposed, call `AttachDisposable` on the connector after it is created.
+`NpgsqlDbConnector` uses `NpgsqlDbConnectorSettings`:
+
+* `SqlSyntax` defaults to `SqlSyntax.Postgres`, which uses double quotes for identifiers and numbered placeholders for unnamed parameters (`$1`, `$2`, etc.). See [Formatted SQL](./formatted-sql.md#sql-syntax).
+
+### SQLite
+
+`SqliteDbConnector` uses `SqliteDbConnectorSettings`:
+
+* `SqlSyntax` defaults to `SqlSyntax.Sqlite`, which uses double quotes for identifiers.
+* SQLite deferred transactions use the separate `SqliteDbTransactionSettings.Deferred` setting. See [Transaction Settings](./transactions.md#transaction-settings).
+
+### SQL Server
+
+`SqlServerDbConnector` uses `SqlServerDbConnectorSettings`:
+
+* `SqlSyntax` defaults to `SqlSyntax.SqlServer`, which uses brackets for identifiers. See [Formatted SQL](./formatted-sql.md#sql-syntax).
 
 ## ADO.NET access
 
 If you need to access the `IDbConnection` that is wrapped by the connector, use the `Connection` property. To automatically open the connection if it is not already open, use `GetOpenConnectionAsync` instead.
+
+The `Transaction`, `ActiveCommand`, `ActiveBatch`, and `ActiveReader` properties expose the objects currently tracked by the connector. They return `null` if no corresponding operation is in progress.

@@ -21,6 +21,10 @@ A `SqlSource` represents a SQL fragment and any attached parameter values. The `
 
 `Sql.Name` surrounds the specified string with delimiters that prevent it from being interpreted as a SQL keyword. ANSI SQL uses double quotes for this, but some databases have their own syntax, so be sure to use the right MuchAdo package or `SqlSyntax`.
 
+:::warning
+`Sql.Raw` inserts text without escaping or parameterization. Use it only for trusted or generated SQL fragments. Use interpolated values for data and `Sql.Name` for dynamic identifiers.
+:::
+
 ```csharp
 var sql = Sql.Format($"""
     select id from {Sql.Name(tableName)}
@@ -37,9 +41,9 @@ return await connector.Command(sql).QuerySingleOrDefaultAsync<long?>();
 
 `Sql.Intersperse` works like `string.Join`; it intersperses SQL fragments with the specified raw SQL separator. Empty fragments are ignored, rather than doubling up the separator.
 
-`Sql.Clauses` intersperses SQL fragments with newlines, equivalent to `Sql.Intersperse("\n", ...})"`.
+`Sql.Clauses` intersperses SQL fragments with newlines, equivalent to `Sql.Intersperse("\n", ...)`.
 
-`Sql.List` intersperses SQL fragments with commas, equivalent to `Sql.Intersperse(", ", ...})"`.
+`Sql.List` intersperses SQL fragments with commas, equivalent to `Sql.Intersperse(", ", ...)`.
 
 `Sql.Tuple` is shorthand for a comma-separated list surrounded by parentheses, equivalent to `Sql.Format($"({Sql.List(...)})"`.
 
@@ -79,3 +83,17 @@ return await connector
 :::tip
 It doesn't matter to the database, but if you want MuchAdo to generate lowercase SQL keywords, use `WithLowercaseKeywords` on your `SqlSyntax` connector setting.
 :::
+
+## SQL Syntax
+
+Provider-specific connectors configure the appropriate `SqlSyntax` automatically. For a custom dialect, start with a provider preset or `SqlSyntax.Default` and use the `With...` methods to configure identifier quoting, snake-case DTO column names, lowercase keywords, the named parameter prefix, and the unnamed parameter strategy.
+
+```csharp
+var syntax = SqlSyntax.Postgres
+    .WithLowercaseKeywords()
+    .WithSnakeCaseColumnNames();
+```
+
+`SqlUnnamedParameterStrategy.Named`, `Numbered`, and `Unnumbered` support providers that use named, numbered, or repeated unnamed placeholders. The default syntax does not support `Sql.Name` until identifier quoting is configured.
+
+Call `sql.ToString(syntax)` when you need to inspect the rendered SQL and its parameter placeholders. It renders the SQL text, not the parameter values.

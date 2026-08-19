@@ -9,7 +9,7 @@ If you are using a database provider with its own MuchAdo package, you should us
 Use the [MuchAdo.MySql](https://www.nuget.org/packages/MuchAdo.MySql) NuGet package if you are using [MySqlConnector](https://mysqlconnector.net/), the recommended provider for [MySQL](https://www.mysql.com/). The connector class is `MySqlDbConnector`. Key enhancements:
 
 * uses `?` for unnamed parameter placeholders
-* supports provider-specific types `MySqlDateTime`, `MySqlDecimal`, and `MySqlGeometry`
+* supports provider-specific types `MySqlDateTime`, `MySqlDecimal`, and `MySqlGeometry` (via `MySqlDbDataMapper.Default`)
 * supports async database access and command batches in older .NET frameworks
 * uses backticks when quoting SQL identifiers
 
@@ -18,7 +18,7 @@ Use the [MuchAdo.MySql](https://www.nuget.org/packages/MuchAdo.MySql) NuGet pack
 Use the [MuchAdo.Npgsql](https://www.nuget.org/packages/MuchAdo.Npgsql) NuGet package if you are using [Npgsql](https://www.npgsql.org/), the recommended provider for [PostgreSQL](https://www.postgresql.org/). The connector class is `NpgsqlDbConnector`. Key enhancements:
 
 * uses `$1`, `$2`, etc. for unnamed parameter placeholders, i.e. supports [raw mode](https://www.roji.org/parameters-batching-and-sql-rewriting)
-* uses [strongly-typed parameters](https://www.npgsql.org/doc/basic-usage.html#strongly-typed-parameters) to avoid boxing of value types
+* uses [strongly-typed parameters](https://www.npgsql.org/doc/basic-usage.html#strongly-typed-parameters) automatically to avoid boxing of value types
 * supports async database access and command batches in older .NET frameworks
 
 ## SQLite
@@ -27,6 +27,10 @@ Use the [MuchAdo.Sqlite](https://www.nuget.org/packages/MuchAdo.Sqlite) NuGet pa
 
 * supports deferred transactions
 * emulates command batching (not natively supported by Microsoft.Data.Sqlite as of this writing)
+
+:::warning
+MuchAdo.Sqlite depends on [Microsoft.Data.Sqlite.Core](https://www.nuget.org/packages/Microsoft.Data.Sqlite.Core), so it does not select a native SQLite bundle for you. Add the native bundle that suits your application, such as [SQLitePCLRaw.bundle_e_sqlite3](https://www.nuget.org/packages/SQLitePCLRaw.bundle_e_sqlite3), or reference [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite), which brings a bundle transitively.
+:::
 
 ## SQL Server
 

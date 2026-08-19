@@ -6,13 +6,15 @@ MuchAdo has features to help you potentially get better performance from your da
 
 Call `Prepare` before executing a command if you want MuchAdo to call `PrepareAsync` on the ADO.NET command object before executing it.
 
-If you want to automatically prepare all commands, use the `PrepareCommands` connector setting.
+If you want to automatically prepare all commands, use the `PrepareCommands` connector setting. Use `Prepare(false)` to opt out for an individual command when preparation is enabled by default.
+
+Preparation behavior is provider-specific. Some providers require parameter types or sizes to be set before a command can be prepared; for example, SQL Server requires [explicit parameter types](./parameters.md#parameter-types).
 
 ## Cached Commands
 
 Call `Cache` before executing a command if you want MuchAdo to cache the ADO.NET command and parameter objects after executing a command. The next time the connector executes a command with the exact same SQL, MuchAdo will reuse the command and parameter objects rather than recreate them. The ADO.NET objects are cached indefinitely with the `DbConnector` object, so avoid caching commands that will only be executed once.
 
-If you want to automatically cache all commands, use the `CacheCommands` connector setting.
+If you want to automatically cache all commands, use the `CacheCommands` connector setting. Use `Cache(false)` to opt out for an individual command when caching is enabled by default.
 
 ## Connector Pooling
 

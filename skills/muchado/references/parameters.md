@@ -73,7 +73,7 @@ await connector
     .ExecuteAsync();
 ```
 
-`Sql.Params` generates unnamed parameters from a collection. The collection is not copied; parameters are generated from the items when the command is executed. The `set` format specifier documented above is normally simpler, but this is equivalent to the example above:
+`Sql.Params` generates unnamed parameters from a collection. The collection is not copied; parameters are generated from the items when the command is executed. Deferred parameter sources are memoized, so rendering or enumerating the same source again uses the same items. The `set` format specifier documented above is normally simpler, but this is equivalent to the example above:
 
 ```csharp
 widgetsFromIds = await connector
@@ -92,7 +92,7 @@ If the collection is empty, empty SQL will be produced, which could result in in
 
 Unnamed parameters are simplest, but you can also create named parameters. Be sure to avoid specifying two different parameters with the same name in the same command.
 
-`Sql.NamedParam` creates a parameter with the specified name and value. When injected into formated SQL, named parameters use the corresponding named placeholder, e.g. `@height`.
+`Sql.NamedParam` creates a parameter with the specified name and value. When injected into formatted SQL, named parameters use the corresponding named placeholder, e.g. `@height`.
 
 ```csharp
 widgetId = await connector
@@ -112,7 +112,7 @@ widgetId = await connector
     .QuerySingleAsync<long>();
 ```
 
-Named parameters can also be useful when calling stored procedures.
+Named parameters can also be useful when calling stored procedures. Avoid using two different values with the same name in one command.
 
 ```csharp
 await connector
@@ -122,7 +122,7 @@ await connector
     .ExecuteAsync();
 ```
 
-`Sql.NamedParams` creates multiple parameters with the specified names and values, either from a collection of tuple pairs where the first value is the parameter name, or from a collection of key/value pairs where the key is the parameter name. As with `Sql.Params`, you should usually avoid empty collections.
+`Sql.NamedParams` creates multiple parameters with the specified names and values, either from a collection of tuple pairs where the first value is the parameter name, or from a collection of key/value pairs where the key is the parameter name. As with `Sql.Params`, you should usually avoid empty collections. Deferred named-parameter sources are also memoized.
 
 ```csharp
 var namedParams = Sql.NamedParams(widgetIds.Select((x, i) => ($"id{i}", x)));
@@ -186,7 +186,7 @@ widgetIds = await connector
     .QueryAsync<long>();
 ```
 
-If you want to generate named parameter placeholders for a DTO without the values, use `Sql.DtoParamNames`.
+If you want to generate named parameter placeholders for a DTO without the values, use `Sql.DtoParamNames`. `Sql.DtoColumnNames`, `Sql.DtoParams`, and `Sql.DtoParamNames` support `Where` filters; `Sql.DtoParamNames` also supports `Renamed`. `Sql.DtoNamedParams` is a regular parameter source and supports both operations.
 
 To add a prefix or suffix to help ensure that the parameter name is unique, chain a call to `Renamed`.
 
@@ -203,7 +203,7 @@ var widgetsWithNamePrefix = await connector
     .QueryAsync<Widget>();
 ```
 
-Use `Sql.LikeParamEndsWith`, `Sql.LikeParamContains`, or `Sql.LikeParam` for other `LIKE` patterns.
+Use `Sql.LikeParamEndsWith`, `Sql.LikeParamContains`, or `Sql.LikeParam` for other `LIKE` patterns. The built-in helpers escape `\`, `%`, and `_` with a backslash. Depending on the database and its settings, add `escape '\\'` to the SQL. `Sql.LikeParam` accepts a delegate that receives the escaping function for custom patterns.
 
 ### Parameter Types
 
@@ -211,8 +211,37 @@ MuchAdo creates ADO.NET parameter objects just in time when the command is execu
 
 `Sql.Param` has an overload that takes a `SqlParamType`, which can be used to set whatever parameter properties you need to set.
 
-Alternatively, if you create an `IDataParameter` and pass it as a parameter value, MuchAdo will use it as-is rather than create a new parameter for it. In fact, an `IDataParameter` will be implicitly converted to a `SqlParamSource` as necessary.
+When preparing a SQL Server command, specify the type and size of text parameters explicitly instead of relying on provider inference:
 
-### Combine Sources
+```csharp
+var varchar100 = SqlParamType.Create(p =>
+{
+    p.DbType = DbType.AnsiString;
+    p.Size = 100;
+});
+var widgetId = await connector
+    .Command("select id from widgets where name = @name",
+        Sql.NamedParam("name", "a long name", varchar100))
+    .Prepare()
+    .QuerySingleAsync<long>();
+```
 
-If you need to combine multiple parameter sources into a single parameter source, use `Sql.Combine`.
+Alternatively, if you create a `DbParameter` and pass it as a parameter value, MuchAdo will use it as-is rather than create a new parameter for it. In fact, a `DbParameter` will be implicitly converted to a `SqlParamSource` as necessary.
+
+For output or input/output parameters, pass the provider's `DbParameter` with its `Direction` set appropriately. MuchAdo uses the parameter object as-is, so read the updated `Value` after execution.
+
+### Transform Sources
+
+`Sql.NoParams` is an empty parameter source.
+
+If you need to combine multiple parameter sources into a single parameter source, use `Sql.Combine`. The sources are submitted in order, which determines the order of unnamed parameters.
+
+Parameter sources can also be filtered and transformed: `Where` filters by parameter name, while `Renamed` transforms names.
+
+```csharp
+var namedParams = Sql.DtoNamedParams(new { minHeight, maxHeight })
+    .Where(name => name != "minHeight")
+    .Renamed(name => $"widget_{name}");
+```
+
+`Enumerate` can be used to inspect the parameters of a parameter source.
