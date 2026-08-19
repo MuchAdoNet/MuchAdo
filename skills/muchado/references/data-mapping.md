@@ -34,6 +34,8 @@ var widgetHeights = await connector
     .QueryAsync<double?>();
 ```
 
+Provider-specific mappers are also available. For example, `MySqlDbConnector` uses `MySqlDbDataMapper.Default`, which adds support for `MySqlDateTime`, `MySqlDecimal`, and `MySqlGeometry`.
+
 ## Enumerated types
 
 For efficiency, enumerated types are mapped using their underlying numeric type, usually `int`.
@@ -48,9 +50,11 @@ A blob can be mapped to a `byte[]` or a `Stream`. Be sure to dispose of the `Str
 
 ## DTOs
 
-If the type isn't one of the types listed above or below, it is assumed to be a DTO (data transfer object) type, i.e. a type with properties that correspond to data record fields.
+If the type isn't one of the types listed above or below, it is assumed to be a DTO (data transfer object) type, i.e. a type with public instance properties or fields that correspond to data record fields.
 
 When a DTO type is used, a new instance of the DTO is created, and each data record field is mapped to a DTO property whose name matches the field name, ignoring case and any underscores (so `full_name` would map successfully to `FullName`, for example). Read-only properties can be set if there is a constructor with corresponding parameters.
+
+Constructor parameters are matched to DTO members by name, ignoring case. Optional constructor parameters use their default values when the corresponding field is not present.
 
 ```csharp
 record Widget(long Id, string Name, double? Height);
@@ -84,7 +88,7 @@ var widgetNameLengths = await connector
     .QueryAsync<(Widget Widget, long NameLength)>();
 ```
 
-If the tuple has two or more multi-field types, all but the last must be terminated by a null data record value whose field name is `null` (case-insensitive), which is easily accomplished by using `null` or `NULL` in the `select` statement.
+Tuple items can have either a fixed field count, such as a scalar or a tuple of scalars, or a variable field count, such as a DTO, `object`, or dictionary. When a tuple contains multiple variable-width items and MuchAdo cannot infer a boundary, each variable-width item except the last must be terminated by a synthetic result column named `NULL` (case-insensitive). A bare `null` or `NULL` in the `select` statement is the usual way to create this marker. The marker is one skipped column, not a separate null row.
 
 ```csharp
 var lineage = await connector
@@ -96,6 +100,28 @@ var lineage = await connector
         """)
     .QueryAsync<(Widget Parent, Widget Child)>();
 ```
+
+The marker is not needed when the boundary can be inferred from fixed-width items, or when a mapping delegate supplies explicit ranges. For example:
+
+```csharp
+var lineage = await connector
+    .Command("select p.id, p.name, p.height, c.id, c.name, c.height from widgets p join widgets c on c.id = p.id")
+    .QueryAsync(record => (
+        Parent: record.Get<Widget>(0, 3),
+        Child: record.Get<Widget>(3, 3)));
+```
+
+Nullable tuple elements and nullable tuples are different. `(int?, string?)` is a non-nullable tuple whose individual values may be null. `(int, string)?` is a nullable tuple: an all-null row maps to `null`, while a partially null row still fails because its inner elements are non-nullable.
+
+Tuples can also contain nested tuples. Fixed-width nested tuples are mapped in the same positional manner:
+
+```csharp
+var summaries = await connector
+    .Command("select id, name, min_height, max_height from widgets")
+    .QueryAsync<((long Id, string Name) Widget, (double Min, double Max) Range)>();
+```
+
+If a nested tuple contains variable-width items, the same boundary rules apply to those items.
 
 ## object/dynamic
 
@@ -143,6 +169,8 @@ To directly support types not mentioned above, you can create a custom mapping:
 * Derive a class from `DbTypeMapperFactory`, overriding `TryCreateTypeMapper<T>` and returning an instance of your type mapper when the type matches.
 * Set the `DataMapper` connector setting to a data mapper that includes an instance of your type mapper factory.
 
+Type mapper factories are checked in order, so return null from a factory when it does not handle the requested type. A fixed `FieldCount` allows tuple mapping to infer boundaries; use null for a mapper that can consume a variable number of fields.
+
 ## Mapping delegate
 
 For more control over the mapping, the client can specify the `map` parameter, which is of type `Func<DbConnectorRecord, T>`. That delegate will be called for each data record returned by the query. Use one of the `Get<T>` methods to map one or more fields to the specified type.
@@ -162,6 +190,8 @@ var halvedHeights = await connector
 ```
 
 There are also `Get<T>` overloads for reading multiple consecutive fields by index or name, as well as a `FieldCount` property and `GetOrdinal` and `GetName` methods.
+
+On supported .NET targets, `Get<T>` also accepts `Index` and `Range` values for selecting fields.
 
 ## ADO.NET access
 

@@ -23,7 +23,7 @@ await using (await connector.BeginTransactionAsync())
 When the object returned from `BeginTransactionAsync` is disposed, the transaction is disposed, which rolls back the transaction if it has not been committed, e.g. if an exception is thrown.
 
 :::info
-ADO.NET requres that the [`Transaction`](https://learn.microsoft.com/en-us/dotnet/api/system.data.idbcommand.transaction) property of [`IDbCommand`](https://docs.microsoft.com/dotnet/api/system.data.idbcommand) be set to the current transaction. MuchAdo takes care of that automatically when creating and executing commands.
+ADO.NET requires that the [`Transaction`](https://learn.microsoft.com/en-us/dotnet/api/system.data.idbcommand.transaction) property of [`IDbCommand`](https://docs.microsoft.com/dotnet/api/system.data.idbcommand) be set to the current transaction. MuchAdo takes care of that automatically when creating and executing commands.
 :::
 
 You can explicitly roll back the current transaction with `RollbackTransactionAsync`, but that's not typically necessary, since an uncommitted transaction will be rolled back when it is disposed.
@@ -54,12 +54,32 @@ Record-by-record enumeration (`Enumerate`/`EnumerateAsync`) cannot be used toget
 
 ## Transaction settings
 
-The transaction methods have overloads that accept a `DbTransactionSettings`, which is typically used to specify the transaction isolation level. Feel free to use an [`IsolationLevel`](https://learn.microsoft.com/en-us/dotnet/api/system.data.isolationlevel) directly; it will be implicitly converted to `DbTransactionSettings`.
+Transaction methods accept a `DbTransactionSettings` to control the isolation level.
 
-The default isolation level is provider-specific, but you can override it with the `DefaultTransactionSettings` connector setting.
+* `DbTransactionSettings.Default` leaves the isolation level unspecified, so the provider chooses its default.
+* `DbTransactionSettings.ReadUncommitted`, `ReadCommitted`, `RepeatableRead`, and `Serializable` select the corresponding standard isolation level.
+
+You can also pass an [`IsolationLevel`](https://learn.microsoft.com/en-us/dotnet/api/system.data.isolationlevel) directly. MuchAdo converts it to `DbTransactionSettings`, which is useful for levels without a built-in preset:
+
+```csharp
+await using (await connector.BeginTransactionAsync(IsolationLevel.Snapshot))
+{
+    await connector.Command("update widgets set height = height + 1").ExecuteAsync();
+    await connector.CommitTransactionAsync();
+}
+```
+
+Use a setting for one operation, or assign it to `DefaultTransactionSettings` to make it the connector default. For example, to use `ReadCommitted` for all transactions created without explicit settings:
+
+```csharp
+var settings = new DbConnectorSettings
+{
+    DefaultTransactionSettings = DbTransactionSettings.ReadCommitted,
+};
+```
 
 :::tip
-If you are using MuchAdo.Sqlite, you can use `SqliteDbTransactionSettings` to create [deferred transactions](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions#deferred-transactions).
+If you are using MuchAdo.Sqlite, use `SqliteDbTransactionSettings.Deferred` to create a [deferred transaction](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions#deferred-transactions), which does not lock the database until a write is performed.
 :::
 
 ## ADO.NET access

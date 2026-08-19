@@ -45,6 +45,8 @@ var widgets = await connector
 
 There are many other ways to map records to types. For more details, see [Data Mapping](./data-mapping.md).
 
+The `Query` and `QueryAsync` methods read every record returned by the command, including records in later result sets. Use [result set methods](./command-batches.md#reading-result-sets) when you need to consume them separately.
+
 ### Single records
 
 If the SQL statement always returns a single record, you can call `QuerySingleAsync<T>`, which returns an object of type `T` for that record, but throws an exception if the query returns no records or multiple records.
@@ -93,7 +95,7 @@ For more information on using parameters with MuchAdo, see [Parameters](./parame
 
 To set the command timeout, which overrides the default command timeout, chain a call to `WithTimeout` before executing the command.
 
-`WithTimeout` accepts a [`TimeSpan`](https://learn.microsoft.com/en-us/dotnet/api/system.timespan), which is rounded up to the nearest second when used to set the actual [`CommandTimeout`](https://learn.microsoft.com/en-us/dotnet/api/system.data.idbcommand.commandtimeout). You can use `Timeout.InfiniteTimeSpan` or `TimeSpan.Zero` to wait indefinitely.
+`WithTimeout` accepts a positive [`TimeSpan`](https://learn.microsoft.com/en-us/dotnet/api/system.timespan) or `Timeout.InfiniteTimeSpan`. Positive values are rounded up to the nearest second when used to set the actual [`CommandTimeout`](https://learn.microsoft.com/en-us/dotnet/api/system.data.idbcommand.commandtimeout).
 
 ```csharp
 var averageHeight = await connector
@@ -115,6 +117,8 @@ await connector
         Sql.NamedParam("widget_height", height))
     .ExecuteAsync();
 ```
+
+For output or input/output parameters, or when a provider requires a specific parameter type or size, see [Parameter Types](./parameters.md#parameter-types).
 
 ## Cancellation
 

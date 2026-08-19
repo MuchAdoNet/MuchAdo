@@ -25,13 +25,13 @@ var nextWidgetId = connector
 Microsoft.Data.Sqlite does not support `DbBatch` (as of this writing), but [MuchAdo.Sqlite](./databases.md#sqlite) emulates support, so either syntax can be used.
 :::
 
-Note that any timeout specified by `WithTimeout` applies to the entire command batch, not an individual command.
+Note that any timeout specified by `WithTimeout` applies to the entire command batch, not an individual command. Similarly, `InTransaction`, `Retry`, `RetryInTransaction`, `Cache`, and `Prepare` apply to the whole command batch.
 
 ## Reading result sets
 
 If only one of the SQL statements returns data records, or if all of the statements return the same kind of record, you can read the data as usual with one of the `Query` or `Enumerate` methods.
 
-If each statement returns a different kind of data record, call `QueryMultipleAsync` to get a disposable result set reader. For each statement that returns records, call one of the `Read` or `Enumerate` methods.
+If each statement returns a different kind of data record, call `QueryMultipleAsync` to get a result set reader, which should always be disposed. For each statement that returns records, call one of the `Read` or `Enumerate` methods.
 
 ```csharp
 await using (var reader = await connector
@@ -55,6 +55,8 @@ var (moreWidgetNames, moreWidgetIds) = await connector
             LongWidgetIds: await reader.ReadAsync<long>()));
 ```
 
+The result set reader also supports `ReadFirstAsync`, `ReadFirstOrDefaultAsync`, `ReadSingleAsync`, `ReadSingleOrDefaultAsync`, and `EnumerateAsync`. Each call consumes the current result set and advances to the next one when it finishes.
+
 ## Empty command batch
 
 When building a command batch in a loop, it may be simpler to call `CreateCommandBatch` and start with an empty command batch.
@@ -71,6 +73,8 @@ foreach (var widget in widgetsToCreate)
 }
 var newWidgetIds = await batch.QueryAsync<long>();
 ```
+
+Use `CommandCount` to inspect how many commands have been added. `GetCommand` returns a `DbConnectorCommand` with its command type, SQL or text, and parameters; call `BuildText` with the connector's `SqlSyntax` when you need to render its text for logging. `SetCommand` can replace a command in an existing batch.
 
 ## ADO.NET access
 
