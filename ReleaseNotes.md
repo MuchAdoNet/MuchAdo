@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.4.0
+
+* Add per-command control over cancelling unfinished readers with `CancelUnfinished()`, including `CancelUnfinished(false)` to opt out of the connector default.
+
 ## 1.3.1
 
 * Fix parameterless `QuerySingleAsync<T>()` to throw when no records are returned, matching `QuerySingle<T>()` and the other `QuerySingleAsync` overloads.

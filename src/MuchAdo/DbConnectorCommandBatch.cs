@@ -24,6 +24,11 @@ public sealed class DbConnectorCommandBatch
 	public bool? IsPrepared { get; private set; }
 
 	/// <summary>
+	/// If set, controls whether the command or batch is cancelled when its reader is not fully consumed.
+	/// </summary>
+	public bool? CancelsUnfinished { get; private set; }
+
+	/// <summary>
 	/// The connector.
 	/// </summary>
 	public DbConnector Connector { get; }
@@ -325,6 +330,15 @@ public sealed class DbConnectorCommandBatch
 	public DbConnectorCommandBatch Prepare(bool prepare = true)
 	{
 		IsPrepared = prepare;
+		return this;
+	}
+
+	/// <summary>
+	/// Sets whether the command or batch is cancelled when its reader is not fully consumed.
+	/// </summary>
+	public DbConnectorCommandBatch CancelUnfinished(bool cancel = true)
+	{
+		CancelsUnfinished = cancel;
 		return this;
 	}
 

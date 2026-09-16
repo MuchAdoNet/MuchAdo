@@ -1653,6 +1653,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
 			m_activeCommandOrBatchInAutoTransaction = false;
+			m_shouldCancelUnfinishedCommand = false;
 		}
 	}
 
@@ -1673,6 +1674,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 			m_activeCommandOrBatch = null;
 			m_activeCommandOrBatchCacheKey = null;
 			m_activeCommandOrBatchInAutoTransaction = false;
+			m_shouldCancelUnfinishedCommand = false;
 		}
 	}
 
@@ -1682,11 +1684,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 		if (m_activeReader is not null)
 		{
-			if (Settings.CancelUnfinishedCommands && !m_activeReader.IsClosed)
+			if (m_shouldCancelUnfinishedCommand && !m_activeReader.IsClosed)
 				CancelNoThrow();
 
 			DisposeReaderCore();
 			m_activeReader = null;
+			m_shouldCancelUnfinishedCommand = false;
 		}
 	}
 
@@ -1696,11 +1699,12 @@ public class DbConnector : IDisposable, IAsyncDisposable
 
 		if (m_activeReader is not null)
 		{
-			if (Settings.CancelUnfinishedCommands && !m_activeReader.IsClosed)
+			if (m_shouldCancelUnfinishedCommand && !m_activeReader.IsClosed)
 				CancelNoThrow();
 
 			await DisposeReaderCoreAsync().ConfigureAwait(false);
 			m_activeReader = null;
+			m_shouldCancelUnfinishedCommand = false;
 		}
 	}
 
@@ -1753,6 +1757,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		try
 		{
 			DoCreateCommand(commandBatch);
+			m_shouldCancelUnfinishedCommand = commandBatch.CancelsUnfinished ?? Settings.CancelUnfinishedCommands;
 			if (ShouldPrepare(commandBatch))
 				PrepareCore();
 			return new DbActiveCommandDisposer(this);
@@ -1777,6 +1782,7 @@ public class DbConnector : IDisposable, IAsyncDisposable
 		try
 		{
 			DoCreateCommand(commandBatch);
+			m_shouldCancelUnfinishedCommand = commandBatch.CancelsUnfinished ?? Settings.CancelUnfinishedCommands;
 			if (ShouldPrepare(commandBatch))
 				await PrepareCoreAsync(cancellationToken).ConfigureAwait(false);
 			return new DbActiveCommandDisposer(this);
@@ -2101,4 +2107,5 @@ public class DbConnector : IDisposable, IAsyncDisposable
 	private bool m_noDisposeTransaction;
 	private bool m_hasReadFirstResultSet;
 	private bool m_activeCommandOrBatchInAutoTransaction;
+	private bool m_shouldCancelUnfinishedCommand;
 }
