@@ -848,6 +848,50 @@ internal sealed class DbConnectorTests
 	}
 
 	[Test]
+	public void CancelUnfinishedUnitTests()
+	{
+		using var connector = CreateConnector();
+		var command = connector.Command("select 1");
+
+		command.CancelsUnfinished.Should().BeNull();
+		command.CancelUnfinished().CancelsUnfinished.Should().BeTrue();
+		command.CancelUnfinished(false).CancelsUnfinished.Should().BeFalse();
+	}
+
+	[TestCase(false, true)]
+	[TestCase(false, false)]
+	[TestCase(true, true)]
+	[TestCase(true, false)]
+	public async Task CancelUnfinishedEnumerationTests(bool asynchronous, bool cancel)
+	{
+		using var connector = new CancelTrackingConnector();
+		var command = connector.Command("select 1 union all select 2");
+		if (cancel)
+			command.CancelUnfinished();
+		else
+			command.CancelUnfinished(false);
+
+		if (asynchronous)
+		{
+			await foreach (var value in command.EnumerateAsync<int>())
+			{
+				value.Should().Be(1);
+				break;
+			}
+		}
+		else
+		{
+			foreach (var value in command.Enumerate<int>())
+			{
+				value.Should().Be(1);
+				break;
+			}
+		}
+
+		connector.CancelCount.Should().Be(cancel ? 1 : 0);
+	}
+
+	[Test]
 	public void TimeoutTest()
 	{
 		var connectionString = new SqliteConnectionStringBuilder { DataSource = nameof(TimeoutTest), Mode = SqliteOpenMode.Memory, Cache = SqliteCacheMode.Shared }.ConnectionString;
@@ -964,6 +1008,15 @@ internal sealed class DbConnectorTests
 	private sealed class AsyncDisposableAction(Func<ValueTask> asyncAction) : IAsyncDisposable
 	{
 		public ValueTask DisposeAsync() => asyncAction();
+	}
+
+	private sealed class CancelTrackingConnector() : DbConnector(
+		new SqliteConnection("Data Source=:memory:"),
+		new DbConnectorSettings { CancelUnfinishedCommands = true })
+	{
+		public int CancelCount { get; private set; }
+
+		protected override void CancelCore() => CancelCount++;
 	}
 
 	private sealed class QueryItemDto
