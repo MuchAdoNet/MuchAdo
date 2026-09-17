@@ -61,6 +61,10 @@ If you would rather ignore any additional records after the first, call `QueryFi
 
 If you don't want to throw an exception when there are no records, call `QuerySingleOrDefaultAsync<T>` or `QueryFirstOrDefaultAsync<T>`, which return `default(T)` when the query returns no data records.
 
+:::tip
+When you only need one record, consider adding `limit 1` to the SQL statement to prevent unwanted records from being read and ignored. To automatically cancel a command with additional records, use the same technique as [lazy reading](#lazy-reading) below.
+:::
+
 ### Lazy reading
 
 Reading all of the records at once is usually best for performance, but if you would rather read the records one at a time, use `await foreach` with `EnumerateAsync<T>`.
@@ -76,7 +80,20 @@ await foreach (var widget in connector
 ```
 
 :::tip
-If you break out of the loop before all records have been read, the remainder of the data may still be read under the hood. It is best to avoid this situation by only querying for data that you need, but if you want to automatically cancel the command when all of the records haven't been read, set the `CancelUnfinishedCommands` connector setting.
+If you break out of the loop before all records have been read, the remainder of the data may still be read under the hood. It is best to avoid this situation by only querying for data that you need, but you can automatically cancel an unfinished command by setting the `CancelUnfinishedCommands` connector setting or by calling `CancelUnfinished()` on an individual command:
+
+```csharp
+await foreach (var widget in connector
+    .Command("select id, name, height from widgets")
+    .CancelUnfinished()
+    .EnumerateAsync<Widget>())
+{
+    if (widget.Id == targetId)
+        break;
+}
+```
+
+The command setting overrides the connector setting. Use `CancelUnfinished(false)` to opt out for an individual command when the connector default is enabled.
 :::
 
 ## Using parameters
