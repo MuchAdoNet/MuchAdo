@@ -22,6 +22,9 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\skills\muchado\**" Pack="true" PackagePath="skills/muchado" />
+    <None Include="skill.gitignore" Pack="true" PackagePath="skills/muchado/.gitignore" />
+    <None Include="buildTransitive\MuchAdo.targets" Pack="true" PackagePath="buildTransitive/MuchAdo.targets" />
   </ItemGroup>
 
 </Project>

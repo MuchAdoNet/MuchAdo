@@ -41,3 +41,7 @@ Follow the links below for detailed information on MuchAdo features.
 <!-- END DO NOT EDIT -->
 
 For more information, please check out our [comprehensive documentation](https://muchado.net/)!
+
+## Agent Skill
+
+The MuchAdo package includes an [agent skill](https://agentskills.io/) for AI coding agents. When you build a project that references MuchAdo, the skill is copied to `.agents/skills/muchado/` in your repository, along with a `.gitignore` that keeps the generated files out of source control. To opt out, set `<EnableEmbeddedAgentSkills>false</EnableEmbeddedAgentSkills>` in your project or `Directory.Build.props`.

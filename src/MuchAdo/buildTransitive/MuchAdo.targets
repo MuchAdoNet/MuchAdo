@@ -1,0 +1,35 @@
+<Project>
+
+  <!--
+    Copies the MuchAdo agent skill from this package to .agents/skills/muchado/ in the consuming repository.
+    Finds the repository root via source control information, then SolutionDir, then the nearest AGENTS.md.
+    Silently skips if the repository root cannot be determined.
+    Opt out with <EnableEmbeddedAgentSkills>false</EnableEmbeddedAgentSkills>.
+  -->
+  <Target Name="CopyMuchAdoAgentSkill"
+          BeforeTargets="PrepareForBuild"
+          DependsOnTargets="InitializeSourceControlInformation"
+          Condition=" '$(EnableEmbeddedAgentSkills)' != 'false' ">
+
+    <ItemGroup>
+      <_MuchAdoSkillSourceRoot Include="@(SourceRoot -> WithMetadataValue('SourceControl', 'git'))" />
+      <_MuchAdoSkillFile Include="$(MSBuildThisFileDirectory)..\skills\muchado\**" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_MuchAdoSkillRepoRoot>@(_MuchAdoSkillSourceRoot)</_MuchAdoSkillRepoRoot>
+      <_MuchAdoSkillRepoRoot Condition=" '$(_MuchAdoSkillRepoRoot)' == '' and '$(SolutionDir)' != '' and '$(SolutionDir)' != '*Undefined*' ">$(SolutionDir)</_MuchAdoSkillRepoRoot>
+      <_MuchAdoSkillAgentsMd Condition=" '$(_MuchAdoSkillRepoRoot)' == '' ">$([MSBuild]::GetPathOfFileAbove('AGENTS.md', '$(MSBuildProjectDirectory)'))</_MuchAdoSkillAgentsMd>
+      <_MuchAdoSkillRepoRoot Condition=" '$(_MuchAdoSkillRepoRoot)' == '' and '$(_MuchAdoSkillAgentsMd)' != '' ">$([System.IO.Path]::GetDirectoryName('$(_MuchAdoSkillAgentsMd)'))\</_MuchAdoSkillRepoRoot>
+      <_MuchAdoSkillRepoRoot Condition=" '$(_MuchAdoSkillRepoRoot)' != '' and !HasTrailingSlash('$(_MuchAdoSkillRepoRoot)') ">$(_MuchAdoSkillRepoRoot)\</_MuchAdoSkillRepoRoot>
+    </PropertyGroup>
+
+    <Copy SourceFiles="@(_MuchAdoSkillFile)"
+          DestinationFiles="@(_MuchAdoSkillFile -> '$(_MuchAdoSkillRepoRoot).agents\skills\muchado\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition=" '$(_MuchAdoSkillRepoRoot)' != '' and '@(_MuchAdoSkillFile)' != '' "
+          ContinueOnError="true" />
+
+  </Target>
+
+</Project>
